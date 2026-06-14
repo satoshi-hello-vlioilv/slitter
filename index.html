@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>アルミ多条割スリッターライン 3Dシミュレーション</title>
+<style>
+  :root {
+    --panel-bg: rgba(18, 24, 33, 0.86);
+    --accent: #38bdf8;
+    --accent-2: #f59e0b;
+    --text: #e6edf3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1118; }
+  body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; color: var(--text); }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  #hud {
+    position: absolute; top: 16px; left: 16px; z-index: 10;
+    background: var(--panel-bg);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px; padding: 16px 18px; width: 290px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  }
+  #hud h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: .02em; }
+  #hud .sub { font-size: 11px; color: #8aa0b3; margin-bottom: 14px; }
+  .ctrl { margin-bottom: 12px; }
+  .ctrl label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: #b8c6d4; }
+  .ctrl label span.val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .btn-row { display: flex; gap: 8px; margin-top: 6px; }
+  button {
+    flex: 1; padding: 8px 10px; font-size: 12px; cursor: pointer;
+    border-radius: 8px; border: 1px solid rgba(56,189,248,0.35);
+    background: rgba(56,189,248,0.12); color: var(--text); transition: .15s;
+  }
+  button:hover { background: rgba(56,189,248,0.28); }
+  button.alt { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.12); }
+  button.alt:hover { background: rgba(245,158,11,0.28); }
+
+  .stats { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; font-size: 12px; }
+  .stats div { display: flex; justify-content: space-between; margin: 3px 0; color: #b8c6d4; }
+  .stats div b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  #legend {
+    position: absolute; bottom: 16px; left: 16px; z-index: 10;
+    background: var(--panel-bg); border-radius: 10px; padding: 10px 14px;
+    font-size: 11px; color: #b8c6d4; border: 1px solid rgba(255,255,255,0.07);
+  }
+  #legend b { color: var(--accent-2); }
+  #hint {
+    position: absolute; bottom: 16px; right: 16px; z-index: 10;
+    background: var(--panel-bg); border-radius: 10px; padding: 8px 12px;
+    font-size: 11px; color: #8aa0b3; border: 1px solid rgba(255,255,255,0.07);
+  }
+  #loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #0b1118; z-index: 50; font-size: 14px; color: #8aa0b3;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud">
+  <h1>アルミ多条割スリッターライン</h1>
+  <div class="sub">Aluminium Multi-Strip Slitting Line — 3D Simulation</div>
+
+  <div class="ctrl">
+    <label>ライン速度 <span class="val" id="speedVal">120 m/min</span></label>
+    <input type="range" id="speed" min="0" max="300" value="120" step="5" />
+  </div>
+
+  <div class="ctrl">
+    <label>分割数（条数） <span class="val" id="stripVal">6 条</span></label>
+    <input type="range" id="strips" min="2" max="10" value="6" step="1" />
+  </div>
+
+  <div class="btn-row">
+    <button id="toggle">⏸ 停止</button>
+    <button id="view" class="alt">視点切替</button>
+  </div>
+
+  <div class="stats">
+    <div><span>稼働状態</span><b id="stState">運転中</b></div>
+    <div><span>アンコイラ回転</span><b id="stUn">— rpm</b></div>
+    <div><span>リコイラ回転</span><b id="stRe">— rpm</b></div>
+    <div><span>ナイフ周速</span><b id="stKnife">— m/min</b></div>
+  </div>
+</div>
+
+<div id="legend">
+  工程: <b>①アンコイラ</b> → ②ピンチ/レベラ → ③エッジガイド →
+  <b>④スリッタヘッド</b> → ⑤ループピット → ⑥テンション → <b>⑦リコイラ</b>
+</div>
+<div id="hint">ドラッグ:回転 / ホイール:ズーム / 右ドラッグ:移動</div>
+<div id="loading">3Dシーンを構築中…</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+//  Scene / Renderer / Camera
+// ============================================================
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d141d);
+scene.fog = new THREE.Fog(0x0d141d, 45, 110);
+
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(26, 16, 30);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.target.set(0, 2.5, 0);
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 8;
+controls.maxDistance = 90;
+
+// ============================================================
+//  Lighting
+// ============================================================
+const hemi = new THREE.HemisphereLight(0xbfd6ff, 0x202830, 0.7);
+scene.add(hemi);
+
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(20, 30, 18);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 1; key.shadow.camera.far = 120;
+key.shadow.camera.left = -45; key.shadow.camera.right = 45;
+key.shadow.camera.top = 45; key.shadow.camera.bottom = -45;
+key.shadow.bias = -0.0004;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x88aaff, 0.5);
+fill.position.set(-18, 14, -12);
+scene.add(fill);
+
+// overhead factory lamps
+function factoryLamp(x, z) {
+  const g = new THREE.Group();
+  const hood = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.4, 0.5, 0.9, 16, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x2b333d, metalness: .6, roughness: .5, side: THREE.DoubleSide }));
+  hood.position.y = 22;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xfff0c0, emissiveIntensity: 1.6 }));
+  bulb.position.y = 21.6;
+  g.add(hood, bulb);
+  const pl = new THREE.PointLight(0xfff0d8, 0.5, 40, 2);
+  pl.position.set(0, 21, 0);
+  g.add(pl);
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+factoryLamp(-14, 6); factoryLamp(14, 6); factoryLamp(-14, -6); factoryLamp(14, -6);
+
+// ============================================================
+//  Materials
+// ============================================================
+const matAluminium = new THREE.MeshStandardMaterial({ color: 0xd8dde2, metalness: 0.95, roughness: 0.28 });
+const matSteel     = new THREE.MeshStandardMaterial({ color: 0x9aa4ad, metalness: 0.85, roughness: 0.4 });
+const matDarkSteel = new THREE.MeshStandardMaterial({ color: 0x3a434d, metalness: 0.75, roughness: 0.5 });
+const matFrame     = new THREE.MeshStandardMaterial({ color: 0x2f6f9e, metalness: 0.5, roughness: 0.55 });
+const matFrameY    = new THREE.MeshStandardMaterial({ color: 0xd9a21b, metalness: 0.4, roughness: 0.6 });
+const matRubber    = new THREE.MeshStandardMaterial({ color: 0x23282d, metalness: 0.1, roughness: 0.9 });
+const matKnife     = new THREE.MeshStandardMaterial({ color: 0xc9ced4, metalness: 1.0, roughness: 0.12 });
+const matSpacer    = new THREE.MeshStandardMaterial({ color: 0xb07a2a, metalness: 0.7, roughness: 0.4 });
+
+// ============================================================
+//  Floor
+// ============================================================
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(160, 100),
+  new THREE.MeshStandardMaterial({ color: 0x161c24, metalness: 0.2, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(160, 80, 0x2a3543, 0x1b2530);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// painted safety walkway lines
+function paintLine(x, z, w, d, color = 0xf1c40f) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z);
+  scene.add(m);
+}
+paintLine(0, 9.5, 70, 0.25); paintLine(0, -9.5, 70, 0.25);
+
+// ============================================================
+//  Helpers
+// ============================================================
+const groups = {}; // animated parts
+
+function makeRoller(radius, length, mat = matSteel) {
+  const g = new THREE.Group();
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 32), mat);
+  roll.rotation.z = Math.PI / 2;
+  roll.castShadow = true; roll.receiveShadow = true;
+  g.add(roll);
+  // journals
+  for (const s of [-1, 1]) {
+    const j = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius * 0.35, length * 0.12, 16), matDarkSteel);
+    j.rotation.z = Math.PI / 2;
+    j.position.x = s * (length / 2 + length * 0.05);
+    g.add(j);
+  }
+  return g;
+}
+
+// pedestal / bearing housing
+function pedestal(x, y, z, h = 2.4, mat = matFrame) {
+  const p = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), mat);
+  p.position.set(x, h / 2, z); p.castShadow = true; p.receiveShadow = true;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.6), matDarkSteel);
+  top.position.set(x, h + 0.1, z); top.castShadow = true;
+  scene.add(p, top);
+  return p;
+}
+
+// Line geometry constants — flow runs along +X (uncoiler at -X, recoiler at +X)
+const LINE_Y = 4.2;     // pass-line height
+const STRIP_W = 6.0;    // full strip width (z extent)
+const STRIP_T = 0.12;   // strip thickness
+
+// ============================================================
+//  1) UNCOILER (アンコイラ)
+// ============================================================
+function buildUncoiler() {
+  const root = new THREE.Group();
+  root.position.set(-26, 0, 0);
+
+  // base
+  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.8, 9), matDarkSteel);
+  base.position.y = 0.4; base.castShadow = true; base.receiveShadow = true; root.add(base);
+
+  // stand (cantilever housing)
+  const stand = new THREE.Mesh(new THREE.BoxGeometry(3, 7.5, 7), matFrame);
+  stand.position.set(-1.6, LINE_Y - 0.3, 0); stand.castShadow = true; root.add(stand);
+
+  // mandrel + coil group (rotates)
+  const coilGrp = new THREE.Group();
+  coilGrp.position.set(1.5, LINE_Y, 0);
+
+  // mandrel shaft
+  const mandrel = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, STRIP_W + 1.5, 24), matDarkSteel);
+  mandrel.rotation.x = Math.PI / 2; mandrel.castShadow = true; coilGrp.add(mandrel);
+
+  // aluminium master coil
+  const coilOuter = 3.6;
+  const coil = new THREE.Mesh(
+    new THREE.CylinderGeometry(coilOuter, coilOuter, STRIP_W, 48, 1, false),
+    new THREE.MeshStandardMaterial({ color: 0xcfd6dc, metalness: 0.92, roughness: 0.3 }));
+  coil.rotation.x = Math.PI / 2; coil.castShadow = true; coil.receiveShadow = true;
+  coilGrp.add(coil);
+
+  // coil wound-edge rings to read rotation
+  for (let i = 0; i < 5; i++) {
+    const r = coilOuter - 0.02 - i * 0.001;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r - i*0.12, 0.015, 6, 64),
+      new THREE.MeshStandardMaterial({ color: 0x9aa3ab, metalness: 0.9, roughness: 0.35 }));
+    ring.position.z = STRIP_W/2 - 0.01; ring.rotation.x = 0; coilGrp.add(ring);
+  }
+  // radial mark to visualise spin
+  const mark = new THREE.Mesh(new THREE.BoxGeometry(coilOuter * 0.95, 0.06, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x5a3500, emissiveIntensity: 0.4 }));
+  mark.position.set(coilOuter * 0.48, 0, STRIP_W/2 + 0.01);
+  coilGrp.add(mark);
+
+  root.add(coilGrp);
+  groups.uncoiler = coilGrp;
+
+  // hold-down / peeler arm
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, STRIP_W + 0.5), matFrameY);
+  arm.position.set(3.0, LINE_Y + coilOuter + 0.4, 0); arm.castShadow = true; root.add(arm);
+
+  scene.add(root);
+}
+
+// ============================================================
+//  2) PINCH / LEVELLER rolls
+// ============================================================
+function buildPinchLeveller() {
+  const root = new THREE.Group();
+  root.position.set(-17, 0, 0);
+
+  // frame
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(1, 6.5, 1), matFrame);
+    post.position.set(0, 3.25, s * (STRIP_W/2 + 0.8)); post.castShadow = true; root.add(post);
+  }
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, STRIP_W + 2.4), matDarkSteel);
+  cap.position.set(0, 6.6, 0); cap.castShadow = true; root.add(cap);
+
+  // pinch rolls (top & bottom)
+  const top = makeRoller(0.55, STRIP_W + 0.4, matRubber);
+  top.position.set(0, LINE_Y + 0.62, 0); root.add(top); groups.pinchTop = top;
+  const bot = makeRoller(0.55, STRIP_W + 0.4, matSteel);
+  bot.position.set(0, LINE_Y - 0.62, 0); root.add(bot); groups.pinchBot = bot;
+
+  // small leveller work rolls
+  groups.levellers = [];
+  for (let i = 0; i < 5; i++) {
+    const r = makeRoller(0.22, STRIP_W + 0.2, matSteel);
+    const off = (i - 2) * 0.7;
+    const yy = LINE_Y + (i % 2 === 0 ? 0.34 : -0.34);
+    r.position.set(2.6 + off, yy, 0); root.add(r); groups.levellers.push(r);
+  }
+  scene.add(root);
+}
+
+// ============================================================
+//  3) EDGE GUIDE rollers
+// ============================================================
+function buildEdgeGuide() {
+  const root = new THREE.Group();
+  root.position.set(-11, 0, 0);
+  pedestal(0, 0, STRIP_W/2 + 0.9, LINE_Y - 0.6);
+  pedestal(0, 0, -(STRIP_W/2 + 0.9), LINE_Y - 0.6);
+  const guide = makeRoller(0.45, STRIP_W + 0.3, matSteel);
+  guide.position.set(0, LINE_Y, 0); root.add(guide); groups.edgeGuide = guide;
+  // vertical edge rollers
+  for (const s of [-1, 1]) {
+    const v = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16), matRubber);
+    v.position.set(0, LINE_Y + 0.45, s * (STRIP_W/2 + 0.18)); v.castShadow = true; root.add(v);
+  }
+  scene.add(root);
+}
+
+// ============================================================
+//  4) SLITTER HEAD (スリッタヘッド) — multiple circular knives
+// ============================================================
+let knifeArbors = { top: null, bottom: null };
+let knifeState = { count: 6 };
+
+function buildSlitterHead() {
+  const root = new THREE.Group();
+  root.position.set(-3, 0, 0);
+  groups.slitterRoot = root;
+
+  // heavy housing (two side frames + top beam)
+  for (const s of [-1, 1]) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(4.2, 9, 1.4), matFrame);
+    side.position.set(0, 4.5, s * (STRIP_W/2 + 1.4)); side.castShadow = true; root.add(side);
+    // window cut illusion
+    const win = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4.5, 1.5), matDarkSteel);
+    win.position.set(0, 4.6, s * (STRIP_W/2 + 1.4)); root.add(win);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1.4, STRIP_W + 4), matFrameY);
+  beam.position.set(0, 9.3, 0); beam.castShadow = true; root.add(beam);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, STRIP_W + 4), matDarkSteel);
+  base.position.set(0, 0.4, 0); base.castShadow = true; base.receiveShadow = true; root.add(base);
+
+  // two arbors (top & bottom) carrying interleaved knives + spacers
+  const topArbor = new THREE.Group(); topArbor.position.set(0, LINE_Y + 0.55, 0);
+  const botArbor = new THREE.Group(); botArbor.position.set(0, LINE_Y - 0.55, 0);
+
+  // arbor shafts
+  for (const [grp, mat] of [[topArbor, matDarkSteel], [botArbor, matDarkSteel]]) {
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, STRIP_W + 2.2, 24), mat);
+    shaft.rotation.x = Math.PI / 2; shaft.castShadow = true; grp.add(shaft);
+  }
+  root.add(topArbor, botArbor);
+  knifeArbors.top = topArbor; knifeArbors.bottom = botArbor;
+  groups.knifeTop = topArbor; groups.knifeBottom = botArbor;
+
+  rebuildKnives(knifeState.count);
+  scene.add(root);
+}
+
+// (Re)build the circular knives + spacers for a given strip count
+function rebuildKnives(stripCount) {
+  knifeState.count = stripCount;
+  const cuts = stripCount - 1; // number of slitting knife pairs (interior cuts)
+
+  for (const arbor of [knifeArbors.top, knifeArbors.bottom]) {
+    // remove old knives (keep shaft = child 0)
+    for (let i = arbor.children.length - 1; i >= 1; i--) arbor.remove(arbor.children[i]);
+  }
+
+  // spacer cylinders along arbor (decorative full length)
+  for (const arbor of [knifeArbors.top, knifeArbors.bottom]) {
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, STRIP_W, 24), matSpacer);
+    sp.rotation.x = Math.PI / 2; sp.castShadow = true; arbor.add(sp);
+  }
+
+  // knife z positions = interior cut lines, evenly spaced across width
+  for (let i = 1; i <= cuts; i++) {
+    const z = -STRIP_W/2 + (STRIP_W * i) / stripCount;
+    // top knife
+    const kt = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.08, 48), matKnife);
+    kt.rotation.x = Math.PI / 2; kt.position.set(0, 0, z); kt.castShadow = true;
+    knifeArbors.top.add(kt);
+    // bottom knife slightly offset (overlap shear)
+    const kb = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.08, 48), matKnife);
+    kb.rotation.x = Math.PI / 2; kb.position.set(0, 0, z); kb.castShadow = true;
+    knifeArbors.bottom.add(kb);
+  }
+}
+
+// ============================================================
+//  5) LOOP PIT (ループピット) — slack control
+// ============================================================
+function buildLoopPit() {
+  const root = new THREE.Group();
+  root.position.set(6, 0, 0);
+  // pit opening
+  const pit = new THREE.Mesh(new THREE.BoxGeometry(7, 0.3, STRIP_W + 1.5),
+    new THREE.MeshStandardMaterial({ color: 0x0a0e13, roughness: 1 }));
+  pit.position.set(0, 0.03, 0); root.add(pit);
+  // edge rails
+  for (const s of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.3, 0.3), matFrameY);
+    rail.position.set(0, 0.2, s * (STRIP_W/2 + 0.85)); root.add(rail);
+  }
+  // entry/exit guide rolls
+  const r1 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r1.position.set(-3.5, LINE_Y, 0); root.add(r1); groups.loopIn = r1;
+  const r2 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r2.position.set(3.5, LINE_Y, 0); root.add(r2); groups.loopOut = r2;
+  scene.add(root);
+}
+
+// ============================================================
+//  6) TENSION STAND (テンションパッドローラ)
+// ============================================================
+function buildTensionStand() {
+  const root = new THREE.Group();
+  root.position.set(13, 0, 0);
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(1, 7, 1), matFrame);
+    post.position.set(0, 3.5, s * (STRIP_W/2 + 0.8)); post.castShadow = true; root.add(post);
+  }
+  // S-wrap tension rolls
+  const t1 = makeRoller(0.6, STRIP_W + 0.3, matRubber); t1.position.set(-0.8, LINE_Y + 0.8, 0); root.add(t1); groups.tens1 = t1;
+  const t2 = makeRoller(0.6, STRIP_W + 0.3, matRubber); t2.position.set(0.8, LINE_Y - 0.8, 0); root.add(t2); groups.tens2 = t2;
+  scene.add(root);
+}
+
+// ============================================================
+//  7) RECOILER (リコイラ) with separator discs
+// ============================================================
+function buildRecoiler() {
+  const root = new THREE.Group();
+  root.position.set(24, 0, 0);
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.8, 9), matDarkSteel);
+  base.position.y = 0.4; base.castShadow = true; base.receiveShadow = true; root.add(base);
+
+  const stand = new THREE.Mesh(new THREE.BoxGeometry(3, 7.5, 7), matFrame);
+  stand.position.set(2.0, LINE_Y - 0.3, 0); stand.castShadow = true; root.add(stand);
+
+  const coilGrp = new THREE.Group();
+  coilGrp.position.set(-1.2, LINE_Y, 0);
+
+  // mandrel
+  const mandrel = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, STRIP_W + 1.6, 24), matDarkSteel);
+  mandrel.rotation.x = Math.PI / 2; mandrel.castShadow = true; coilGrp.add(mandrel);
+
+  coilGrp._strips = coilGrp; // placeholder
+  root.add(coilGrp);
+  groups.recoiler = coilGrp;
+  groups.recoilerStrips = new THREE.Group();
+  coilGrp.add(groups.recoilerStrips);
+
+  buildRecoilStrips(knifeState.count);
+
+  scene.add(root);
+}
+
+// build the wound coils (one per slit strip) + separator discs on recoiler
+function buildRecoilStrips(stripCount) {
+  const host = groups.recoilerStrips;
+  for (let i = host.children.length - 1; i >= 0; i--) host.remove(host.children[i]);
+
+  const stripW = STRIP_W / stripCount;
+  const gap = 0.06;
+  const coilR = 2.6;
+  const palette = [0xd8dde2, 0xc9d0d6, 0xe2e6ea];
+
+  for (let i = 0; i < stripCount; i++) {
+    const z = -STRIP_W/2 + stripW * (i + 0.5);
+    const c = new THREE.Mesh(
+      new THREE.CylinderGeometry(coilR, coilR, stripW - gap, 40),
+      new THREE.MeshStandardMaterial({ color: palette[i % palette.length], metalness: 0.92, roughness: 0.3 }));
+    c.rotation.x = Math.PI / 2; c.position.z = z; c.castShadow = true; c.receiveShadow = true;
+    host.add(c);
+    // spin mark
+    const mark = new THREE.Mesh(new THREE.BoxGeometry(coilR * 0.9, 0.05, (stripW - gap) * 0.9),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x06384a, emissiveIntensity: 0.5 }));
+    mark.position.set(coilR * 0.45, 0, z); host.add(mark);
+    // separator disc
+    if (i < stripCount - 1) {
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(coilR + 0.4, coilR + 0.4, 0.04, 40), matDarkSteel);
+      disc.rotation.x = Math.PI / 2; disc.position.z = z + stripW/2; host.add(disc);
+    }
+  }
+}
+
+// ============================================================
+//  STRIP — the moving aluminium sheet (animated scrolling texture)
+// ============================================================
+function makeStripTexture(repeat) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createLinearGradient(0, 0, 0, 64);
+  grd.addColorStop(0, '#c2c9cf'); grd.addColorStop(0.5, '#e6ebef'); grd.addColorStop(1, '#bcc3c9');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, 256, 64);
+  // rolling lines along travel direction
+  ctx.strokeStyle = 'rgba(140,150,160,0.35)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 64; i += 6) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat, 1);
+  tex.anisotropy = 8;
+  return tex;
+}
+
+const stripTexEntry = makeStripTexture(20);
+const stripTexExit = makeStripTexture(8);
+
+// Entry strip: from uncoiler to slitter (full width)
+function buildEntryStrip() {
+  const xStart = -24.5;  // exit of uncoiler coil top
+  const xEnd = -3;       // slitter knife
+  const len = xEnd - xStart;
+  const geo = new THREE.PlaneGeometry(len, STRIP_W, 60, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    map: stripTexEntry, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide });
+  const strip = new THREE.Mesh(geo, mat);
+  strip.rotation.x = -Math.PI / 2;
+  strip.position.set((xStart + xEnd) / 2, LINE_Y + 0.07, 0);
+  strip.receiveShadow = true;
+  scene.add(strip);
+  groups.entryStrip = strip;
+}
+
+// Exit strips: from slitter to recoiler (split, with small lateral gaps)
+function buildExitStrips(stripCount) {
+  if (groups.exitStrips) { for (const s of groups.exitStrips) scene.remove(s); }
+  groups.exitStrips = [];
+  const xStart = -3;     // slitter
+  const xEnd = 22.8;     // recoiler
+  const stripW = STRIP_W / stripCount;
+  for (let i = 0; i < stripCount; i++) {
+    const z = -STRIP_W/2 + stripW * (i + 0.5);
+    const geo = new THREE.PlaneGeometry(xEnd - xStart, stripW - 0.08, 80, 1);
+    const mat = new THREE.MeshStandardMaterial({
+      map: stripTexExit.clone(), metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide });
+    mat.map.repeat.set(10, 1); mat.map.needsUpdate = true;
+    const strip = new THREE.Mesh(geo, mat);
+    strip.rotation.x = -Math.PI / 2;
+    strip.position.set((xStart + xEnd) / 2, LINE_Y + 0.07, z);
+    strip.receiveShadow = true;
+    scene.add(strip);
+    groups.exitStrips.push(strip);
+  }
+}
+
+// ============================================================
+//  Floor signage text (canvas plane)
+// ============================================================
+function labelPlane(text, x, z, color = '#38bdf8') {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(13,20,29,0.0)'; ctx.fillRect(0,0,512,128);
+  ctx.font = 'bold 56px "Segoe UI", sans-serif';
+  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  m.position.set(x, 0.05, z); m.rotation.x = -Math.PI/2;
+  scene.add(m);
+}
+labelPlane('① UNCOILER', -26, 6, '#f59e0b');
+labelPlane('④ SLITTER', -3, 6, '#38bdf8');
+labelPlane('⑦ RECOILER', 24, 6, '#f59e0b');
+
+// ============================================================
+//  Build everything
+// ============================================================
+buildUncoiler();
+buildPinchLeveller();
+buildEdgeGuide();
+buildSlitterHead();
+buildLoopPit();
+buildTensionStand();
+buildRecoiler();
+buildEntryStrip();
+buildExitStrips(knifeState.count);
+
+document.getElementById('loading').style.display = 'none';
+
+// ============================================================
+//  Animation / state
+// ============================================================
+const state = { running: true, lineSpeed: 120 /* m/min */, };
+const clock = new THREE.Clock();
+
+// physical radii used to convert line speed -> angular velocity
+const R = {
+  uncoiler: 3.6, recoiler: 2.6, roller: 0.5, knife: 1.05, pinch: 0.55,
+};
+
+function lineSpeedToRad(radius) {
+  // m/min -> m/s -> rad/s  (omega = v / r), exaggerated x1.0 for visual
+  const v = (state.lineSpeed / 60); // m/s (scene units ~ m)
+  return v / radius;
+}
+
+function spinX(obj, omega, dt, dir = 1) { if (obj) obj.rotation.x += dir * omega * dt; }
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  controls.update();
+
+  if (state.running && state.lineSpeed > 0) {
+    const v = state.lineSpeed / 60; // m/s
+
+    // coils
+    spinX(groups.uncoiler, lineSpeedToRad(R.uncoiler), dt, -1);
+    spinX(groups.recoiler, lineSpeedToRad(R.recoiler), dt, -1);
+
+    // rollers
+    const wr = lineSpeedToRad(R.roller);
+    [groups.edgeGuide, groups.loopIn, groups.loopOut].forEach(o => spinX(o, wr, dt, 1));
+    [groups.pinchTop, groups.pinchBot].forEach((o,i) => spinX(o, lineSpeedToRad(R.pinch), dt, i? -1:1));
+    groups.levellers && groups.levellers.forEach((o,i)=> spinX(o, lineSpeedToRad(0.22), dt, i%2? -1:1));
+    spinX(groups.tens1, wr, dt, 1); spinX(groups.tens2, wr, dt, -1);
+
+    // slitter knives — top & bottom counter-rotate, faster (small radius)
+    const wk = lineSpeedToRad(R.knife);
+    spinX(groups.knifeTop, wk, dt, 1);
+    spinX(groups.knifeBottom, wk, dt, -1);
+
+    // moving strip texture scroll
+    const scroll = v * 0.12 * dt; // tuned visual factor
+    if (groups.entryStrip) groups.entryStrip.material.map.offset.x -= scroll;
+    if (groups.exitStrips) groups.exitStrips.forEach(s => s.material.map.offset.x -= scroll);
+
+    // HUD live stats
+    hudUn.textContent = (lineSpeedToRad(R.uncoiler) * 60 / (2*Math.PI)).toFixed(1) + ' rpm';
+    hudRe.textContent = (lineSpeedToRad(R.recoiler) * 60 / (2*Math.PI)).toFixed(1) + ' rpm';
+    hudKnife.textContent = state.lineSpeed.toFixed(0) + ' m/min';
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ============================================================
+//  UI wiring
+// ============================================================
+const speedEl = document.getElementById('speed');
+const speedVal = document.getElementById('speedVal');
+const stripsEl = document.getElementById('strips');
+const stripVal = document.getElementById('stripVal');
+const toggleBtn = document.getElementById('toggle');
+const viewBtn = document.getElementById('view');
+const stState = document.getElementById('stState');
+const hudUn = document.getElementById('stUn');
+const hudRe = document.getElementById('stRe');
+const hudKnife = document.getElementById('stKnife');
+
+speedEl.addEventListener('input', () => {
+  state.lineSpeed = +speedEl.value;
+  speedVal.textContent = state.lineSpeed + ' m/min';
+});
+
+stripsEl.addEventListener('input', () => {
+  const n = +stripsEl.value;
+  stripVal.textContent = n + ' 条';
+  rebuildKnives(n);
+  buildRecoilStrips(n);
+  buildExitStrips(n);
+});
+
+toggleBtn.addEventListener('click', () => {
+  state.running = !state.running;
+  toggleBtn.textContent = state.running ? '⏸ 停止' : '▶ 運転';
+  stState.textContent = state.running ? '運転中' : '停止中';
+  if (!state.running) { hudUn.textContent = hudRe.textContent = '0.0 rpm'; hudKnife.textContent = '0 m/min'; }
+});
+
+// camera presets
+const views = [
+  { pos: [26, 16, 30], tgt: [0, 2.5, 0] },     // overview
+  { pos: [-3, 8, 14], tgt: [-3, 4, 0] },        // slitter close-up
+  { pos: [-26, 7, 14], tgt: [-25, 4, 0] },      // uncoiler
+  { pos: [24, 7, 14], tgt: [24, 4, 0] },        // recoiler
+  { pos: [0, 38, 1], tgt: [0, 0, 0] },          // top-down
+];
+let viewIdx = 0;
+viewBtn.addEventListener('click', () => {
+  viewIdx = (viewIdx + 1) % views.length;
+  const v = views[viewIdx];
+  // simple tween
+  const startPos = camera.position.clone();
+  const startTgt = controls.target.clone();
+  const endPos = new THREE.Vector3(...v.pos);
+  const endTgt = new THREE.Vector3(...v.tgt);
+  let t = 0;
+  (function tween() {
+    t += 0.04; const k = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
+    camera.position.lerpVectors(startPos, endPos, k);
+    controls.target.lerpVectors(startTgt, endTgt, k);
+    controls.update();
+    if (t < 1) requestAnimationFrame(tween);
+  })();
+});
+
+// ============================================================
+//  Resize
+// ============================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
