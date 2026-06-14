@@ -246,15 +246,12 @@ const UV_SCALE = 2.0;                  // ストリップテクスチャ 1リピ
 const ACCEL = 0.40, DECEL = 0.55;      // 速度ランプ [m/s2]
 const ENTRY_N = 54, STRAND_N = 96, TRIM_N = 26;  // リボン分割数
 
-/* MDロール(ブライドル式テンション) — 上下交互配置でS字に巻き付け
- * side: 'under' = 帯上方のロール(帯は下面に接触), 'over' = 帯下方のロール */
-const MD_GAP = 0.30, MD_R = 0.17;
-const MD_ROLLS = [
-  { x: 2.55, cy: PASS_Y + MD_GAP, r: MD_R, side:'under' },
-  { x: 3.20, cy: PASS_Y - MD_GAP, r: MD_R, side:'over'  },
-  { x: 3.85, cy: PASS_Y + MD_GAP, r: MD_R, side:'under' },
-];
-const mdContactY = (m)=> m.side==='under' ? m.cy - m.r : m.cy + m.r;
+/* MDロール(ゴムミニディスクロール / 山王鐵工) — 張力装置。
+ * 1本の軸に幅の狭い輪切り状ゴム円盤を多数組み合わせた単一ロール。
+ * 各条がロール上を通過し、ゴム円盤が弾性変形することで、同軸・同回転数で
+ * 多条を巻き取る際の径差による張力差を緩和する。ブライドルロールではない。 */
+const MDX = 3.3, MD_LEN = 2.0, MD_R = 0.27, MD_CY = PASS_Y - 0.04;
+const MD_CONTACT_Y = MD_CY + MD_R;             // 帯はロール上面に接触
 const DEFL_X = 5.8, DEFL_CY = PASS_Y + 0.15, DEFL_R = 0.15; // デフレクターロール
 const SEP_X  = 7.3;                                          // セパレーター
 
@@ -499,15 +496,16 @@ const hazardTex = canvasTex(128,128,(g,w,h)=>{
  * マテリアル
  * =======================================================*/
 const M = {
-  strip: new THREE.MeshStandardMaterial({ map:stripTex, color:0xdfe4e9,
-          metalness:0.88, roughness:0.24, side:THREE.DoubleSide }),
+  strip: new THREE.MeshStandardMaterial({ map:stripTex, color:0xeef2f5,
+          metalness:0.45, roughness:0.5, side:THREE.DoubleSide }),
   coilSide: new THREE.MeshStandardMaterial({ map:stripTex, color:0xd2d8dd,
           metalness:0.85, roughness:0.3 }),
   coilCap: new THREE.MeshStandardMaterial({ map:coilCapTex, metalness:0.7, roughness:0.42 }),
   roll: new THREE.MeshStandardMaterial({ color:0x9aa2aa, metalness:0.9, roughness:0.32 }),
   rollCap: new THREE.MeshStandardMaterial({ map:rollCapTex, metalness:0.75, roughness:0.4 }),
   rubber: new THREE.MeshStandardMaterial({ color:0x2c3036, metalness:0.1, roughness:0.85 }),
-  mdRoll: new THREE.MeshStandardMaterial({ color:0x586472, metalness:0.55, roughness:0.45 }),
+  rubberA: new THREE.MeshStandardMaterial({ color:0x42474e, metalness:0.04, roughness:0.92 }),
+  rubberB: new THREE.MeshStandardMaterial({ color:0x32363c, metalness:0.04, roughness:0.95 }),
   paint: new THREE.MeshStandardMaterial({ color:0x33688f, metalness:0.35, roughness:0.55 }),
   paintDark: new THREE.MeshStandardMaterial({ color:0x24465f, metalness:0.35, roughness:0.6 }),
   frame: new THREE.MeshStandardMaterial({ color:0x39424c, metalness:0.55, roughness:0.5 }),
@@ -595,13 +593,15 @@ class Ribbon{
   update(pts){
     const h=this.w/2; let s=0;
     const n=Math.min(pts.length,this.n);
+    let pnx=0, pny=1;                            // 前フレームの法線(退化時に流用)
     for(let i=0;i<n;i++){
       const p=pts[i];
       const pp=pts[Math.max(i-1,0)], pn=pts[Math.min(i+1,n-1)];
       let tx=pn.x-pp.x, ty=pn.y-pp.y;
-      const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
-      let nx=-ty, ny=tx;                       // n = ez × t
-      const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+      const tl=Math.hypot(tx,ty);
+      let nx,ny;
+      if(tl<1e-5){ nx=pnx; ny=pny; }            // 重複点 → 直前の法線を維持(黒面防止)
+      else { tx/=tl; ty/=tl; nx=-ty; ny=tx; pnx=nx; pny=ny; }  // n = ez × t
       if(i>0) s+=p.distanceTo(pts[i-1]);
       const o=i*6;
       this.pos[o  ]=p.x; this.pos[o+1]=p.y; this.pos[o+2]=p.z-h;
@@ -689,18 +689,39 @@ const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
       pl.position.set(x,7.3,z); scene.add(pl);
     }
   }
-  // 操作盤(ライン前面・手前)
-  const desk=new THREE.Group(); desk.position.set(-6.0,0,4.2); desk.rotation.y=Math.PI;
-  addBox(1.5,1.05,0.55,M.paintDark,0,0.52,0,desk);
-  addBox(1.55,0.08,0.62,M.frame,0,1.07,0,desk);
-  const scr=addBox(1.0,0.56,0.04,M.screen,0,1.42,0.2,desk); scr.rotation.x=-0.32;
-  // 押ボタン
-  for(let i=0;i<3;i++){
-    const c=[0x36c46b,0xe8b324,0xff6b5e][i];
-    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.04,16),
-      new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0.5}));
-    b.position.set(-0.3+i*0.3,1.06,-0.12); b.rotation.x=Math.PI/2; desk.add(b);
-  }
+  // 操作盤(オペレータコンソール) — ライン手前(+z)に設置し、操作員はラインを向く。
+  // 傾斜した操作デスク(押釦・セレクタ・非常停止)＋立上りHMIモニタ。
+  const desk=new THREE.Group(); desk.position.set(-6.0,0,4.6); scene.add(desk);
+  const litBtn=(c)=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0.6,roughness:0.4});
+  // 下部キャビネット
+  addBox(1.7,0.92,0.7,M.paint,0,0.46,0,desk);
+  addBox(1.74,0.05,0.74,M.frame,0,0.93,0,desk);
+  // 傾斜操作面(操作員=-z 側へ向け上面を倒す)
+  const top=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.05,0.5),M.paintDark);
+  top.position.set(0,1.02,-0.16); top.rotation.x=0.5; top.castShadow=true; desk.add(top);
+  // 押釦(緑=起動/赤=停止/黄=リセット)＋セレクタ
+  const btnY=1.1, btnZ=-0.28;
+  [0x36c46b,0xe8b324].forEach((c,i)=>{
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.05,18),litBtn(c));
+    b.position.set(-0.55+i*0.22, btnY, btnZ); b.rotation.x=Math.PI/2-0.5; desk.add(b);
+  });
+  // 非常停止(赤キノコ釦)
+  const estopBase=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,18),
+    new THREE.MeshStandardMaterial({color:0xf0c419,roughness:0.5}));
+  estopBase.position.set(0.5,btnY-0.01,btnZ); estopBase.rotation.x=Math.PI/2-0.5; desk.add(estopBase);
+  const estop=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.05,18),litBtn(0xd03020));
+  estop.position.set(0.5,btnY+0.03,btnZ-0.03); estop.rotation.x=Math.PI/2-0.5; desk.add(estop);
+  // セレクタスイッチ
+  const sel=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.07,16),M.steel);
+  sel.position.set(0.05,btnY+0.02,btnZ-0.02); sel.rotation.x=-0.5; desk.add(sel);
+  // 立上りHMIモニタ(操作員側 -z を向く)
+  const post=addBox(0.1,0.55,0.1,M.frame,0,1.28,0.18,desk);
+  const mon=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.6,0.06),M.frame);
+  mon.position.set(0,1.68,0.13); mon.rotation.x=0.22; mon.castShadow=true; desk.add(mon);
+  const scr=new THREE.Mesh(new THREE.BoxGeometry(0.86,0.5,0.02),M.screen);
+  scr.position.set(0,1.68,0.10); scr.rotation.x=0.22; desk.add(scr);
+  // 操作員が立つ安全マット
+  addBox(1.2,0.02,0.8,M.hazard,0,0.011,-0.7,desk,false);
   scene.add(desk);
 })();
 
@@ -812,20 +833,20 @@ const scrapL=buildScrapWinder(-1);
     addBox(0.16,1.2,0.12,M.frame,x,0.6,-1.06);
     addBox(0.16,1.2,0.12,M.frame,x,0.6, 1.06);
   }
-  // MDロール(ブライドル) — 上下交互の駆動ロール群でS字に巻き付け張力付与
-  const cx=(MD_ROLLS[0].x+MD_ROLLS[MD_ROLLS.length-1].x)/2;
-  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[0].x-0.45,1.0,-1.18);
-  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[0].x-0.45,1.0, 1.18);
-  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[MD_ROLLS.length-1].x+0.45,1.0,-1.18);
-  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[MD_ROLLS.length-1].x+0.45,1.0, 1.18);
-  addBox(1.9,0.16,2.5,M.paintDark,cx,1.95,0);
-  addBox(2.1,0.4,2.3,M.paintDark,cx,0.42,0);
-  for(const m of MD_ROLLS){
-    spin(addCylZ(m.r,2.0,rollMats(),m.x,m.cy,0,scene),
-         m.r, m.side==='under' ? 1 : -1);
-    // 駆動モーター(操作側)
-    addCylZ(0.13,0.4,M.paintDark,m.x,m.cy,-1.32,scene);
+  // MDロール(ゴムミニディスクロール) — 1軸に幅狭のゴム輪切り円盤を多数組合せ。
+  // 各条がロール上面を通過。ゴム円盤の弾性変形で条間の張力差を緩和する張力装置。
+  addCylZ(0.085, MD_LEN+0.6, M.steel, MDX, MD_CY, 0, scene);   // 貫通軸
+  const mdg=new THREE.Group(); mdg.position.set(MDX, MD_CY, 0); scene.add(mdg);
+  const nd=54, dz=MD_LEN/nd;
+  for(let i=0;i<nd;i++){
+    const z=-MD_LEN/2 + dz*(i+0.5);
+    addCylZ(MD_R, dz*0.8, (i%2?M.rubberA:M.rubberB), 0,0,z, mdg, 22);
   }
+  spin(mdg, MD_R, -1);                                          // 帯は上面 → -Z回転
+  // 軸受台・フレーム・駆動モーター
+  addBox(0.2,1.0,0.34,M.paint,MDX,0.5,-(MD_LEN/2+0.22));
+  addBox(0.2,1.0,0.34,M.paint,MDX,0.5, (MD_LEN/2+0.22));
+  addCylZ(0.14,0.45,M.paintDark,MDX,MD_CY,-(MD_LEN/2+0.45),scene);
   // デフレクターロール
   spin(addCylZ(DEFL_R,2.0,rollMats(),DEFL_X,DEFL_CY,0,scene), DEFL_R,-1);
   addBox(0.18,1.6,0.14,M.frame,DEFL_X,0.78,-1.06);
@@ -936,35 +957,34 @@ function updateEntryRibbon(){
   entryRibbon.update(_entryPts);
 }
 
+const _strandRaw=[], _strandOut=[];
 function updateStrandRibbon(rib, zc, sag){
-  const pts=[];
-  // スリッター出側 → ルーパー入りロール(直線)
-  for(let j=0;j<6;j++){
-    const t=j/5;
-    pts.push(V3(THREE.MathUtils.lerp(SLIT_X-0.02,LOOP_IN,t), PASS_Y, zc));
-  }
+  const raw=_strandRaw; raw.length=0;
+  // スリッター出側 → ルーパー入りロール
+  raw.push(V3(SLIT_X-0.02, PASS_Y, zc));
+  raw.push(V3(LOOP_IN, PASS_Y, zc));
   // ルーパー垂み(放物線)
-  for(let j=1;j<=36;j++){
-    const t=j/36;
-    pts.push(V3(
-      THREE.MathUtils.lerp(LOOP_IN,LOOP_OUT,t),
-      PASS_Y - sag*4*t*(1-t), zc));
+  for(let j=1;j<=22;j++){
+    const t=j/22;
+    raw.push(V3(THREE.MathUtils.lerp(LOOP_IN,LOOP_OUT,t), PASS_Y - sag*4*t*(1-t), zc));
   }
-  // MDロール(ブライドル)をS字に巻き付け → デフレクター
-  const mid=[ V3(LOOP_OUT, PASS_Y, zc) ];
-  for(const m of MD_ROLLS) mid.push(V3(m.x, mdContactY(m), zc));
-  mid.push(V3(4.7, PASS_Y, zc));
-  mid.push(V3(DEFL_X, DEFL_CY+DEFL_R, zc));     // デフレクター上面に接触
-  mid.push(V3(SEP_X, PASS_Y+0.04, zc));         // セパレーター位置
+  // MDロール上面 → デフレクター上面 → セパレーター
+  raw.push(V3(MDX, MD_CONTACT_Y, zc));
+  raw.push(V3(4.7, PASS_Y, zc));
+  raw.push(V3(DEFL_X, DEFL_CY+DEFL_R, zc));
+  raw.push(V3(SEP_X, PASS_Y+0.04, zc));
   // リコイラ: コイル外周への接線で巻き取り(中心ではなく外周へ)
-  const G=mid[mid.length-1];
+  const G=raw[raw.length-1];
   const T=tangentPoint(REC_X,REC_Y,st.rr, G.x,G.y, -1);
-  mid.push(V3(T.x, T.y, zc));
-  const tail=samplePolyline(mid, 30);
-  for(let j=1;j<tail.length;j++) pts.push(tail[j]);
-  // 巻き付き弧(コイル外周に沿って吸い込まれる見た目)
-  arcPoints(REC_X,REC_Y,st.rr+0.004, T.a, T.a-0.85, 5, zc, pts);
-  rib.update(pts);
+  raw.push(V3(T.x, T.y, zc));
+  for(let j=1;j<=4;j++){               // 巻き付き弧
+    const a=THREE.MathUtils.lerp(T.a, T.a-0.8, j/4);
+    raw.push(V3(REC_X+(st.rr+0.004)*Math.cos(a), REC_Y+(st.rr+0.004)*Math.sin(a), zc));
+  }
+  // 必ず STRAND_N 点へ再サンプル(頂点数を一致させ余り頂点=黒い破片を出さない)
+  _strandOut.length=0;
+  samplePolyline(raw, STRAND_N, _strandOut);
+  rib.update(_strandOut);
 }
 
 const _trimCurveR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
@@ -1033,7 +1053,7 @@ makeLabel("スリッターヘッド",         SLIT_X, 3.4, 0);
 makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, 2.55);
 makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, -2.55);
 makeLabel("ルーパーピット",          -0.8, 1.9, 0);
-makeLabel("MDロール(ブライドル)",     3.2, 2.55, 0);
+makeLabel("MDロール(ゴムディスク)",   MDX, 2.5, 0);
 makeLabel("セパレーター",             SEP_X, 3.5, 0);
 makeLabel("リコイラ",                REC_X, 3.5, 0);
 makeLabel("コイルカー",              10.8, 1.45, 0);
@@ -1093,7 +1113,7 @@ const CAM_PRESETS={
   unc:  [-13.4,1.7,0, 7.5,0.72,1.10],
   slit: [-5.5,1.4,0,  6,  0.62,1.02],
   loop: [-0.8,0.5,0,  8.5,0.50,0.98],
-  md:   [ 3.2,1.4,0,  5.5,0.66,1.02],
+  md:   [ MDX,1.4,0,  4.8,0.62,1.02],
   rec:  [ 8.4,1.7,0,  8,  0.62,1.08],
 };
 document.querySelectorAll("[data-cam]").forEach(b=>{
@@ -1166,7 +1186,7 @@ function updateGeometry(){
   updateEntryRibbon();
   const sw=EFF_W/st.N;
   for(let i=0;i<strandRibbons.length;i++){
-    const sag=1.55 + 0.32*Math.sin(st.len*0.05 + i*1.9) + 0.02*i;
+    const sag=1.5 + 0.05*i + 0.10*Math.sin(st.len*0.04 + i*0.7);
     updateStrandRibbon(strandRibbons[i], strandZ[i], sag);
   }
   updateTrimRibbon(trimRibbonR,_trimCurveR, sw,  1, st.rsR);
