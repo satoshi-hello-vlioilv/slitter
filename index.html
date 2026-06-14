@@ -348,7 +348,8 @@ function buildEdgeGuide() {
   pedestal(0, 0, STRIP_W/2 + 0.9, LINE_Y - 0.6);
   pedestal(0, 0, -(STRIP_W/2 + 0.9), LINE_Y - 0.6);
   const guide = makeRoller(0.45, STRIP_W + 0.3, matSteel);
-  guide.position.set(0, LINE_Y, 0); root.add(guide); groups.edgeGuide = guide;
+  // carrier roll: dropped by its radius so its crown sits on the pass line
+  guide.position.set(0, LINE_Y - 0.45, 0); root.add(guide); groups.edgeGuide = guide;
   // vertical edge rollers
   for (const s of [-1, 1]) {
     const v = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16), matRubber);
@@ -410,7 +411,7 @@ function rebuildKnives(stripCount) {
 
   // spacer cylinders along arbor (decorative full length)
   for (const arbor of [knifeArbors.top, knifeArbors.bottom]) {
-    const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, STRIP_W, 24), matSpacer);
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, STRIP_W, 24), matSpacer);
     sp.rotation.x = Math.PI / 2; sp.castShadow = true; arbor.add(sp);
   }
 
@@ -444,8 +445,10 @@ function buildLoopPit() {
     rail.position.set(0, 0.2, s * (STRIP_W/2 + 0.85)); root.add(rail);
   }
   // entry/exit guide rolls
-  const r1 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r1.position.set(-3.5, LINE_Y, 0); root.add(r1); groups.loopIn = r1;
-  const r2 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r2.position.set(3.5, LINE_Y, 0); root.add(r2); groups.loopOut = r2;
+  // deflector rolls: crowns on the pass line; the strip rides over and the
+  // free loop sags down into the pit between them
+  const r1 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r1.position.set(-3.5, LINE_Y - 0.4, 0); root.add(r1); groups.loopIn = r1;
+  const r2 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r2.position.set(3.5, LINE_Y - 0.4, 0); root.add(r2); groups.loopOut = r2;
   scene.add(root);
 }
 
@@ -544,42 +547,108 @@ function makeStripTexture(repeat) {
   return tex;
 }
 
-const stripTexEntry = makeStripTexture(20);
-const stripTexExit = makeStripTexture(8);
+const PL = LINE_Y; // pass-line height
 
-// Entry strip: from uncoiler to slitter (full width)
-function buildEntryStrip() {
-  const xStart = -24.5;  // exit of uncoiler coil top
-  const xEnd = -3;       // slitter knife
-  const len = xEnd - xStart;
-  const geo = new THREE.PlaneGeometry(len, STRIP_W, 60, 1);
+// Build a ribbon (strip) mesh that follows a 2D centreline path in the X-Y
+// plane and spans [z0, z1] across the width. The path is the line the strip
+// actually takes: it rests ON the contact apex of each roll (never through the
+// roll body), dips into the loop pit, and wraps the coils tangentially.
+function makeRibbonMesh(path2D, z0, z1, color = 0xdfe4e9) {
+  const curve = new THREE.CatmullRomCurve3(
+    path2D.map(p => new THREE.Vector3(p[0], p[1], 0)), false, 'catmullrom', 0.5);
+  const SEG = 160;
+  const pts = curve.getPoints(SEG);
+
+  // arc-length for UV + tangents for correct surface normals
+  const lens = [0];
+  for (let i = 1; i < pts.length; i++) lens.push(lens[i-1] + pts[i].distanceTo(pts[i-1]));
+  const total = lens[lens.length - 1];
+
+  const pos = [], uv = [], nor = [], idx = [];
+  const tile = 1.2; // texture metre per tile
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    // tangent in XY -> surface normal (perp, pointing up-ish)
+    const a = pts[Math.max(0, i-1)], b = pts[Math.min(pts.length-1, i+1)];
+    const tx = b.x - a.x, ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    const nx = -ty / tl, ny = tx / tl; // rotate tangent +90deg
+    const sign = ny < 0 ? -1 : 1;
+    pos.push(p.x, p.y, z0, p.x, p.y, z1);
+    nor.push(nx*sign, ny*sign, 0, nx*sign, ny*sign, 0);
+    const u = lens[i] / tile;
+    uv.push(u, 0, u, 1);
+  }
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = i*2, b = i*2+1, c = (i+1)*2, d = (i+1)*2+1;
+    idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+
+  const tex = makeStripTexture(Math.max(2, Math.round(total / tile)));
+  tex.repeat.set(1, 1); // UVs already carry the repeat in metres/tile
   const mat = new THREE.MeshStandardMaterial({
-    map: stripTexEntry, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide });
-  const strip = new THREE.Mesh(geo, mat);
-  strip.rotation.x = -Math.PI / 2;
-  strip.position.set((xStart + xEnd) / 2, LINE_Y + 0.07, 0);
-  strip.receiveShadow = true;
+    map: tex, color, metalness: 0.92, roughness: 0.3, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+
+// Centreline the strip follows from the uncoiler coil to the slitter nip.
+// Heights are tied to each roll's function (see comments).
+function entryPath() {
+  return [
+    [-24.5, PL + 3.6],   // leaves the uncoiler coil tangent to its OD (top)
+    [-22.6, PL + 1.7],   // pays off and descends
+    [-19.6, PL + 0.45],  // approaches the pinch nip
+    [-17.0, PL],         // PINCH ROLLS: gripped at the nip (pass line)
+    [-15.8, PL + 0.12],  // LEVELLER: threads under the upper work roll
+    [-15.1, PL - 0.12],  //   ... over the lower work roll
+    [-14.4, PL + 0.12],
+    [-13.7, PL - 0.12],
+    [-13.0, PL + 0.12],
+    [-11.0, PL],         // EDGE-GUIDE carrier roll: rides over the top
+    [-6.0,  PL],
+    [-3.0,  PL],         // SLITTER: enters the knife nip on the pass line
+  ];
+}
+
+// Centreline from the slitter to the recoiler (each slit strip shares it).
+function exitPath() {
+  return [
+    [-3.0, PL],          // leaves the slitter knives
+    [2.5,  PL],          // rides over the loop-pit entry deflector roll
+    [6.0,  PL - 2.8],    // LOOP PIT: free loop sags down for tension buffering
+    [9.5,  PL],          // rides over the loop-pit exit deflector roll
+    [12.2, PL + 0.2],    // TENSION S-WRAP: wraps under the upper bridle roll
+    [13.8, PL - 0.2],    //   ... and over the lower bridle roll
+    [16.5, PL],
+    [20.2, PL],          // meets the recoiler coil OD and winds on
+  ];
+}
+
+// Entry strip: single full-width ribbon (uncoiler -> slitter)
+function buildEntryStrip() {
+  const strip = makeRibbonMesh(entryPath(), -STRIP_W/2, STRIP_W/2);
   scene.add(strip);
   groups.entryStrip = strip;
 }
 
-// Exit strips: from slitter to recoiler (split, with small lateral gaps)
+// Exit strips: one ribbon per slit lane (slitter -> recoiler)
 function buildExitStrips(stripCount) {
-  if (groups.exitStrips) { for (const s of groups.exitStrips) scene.remove(s); }
+  if (groups.exitStrips) { for (const s of groups.exitStrips) { scene.remove(s); s.geometry.dispose(); } }
   groups.exitStrips = [];
-  const xStart = -3;     // slitter
-  const xEnd = 22.8;     // recoiler
-  const stripW = STRIP_W / stripCount;
+  const laneW = STRIP_W / stripCount;
+  const gap = 0.06;
+  const path = exitPath();
   for (let i = 0; i < stripCount; i++) {
-    const z = -STRIP_W/2 + stripW * (i + 0.5);
-    const geo = new THREE.PlaneGeometry(xEnd - xStart, stripW - 0.08, 80, 1);
-    const mat = new THREE.MeshStandardMaterial({
-      map: stripTexExit.clone(), metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide });
-    mat.map.repeat.set(10, 1); mat.map.needsUpdate = true;
-    const strip = new THREE.Mesh(geo, mat);
-    strip.rotation.x = -Math.PI / 2;
-    strip.position.set((xStart + xEnd) / 2, LINE_Y + 0.07, z);
-    strip.receiveShadow = true;
+    const z0 = -STRIP_W/2 + laneW * i + gap/2;
+    const z1 = -STRIP_W/2 + laneW * (i + 1) - gap/2;
+    const strip = makeRibbonMesh(path, z0, z1);
     scene.add(strip);
     groups.exitStrips.push(strip);
   }
@@ -672,8 +741,9 @@ function animate() {
     spinZ(groups.knifeTop, wk, dt, +1);
     spinZ(groups.knifeBottom, wk, dt, -1);
 
-    // moving strip texture scroll
-    const scroll = v * 0.12 * dt; // tuned visual factor
+    // moving strip texture scroll — UVs are in metres/tile (tile = 1.2 m),
+    // so advance the offset by the distance travelled this frame / tile
+    const scroll = (v * dt) / 1.2;
     if (groups.entryStrip) groups.entryStrip.material.map.offset.x -= scroll;
     if (groups.exitStrips) groups.exitStrips.forEach(s => s.material.map.offset.x -= scroll);
 
