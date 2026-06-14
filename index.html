@@ -221,15 +221,18 @@ const groups = {}; // animated parts
 
 function makeRoller(radius, length, mat = matSteel) {
   const g = new THREE.Group();
+  // Roller axis must run along Z (across the strip width) — i.e. PERPENDICULAR
+  // to the line travel direction (+X). Cylinder default axis is Y, so tilt it
+  // about X by 90deg to lay the axis along Z. The wrapper group is spun about Z.
   const roll = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 32), mat);
-  roll.rotation.z = Math.PI / 2;
+  roll.rotation.x = Math.PI / 2;
   roll.castShadow = true; roll.receiveShadow = true;
   g.add(roll);
-  // journals
+  // journals / bearing stubs at the two width-edges (±Z)
   for (const s of [-1, 1]) {
     const j = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius * 0.35, length * 0.12, 16), matDarkSteel);
-    j.rotation.z = Math.PI / 2;
-    j.position.x = s * (length / 2 + length * 0.05);
+    j.rotation.x = Math.PI / 2;
+    j.position.z = s * (length / 2 + length * 0.05);
     g.add(j);
   }
   return g;
@@ -634,7 +637,11 @@ function lineSpeedToRad(radius) {
   return v / radius;
 }
 
-function spinX(obj, omega, dt, dir = 1) { if (obj) obj.rotation.x += dir * omega * dt; }
+// Every roll, coil and arbor spins about its OWN axis, which lies along Z
+// (perpendicular to the +X line travel). Sign convention for the strip moving
+// in +X: a roll the strip rests ON TOP of must turn so its crown moves +X,
+// which is the -Z (negative) direction; a roll pressing from ABOVE turns +Z.
+function spinZ(obj, omega, dt, dir = 1) { if (obj) obj.rotation.z += dir * omega * dt; }
 
 function animate() {
   requestAnimationFrame(animate);
@@ -644,21 +651,26 @@ function animate() {
   if (state.running && state.lineSpeed > 0) {
     const v = state.lineSpeed / 60; // m/s
 
-    // coils
-    spinX(groups.uncoiler, lineSpeedToRad(R.uncoiler), dt, -1);
-    spinX(groups.recoiler, lineSpeedToRad(R.recoiler), dt, -1);
+    // coils — strip pays off / winds over the top, so crown moves +X => -Z
+    spinZ(groups.uncoiler, lineSpeedToRad(R.uncoiler), dt, -1);
+    spinZ(groups.recoiler, lineSpeedToRad(R.recoiler), dt, -1);
 
-    // rollers
+    // rollers under the strip turn -Z so their top surface travels with it
     const wr = lineSpeedToRad(R.roller);
-    [groups.edgeGuide, groups.loopIn, groups.loopOut].forEach(o => spinX(o, wr, dt, 1));
-    [groups.pinchTop, groups.pinchBot].forEach((o,i) => spinX(o, lineSpeedToRad(R.pinch), dt, i? -1:1));
-    groups.levellers && groups.levellers.forEach((o,i)=> spinX(o, lineSpeedToRad(0.22), dt, i%2? -1:1));
-    spinX(groups.tens1, wr, dt, 1); spinX(groups.tens2, wr, dt, -1);
+    [groups.edgeGuide, groups.loopIn, groups.loopOut].forEach(o => spinZ(o, wr, dt, -1));
+    // pinch pair: top roll presses from above (+Z), bottom roll carries (-Z)
+    spinZ(groups.pinchTop, lineSpeedToRad(R.pinch), dt, +1);
+    spinZ(groups.pinchBot, lineSpeedToRad(R.pinch), dt, -1);
+    // leveller work rolls alternate above/below the pass line -> alternate sign
+    groups.levellers && groups.levellers.forEach((o,i)=> spinZ(o, lineSpeedToRad(0.22), dt, i%2? -1:+1));
+    // S-wrap tension rolls: upper from above (+Z), lower carries (-Z)
+    spinZ(groups.tens1, wr, dt, +1); spinZ(groups.tens2, wr, dt, -1);
 
-    // slitter knives — top & bottom counter-rotate, faster (small radius)
+    // slitter knives — upper arbor (above pass line) +Z, lower arbor -Z,
+    // i.e. they counter-rotate so the cut surfaces shear the strip moving +X
     const wk = lineSpeedToRad(R.knife);
-    spinX(groups.knifeTop, wk, dt, 1);
-    spinX(groups.knifeBottom, wk, dt, -1);
+    spinZ(groups.knifeTop, wk, dt, +1);
+    spinZ(groups.knifeBottom, wk, dt, -1);
 
     // moving strip texture scroll
     const scroll = v * 0.12 * dt; // tuned visual factor
