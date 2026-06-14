@@ -1,835 +1,1241 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>アルミ多条割スリッターライン 3Dシミュレーション</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アルミ多条割スリッターライン 3Dシミュレーター</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  :root {
-    --panel-bg: rgba(18, 24, 33, 0.86);
-    --accent: #38bdf8;
-    --accent-2: #f59e0b;
-    --text: #e6edf3;
+  :root{
+    --bg:#11151a;
+    --panel:rgba(15,20,26,.88);
+    --panel-line:#273340;
+    --txt:#d7e1ea;
+    --sub:#8aa0b4;
+    --acc:#4fc6ff;
+    --val:#62f0c4;
+    --ok:#3ad98c;
+    --warn:#f0b429;
+    --info:#5b9bff;
+    --stop:#ff6b5e;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1118; }
-  body { font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; color: var(--text); }
-  #app { position: fixed; inset: 0; }
-  canvas { display: block; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+    font-family:"Segoe UI","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--txt);}
+  #scene{position:fixed;inset:0;}
+  canvas{display:block;}
 
-  #hud {
-    position: absolute; top: 16px; left: 16px; z-index: 10;
-    background: var(--panel-bg);
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    border-radius: 12px; padding: 16px 18px; width: 290px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  /* ===== 操作盤パネル ===== */
+  #panel{
+    position:fixed;left:14px;top:14px;width:304px;max-height:calc(100vh - 28px);
+    overflow-y:auto;background:var(--panel);backdrop-filter:blur(10px);
+    border:1px solid var(--panel-line);border-radius:10px;
+    box-shadow:0 8px 30px rgba(0,0,0,.45);padding:14px 16px 16px;z-index:10;
   }
-  #hud h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: .02em; }
-  #hud .sub { font-size: 11px; color: #8aa0b3; margin-bottom: 14px; }
-  .ctrl { margin-bottom: 12px; }
-  .ctrl label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: #b8c6d4; }
-  .ctrl label span.val { color: var(--accent); font-variant-numeric: tabular-nums; }
-  input[type="range"] { width: 100%; accent-color: var(--accent); }
-  .btn-row { display: flex; gap: 8px; margin-top: 6px; }
-  button {
-    flex: 1; padding: 8px 10px; font-size: 12px; cursor: pointer;
-    border-radius: 8px; border: 1px solid rgba(56,189,248,0.35);
-    background: rgba(56,189,248,0.12); color: var(--text); transition: .15s;
-  }
-  button:hover { background: rgba(56,189,248,0.28); }
-  button.alt { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.12); }
-  button.alt:hover { background: rgba(245,158,11,0.28); }
+  #panel::-webkit-scrollbar{width:6px;}
+  #panel::-webkit-scrollbar-thumb{background:#33414f;border-radius:3px;}
 
-  .stats { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; font-size: 12px; }
-  .stats div { display: flex; justify-content: space-between; margin: 3px 0; color: #b8c6d4; }
-  .stats div b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .panel-title{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;
+    letter-spacing:.04em;padding-bottom:10px;border-bottom:1px solid var(--panel-line);}
+  .panel-title i{color:var(--acc);font-size:15px;}
+  .panel-title small{display:block;font-size:10px;font-weight:400;color:var(--sub);letter-spacing:.12em;}
 
-  #legend {
-    position: absolute; bottom: 16px; left: 16px; z-index: 10;
-    background: var(--panel-bg); border-radius: 10px; padding: 10px 14px;
-    font-size: 11px; color: #b8c6d4; border: 1px solid rgba(255,255,255,0.07);
-  }
-  #legend b { color: var(--accent-2); }
-  #hint {
-    position: absolute; bottom: 16px; right: 16px; z-index: 10;
-    background: var(--panel-bg); border-radius: 10px; padding: 8px 12px;
-    font-size: 11px; color: #8aa0b3; border: 1px solid rgba(255,255,255,0.07);
-  }
-  #loading {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: #0b1118; z-index: 50; font-size: 14px; color: #8aa0b3;
-  }
+  .sec{margin-top:13px;}
+  .sec-h{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--sub);
+    letter-spacing:.18em;margin-bottom:8px;}
+  .sec-h i{color:var(--acc);width:13px;text-align:center;}
+  .sec-h::after{content:"";flex:1;height:1px;background:var(--panel-line);}
+
+  /* 状態カード */
+  .status-card{background:#0a0e13;border:1px solid var(--panel-line);border-radius:8px;
+    padding:10px 12px;display:flex;align-items:center;gap:12px;}
+  .led{width:11px;height:11px;border-radius:50%;flex:none;background:#444;
+    box-shadow:0 0 0 3px rgba(255,255,255,.04);transition:background .3s,box-shadow .3s;}
+  .led.ok{background:var(--ok);box-shadow:0 0 9px var(--ok);}
+  .led.warn{background:var(--warn);box-shadow:0 0 9px var(--warn);}
+  .led.info{background:var(--info);box-shadow:0 0 9px var(--info);}
+  .led.stop{background:var(--stop);box-shadow:0 0 9px var(--stop);}
+  .status-main{flex:1;min-width:0;}
+  #statusText{font-size:12px;letter-spacing:.05em;}
+  .speed-big{font-family:Consolas,"Cascadia Mono",monospace;font-size:24px;color:var(--val);
+    line-height:1.1;font-weight:600;}
+  .speed-big small{font-size:11px;color:var(--sub);font-weight:400;margin-left:4px;}
+
+  /* ボタン */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    padding:9px 0;border:1px solid var(--panel-line);border-radius:7px;cursor:pointer;
+    background:#1a232d;color:var(--txt);font-size:13px;font-weight:600;letter-spacing:.06em;
+    transition:background .15s,border-color .15s;}
+  .btn:hover{background:#22303d;border-color:#3a4c5d;}
+  .btn.running{border-color:#5a3030;background:#2a1c1c;color:#ffb0a8;}
+  .btn.running:hover{background:#352222;}
+
+  /* スライダー */
+  .slider-row{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;
+    color:var(--sub);margin-bottom:5px;}
+  .slider-row b{font-family:Consolas,monospace;color:var(--val);font-size:13px;font-weight:600;}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#2a3642;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;
+    border-radius:50%;background:var(--acc);border:2px solid #0d1117;cursor:pointer;
+    box-shadow:0 0 6px rgba(79,198,255,.5);}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
+    background:var(--acc);border:2px solid #0d1117;cursor:pointer;}
+
+  /* 条数セグメント */
+  .seg{display:flex;gap:5px;}
+  .seg button{flex:1;padding:7px 0;border:1px solid var(--panel-line);border-radius:6px;
+    background:#161e26;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;
+    font-family:Consolas,monospace;transition:all .15s;}
+  .seg button:hover{border-color:#3a4c5d;color:var(--txt);}
+  .seg button.active{background:#11364a;border-color:var(--acc);color:var(--acc);}
+
+  /* 計測値 */
+  .ro{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px;color:var(--sub);}
+  .ro i{width:14px;text-align:center;color:#5a7186;font-size:11px;}
+  .ro span{flex:1;}
+  .ro b{font-family:Consolas,"Cascadia Mono",monospace;color:var(--val);font-size:13px;
+    font-weight:600;letter-spacing:.02em;}
+  .ro b small{color:var(--sub);font-size:10px;font-weight:400;margin-left:3px;}
+  .prog{height:6px;background:#1a232d;border-radius:3px;overflow:hidden;margin-top:4px;}
+  .prog>div{height:100%;width:0%;background:linear-gradient(90deg,#2e8fc4,var(--acc));
+    border-radius:3px;transition:width .4s;}
+
+  /* カメラグリッド */
+  .cam-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .cam-grid button{display:flex;align-items:center;gap:7px;padding:7px 10px;
+    border:1px solid var(--panel-line);border-radius:6px;background:#161e26;color:var(--txt);
+    font-size:11.5px;cursor:pointer;transition:all .15s;}
+  .cam-grid button:hover{background:#1f2b37;border-color:#3a4c5d;}
+  .cam-grid button i{color:var(--acc);width:13px;text-align:center;font-size:11px;}
+  .cam-grid button.wide{grid-column:1 / -1;}
+
+  /* トグルスイッチ */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;
+    color:var(--txt);padding:3px 0;}
+  .toggle-row i{color:#5a7186;margin-right:7px;font-size:11px;}
+  .switch{position:relative;width:36px;height:19px;flex:none;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .knob{position:absolute;inset:0;background:#2a3642;border-radius:10px;cursor:pointer;
+    transition:background .2s;}
+  .switch .knob::before{content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;
+    border-radius:50%;background:#8aa0b4;transition:transform .2s,background .2s;}
+  .switch input:checked + .knob{background:#11364a;}
+  .switch input:checked + .knob::before{transform:translateX(17px);background:var(--acc);}
+
+  /* 操作ヘルプ */
+  #help{position:fixed;right:14px;bottom:12px;z-index:10;font-size:10.5px;color:var(--sub);
+    background:rgba(13,17,22,.7);border:1px solid var(--panel-line);border-radius:6px;
+    padding:6px 11px;letter-spacing:.04em;backdrop-filter:blur(6px);}
+  #help i{color:var(--acc);margin:0 3px 0 9px;}
+  #help i:first-child{margin-left:0;}
 </style>
 </head>
 <body>
-<div id="app"></div>
 
-<div id="hud">
-  <h1>アルミ多条割スリッターライン</h1>
-  <div class="sub">Aluminium Multi-Strip Slitting Line — 3D Simulation</div>
+<div id="scene"></div>
 
-  <div class="ctrl">
-    <label>ライン速度 <span class="val" id="speedVal">120 m/min</span></label>
-    <input type="range" id="speed" min="0" max="300" value="120" step="5" />
+<div id="panel">
+  <div class="panel-title">
+    <i class="fa-solid fa-industry"></i>
+    <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
   </div>
 
-  <div class="ctrl">
-    <label>分割数（条数） <span class="val" id="stripVal">6 条</span></label>
-    <input type="range" id="strips" min="2" max="10" value="6" step="1" />
+  <!-- 状態 -->
+  <div class="sec">
+    <div class="status-card">
+      <div class="led" id="statusLed"></div>
+      <div class="status-main">
+        <div id="statusText">起動中</div>
+        <div class="speed-big"><span id="roSpeed">0</span><small>m/min</small></div>
+      </div>
+    </div>
   </div>
 
-  <div class="btn-row">
-    <button id="toggle">⏸ 停止</button>
-    <button id="view" class="alt">視点切替</button>
+  <!-- 操業 -->
+  <div class="sec">
+    <div class="sec-h"><i class="fa-solid fa-sliders"></i>操業操作</div>
+    <button class="btn" id="btnRun"><i class="fa-solid fa-stop"></i><span>ライン停止</span></button>
+    <div style="margin-top:11px;">
+      <div class="slider-row"><span>ライン速度設定</span><b><span id="speedVal">80</span> m/min</b></div>
+      <input type="range" id="rngSpeed" min="10" max="180" step="5" value="80">
+    </div>
   </div>
 
-  <div class="stats">
-    <div><span>稼働状態</span><b id="stState">運転中</b></div>
-    <div><span>アンコイラ回転</span><b id="stUn">— rpm</b></div>
-    <div><span>リコイラ回転</span><b id="stRe">— rpm</b></div>
-    <div><span>ナイフ周速</span><b id="stKnife">— m/min</b></div>
+  <!-- 設定 -->
+  <div class="sec">
+    <div class="sec-h"><i class="fa-solid fa-table-columns"></i>スリット条数</div>
+    <div class="seg" id="strandGroup">
+      <button data-n="2">2</button>
+      <button data-n="3">3</button>
+      <button data-n="4" class="active">4</button>
+      <button data-n="5">5</button>
+      <button data-n="6">6</button>
+    </div>
+    <div class="ro" style="margin-top:7px;">
+      <i class="fa-solid fa-ruler-horizontal"></i><span>母材幅 / 条幅</span>
+      <b>1200<small>mm</small> / <span id="roStrandW">272</span><small>mm</small></b>
+    </div>
+  </div>
+
+  <!-- 計測 -->
+  <div class="sec">
+    <div class="sec-h"><i class="fa-solid fa-gauge-high"></i>計測値</div>
+    <div class="ro"><i class="fa-solid fa-arrow-rotate-left"></i><span>アンコイラ残径</span>
+      <b><span id="roUnc">2100</span><small>mm</small></b></div>
+    <div class="ro"><i class="fa-solid fa-arrow-rotate-right"></i><span>リコイラ巻径</span>
+      <b><span id="roRec">560</span><small>mm</small></b></div>
+    <div class="ro"><i class="fa-solid fa-gauge"></i><span>ライン張力</span>
+      <b><span id="roTen">0</span><small>kN</small></b></div>
+    <div class="ro"><i class="fa-solid fa-up-right-and-down-left-from-center"></i><span>通板長(累計)</span>
+      <b><span id="roLen">0</span><small>m</small></b></div>
+    <div class="ro" style="margin-top:3px;"><i class="fa-solid fa-circle-half-stroke"></i>
+      <span>コイル消化率</span><b><span id="roProg">0</span><small>%</small></b></div>
+    <div class="prog"><div id="coilProg"></div></div>
+  </div>
+
+  <!-- カメラ・表示 -->
+  <div class="sec">
+    <div class="sec-h"><i class="fa-solid fa-video"></i>カメラ・表示</div>
+    <div class="cam-grid">
+      <button class="wide" data-cam="all"><i class="fa-solid fa-expand"></i>ライン全景</button>
+      <button data-cam="unc"><i class="fa-solid fa-arrow-rotate-left"></i>アンコイラ</button>
+      <button data-cam="slit"><i class="fa-solid fa-scissors"></i>スリッター</button>
+      <button data-cam="loop"><i class="fa-solid fa-arrows-down-to-line"></i>ルーパー</button>
+      <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
+      <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
+    </div>
+    <div class="toggle-row" style="margin-top:10px;">
+      <span><i class="fa-solid fa-tags"></i>機器名ラベル表示</span>
+      <label class="switch"><input type="checkbox" id="chkLabels" checked><span class="knob"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span><i class="fa-solid fa-route"></i>パスライン表示</span>
+      <label class="switch"><input type="checkbox" id="chkPath"><span class="knob"></span></label>
+    </div>
   </div>
 </div>
 
-<div id="legend">
-  工程: <b>①アンコイラ</b> → ②ピンチ/レベラ → ③エッジガイド →
-  <b>④スリッタヘッド</b> → ⑤ループピット → ⑥テンション → <b>⑦リコイラ</b>
+<div id="help">
+  <i class="fa-solid fa-arrows-up-down-left-right"></i>左ドラッグ:回転
+  <i class="fa-solid fa-magnifying-glass-plus"></i>ホイール:ズーム
+  <i class="fa-solid fa-hand"></i>右ドラッグ:移動
 </div>
-<div id="hint">ドラッグ:回転 / ホイール:ズーム / 右ドラッグ:移動</div>
-<div id="loading">3Dシーンを構築中…</div>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+(function(){
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+/* =========================================================
+ * 定数 — ライン緒元
+ * =======================================================*/
+const PASS_Y   = 1.30;            // パスライン高さ [m]
+const STRIP_W  = 1.20;            // 母材幅 [m]
+const TRIM_W   = 0.05;            // 耳屑幅(片側) [m]
+const EFF_W    = STRIP_W - TRIM_W*2;   // 製品有効幅
+const UNC_X    = -14.0, UNC_Y = 1.55;  // アンコイラ中心
+const REC_X    =   8.6, REC_Y = 1.55;  // リコイラ中心
+const SLIT_X   =  -6.0;                // スリッターヘッド
+const LOOP_IN  =  -3.5, LOOP_OUT = 1.9;// ルーパー出入りロール
+const R_MANDREL= 0.25;
+const RU_MAX = 1.05, RU_MIN = 0.33;    // アンコイラ径範囲
+const RR_MIN = 0.28, RR_MAX = 1.03;    // リコイラ径範囲
+const H_VIS  = 0.020;                  // 見かけ板厚(径変化の体感速度)
+const UV_SCALE = 2.0;                  // ストリップテクスチャ 1リピート長 [m]
+const ACCEL = 0.40, DECEL = 0.55;      // 速度ランプ [m/s2]
+const ENTRY_N = 54, STRAND_N = 96, TRIM_N = 26;  // リボン分割数
 
-// ============================================================
-//  Scene / Renderer / Camera
-// ============================================================
-const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+/* MDロール(ブライドル式テンション) — 上下交互配置でS字に巻き付け
+ * side: 'under' = 帯上方のロール(帯は下面に接触), 'over' = 帯下方のロール */
+const MD_GAP = 0.30, MD_R = 0.17;
+const MD_ROLLS = [
+  { x: 2.55, cy: PASS_Y + MD_GAP, r: MD_R, side:'under' },
+  { x: 3.20, cy: PASS_Y - MD_GAP, r: MD_R, side:'over'  },
+  { x: 3.85, cy: PASS_Y + MD_GAP, r: MD_R, side:'under' },
+];
+const mdContactY = (m)=> m.side==='under' ? m.cy - m.r : m.cy + m.r;
+const DEFL_X = 5.8, DEFL_CY = PASS_Y + 0.15, DEFL_R = 0.15; // デフレクターロール
+const SEP_X  = 7.3;                                          // セパレーター
+
+/* =========================================================
+ * 状態
+ * =======================================================*/
+const st = {
+  v: 0,                       // 現在速度 [m/s]
+  target: 80/60,              // 設定速度 [m/s]
+  paused: false,
+  state: "RUN",               // RUN / DECEL / CHANGE
+  tChange: 0, swapped: false,
+  ru: RU_MAX, rr: RR_MIN,
+  rsL: 0.13, rsR: 0.13,       // 耳屑巻取径
+  len: 0,                     // 累計通板長 [m]
+  N: 4,                       // 条数
+  texOfs: 0,
+};
+
+/* =========================================================
+ * 基本セットアップ
+ * =======================================================*/
+const container = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-app.appendChild(renderer.domElement);
+renderer.toneMappingExposure = 1.18;
+container.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d141d);
-scene.fog = new THREE.Fog(0x0d141d, 45, 110);
+scene.background = new THREE.Color(0x1b222b);
+scene.fog = new THREE.Fog(0x1b222b, 40, 92);
 
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 500);
-camera.position.set(26, 16, 30);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 220);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.07;
-controls.target.set(0, 2.5, 0);
-controls.maxPolarAngle = Math.PI * 0.49;
-controls.minDistance = 8;
-controls.maxDistance = 90;
+/* ---- 環境マップ(金属の映り込み用に明るい工場環境をPMREM化) ---- */
+(function buildEnvironment(){
+  const env = new THREE.Scene();
+  const sphereGeo = new THREE.SphereGeometry(50, 24, 16);
+  const pos = sphereGeo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const cTop = new THREE.Color(0xcfe2f4), cBot = new THREE.Color(0x39404a);
+  const tmp = new THREE.Color();
+  for(let i=0;i<pos.count;i++){
+    const t = THREE.MathUtils.clamp(pos.getY(i)/50*0.5+0.5, 0, 1);
+    tmp.copy(cBot).lerp(cTop, t);
+    colors[i*3]=tmp.r; colors[i*3+1]=tmp.g; colors[i*3+2]=tmp.b;
+  }
+  sphereGeo.setAttribute("color", new THREE.BufferAttribute(colors,3));
+  env.add(new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({side:THREE.BackSide, vertexColors:true})));
+  // 天井灯(環境反射用)
+  const lampMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  for(const x of [-24,-16,-8,0,8,16,24]) for(const z of [-5,5]){
+    const lamp = new THREE.Mesh(new THREE.PlaneGeometry(5,1.6), lampMat);
+    lamp.position.set(x, 28, z); lamp.rotation.x = Math.PI/2;
+    env.add(lamp);
+  }
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+})();
 
-// ============================================================
-//  Lighting
-// ============================================================
-const hemi = new THREE.HemisphereLight(0xbfd6ff, 0x202830, 0.7);
-scene.add(hemi);
-
-const key = new THREE.DirectionalLight(0xffffff, 2.2);
-key.position.set(20, 30, 18);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.near = 1; key.shadow.camera.far = 120;
-key.shadow.camera.left = -45; key.shadow.camera.right = 45;
-key.shadow.camera.top = 45; key.shadow.camera.bottom = -45;
-key.shadow.bias = -0.0004;
-scene.add(key);
-
-const fill = new THREE.DirectionalLight(0x88aaff, 0.5);
-fill.position.set(-18, 14, -12);
+/* ---- 照明(明るい工場) ---- */
+scene.add(new THREE.HemisphereLight(0xbcd6ef, 0x3a3832, 0.85));
+const sun = new THREE.DirectionalLight(0xfff3e2, 1.45);
+sun.position.set(10, 19, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left=-24; sun.shadow.camera.right=18;
+sun.shadow.camera.top=14;   sun.shadow.camera.bottom=-14;
+sun.shadow.camera.far=55;   sun.shadow.bias=-0.0006;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xb8d2ee, 0.35);
+fill.position.set(-12, 10, -10);
 scene.add(fill);
+const back = new THREE.DirectionalLight(0xdfe9f4, 0.25);
+back.position.set(2, 8, -14);
+scene.add(back);
 
-// overhead factory lamps
-function factoryLamp(x, z) {
-  const g = new THREE.Group();
-  const hood = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.4, 0.5, 0.9, 16, 1, true),
-    new THREE.MeshStandardMaterial({ color: 0x2b333d, metalness: .6, roughness: .5, side: THREE.DoubleSide }));
-  hood.position.y = 22;
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xfff0c0, emissiveIntensity: 1.6 }));
-  bulb.position.y = 21.6;
-  g.add(hood, bulb);
-  const pl = new THREE.PointLight(0xfff0d8, 0.5, 40, 2);
-  pl.position.set(0, 21, 0);
-  g.add(pl);
-  g.position.set(x, 0, z);
-  scene.add(g);
-}
-factoryLamp(-14, 6); factoryLamp(14, 6); factoryLamp(-14, -6); factoryLamp(14, -6);
-
-// ============================================================
-//  Materials
-// ============================================================
-const matAluminium = new THREE.MeshStandardMaterial({ color: 0xd8dde2, metalness: 0.95, roughness: 0.28 });
-const matSteel     = new THREE.MeshStandardMaterial({ color: 0x9aa4ad, metalness: 0.85, roughness: 0.4 });
-const matDarkSteel = new THREE.MeshStandardMaterial({ color: 0x3a434d, metalness: 0.75, roughness: 0.5 });
-const matFrame     = new THREE.MeshStandardMaterial({ color: 0x2f6f9e, metalness: 0.5, roughness: 0.55 });
-const matFrameY    = new THREE.MeshStandardMaterial({ color: 0xd9a21b, metalness: 0.4, roughness: 0.6 });
-const matRubber    = new THREE.MeshStandardMaterial({ color: 0x23282d, metalness: 0.1, roughness: 0.9 });
-const matKnife     = new THREE.MeshStandardMaterial({ color: 0xc9ced4, metalness: 1.0, roughness: 0.12 });
-const matSpacer    = new THREE.MeshStandardMaterial({ color: 0xb07a2a, metalness: 0.7, roughness: 0.4 });
-
-// ============================================================
-//  Floor
-// ============================================================
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(160, 100),
-  new THREE.MeshStandardMaterial({ color: 0x161c24, metalness: 0.2, roughness: 0.95 }));
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-const grid = new THREE.GridHelper(160, 80, 0x2a3543, 0x1b2530);
-grid.position.y = 0.01;
-scene.add(grid);
-
-// painted safety walkway lines
-function paintLine(x, z, w, d, color = 0xf1c40f) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 }));
-  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z);
-  scene.add(m);
-}
-paintLine(0, 9.5, 70, 0.25); paintLine(0, -9.5, 70, 0.25);
-
-// ============================================================
-//  Helpers
-// ============================================================
-const groups = {}; // animated parts
-
-function makeRoller(radius, length, mat = matSteel) {
-  const g = new THREE.Group();
-  // Roller axis must run along Z (across the strip width) — i.e. PERPENDICULAR
-  // to the line travel direction (+X). Cylinder default axis is Y, so tilt it
-  // about X by 90deg to lay the axis along Z. The wrapper group is spun about Z.
-  const roll = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 32), mat);
-  roll.rotation.x = Math.PI / 2;
-  roll.castShadow = true; roll.receiveShadow = true;
-  g.add(roll);
-  // journals / bearing stubs at the two width-edges (±Z)
-  for (const s of [-1, 1]) {
-    const j = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius * 0.35, length * 0.12, 16), matDarkSteel);
-    j.rotation.x = Math.PI / 2;
-    j.position.z = s * (length / 2 + length * 0.05);
-    g.add(j);
+/* =========================================================
+ * カメラコントロール(軌道+パン+プリセットトゥイーン)
+ * =======================================================*/
+class OrbitCam{
+  constructor(cam, dom){
+    this.cam=cam; this.dom=dom;
+    this.target=new THREE.Vector3(-2.5,1.3,0);
+    this.r=20; this.theta=0.5; this.phi=1.12;
+    this.minR=3.5; this.maxR=52; this.minPhi=0.12; this.maxPhi=1.52;
+    this._btn=-1; this._px=0; this._py=0; this.tween=null;
+    dom.addEventListener("pointerdown",e=>{
+      this._btn=e.button; this._px=e.clientX; this._py=e.clientY;
+      dom.setPointerCapture(e.pointerId);
+    });
+    dom.addEventListener("pointermove",e=>{
+      if(this._btn<0) return;
+      const dx=e.clientX-this._px, dy=e.clientY-this._py;
+      this._px=e.clientX; this._py=e.clientY;
+      if(this._btn===0){
+        this.theta-=dx*0.005;
+        this.phi=THREE.MathUtils.clamp(this.phi-dy*0.005,this.minPhi,this.maxPhi);
+      }else{
+        this._pan(dx,dy);
+      }
+      this.tween=null;
+    });
+    dom.addEventListener("pointerup",()=>{this._btn=-1;});
+    dom.addEventListener("wheel",e=>{
+      e.preventDefault();
+      this.r=THREE.MathUtils.clamp(this.r*(e.deltaY>0?1.1:0.9),this.minR,this.maxR);
+      this.tween=null;
+    },{passive:false});
+    dom.addEventListener("contextmenu",e=>e.preventDefault());
   }
+  _pan(dx,dy){
+    const s=this.r*0.0012;
+    const fwd=new THREE.Vector3().subVectors(this.target,this.cam.position).normalize();
+    const right=new THREE.Vector3().crossVectors(fwd,this.cam.up).normalize();
+    const up=new THREE.Vector3().crossVectors(right,fwd).normalize();
+    this.target.addScaledVector(right,-dx*s).addScaledVector(up,dy*s);
+  }
+  flyTo(tx,ty,tz,r,theta,phi){
+    this.tween={k:0,
+      f:{x:this.target.x,y:this.target.y,z:this.target.z,r:this.r,th:this.theta,ph:this.phi},
+      t:{x:tx,y:ty,z:tz,r:r,th:theta,ph:phi}};
+  }
+  update(dt){
+    if(this.tween){
+      const tw=this.tween;
+      tw.k=Math.min(tw.k+dt/0.9,1);
+      const e=tw.k<0.5 ? 2*tw.k*tw.k : 1-Math.pow(-2*tw.k+2,2)/2;
+      this.target.set(
+        THREE.MathUtils.lerp(tw.f.x,tw.t.x,e),
+        THREE.MathUtils.lerp(tw.f.y,tw.t.y,e),
+        THREE.MathUtils.lerp(tw.f.z,tw.t.z,e));
+      this.r    =THREE.MathUtils.lerp(tw.f.r ,tw.t.r ,e);
+      this.theta=THREE.MathUtils.lerp(tw.f.th,tw.t.th,e);
+      this.phi  =THREE.MathUtils.lerp(tw.f.ph,tw.t.ph,e);
+      if(tw.k>=1) this.tween=null;
+    }
+    const sp=Math.sin(this.phi);
+    this.cam.position.set(
+      this.target.x + this.r*sp*Math.sin(this.theta),
+      this.target.y + this.r*Math.cos(this.phi),
+      this.target.z + this.r*sp*Math.cos(this.theta));
+    this.cam.lookAt(this.target);
+  }
+}
+const controls = new OrbitCam(camera, renderer.domElement);
+
+/* =========================================================
+ * テクスチャ生成(Canvas)
+ * =======================================================*/
+function canvasTex(w,h,draw){
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  draw(c.getContext("2d"),w,h);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  t.encoding=THREE.sRGBEncoding;
+  return t;
+}
+
+/* ストリップ表面(圧延目+輝度ムラ) */
+const stripTex = canvasTex(512,128,(g,w,h)=>{
+  g.fillStyle="#d8dde2"; g.fillRect(0,0,w,h);
+  for(let i=0;i<90;i++){
+    const y=Math.random()*h, len=40+Math.random()*200;
+    g.fillStyle=`rgba(${Math.random()<0.5?"90,100,110":"255,255,255"},${0.03+Math.random()*0.06})`;
+    g.fillRect(Math.random()*w,y,len,1+Math.random()*1.5);
+  }
+  for(let i=0;i<5;i++){
+    const x=Math.random()*w;
+    const grad=g.createLinearGradient(x-22,0,x+22,0);
+    grad.addColorStop(0,"rgba(255,255,255,0)");
+    grad.addColorStop(0.5,"rgba(255,255,255,0.10)");
+    grad.addColorStop(1,"rgba(255,255,255,0)");
+    g.fillStyle=grad; g.fillRect(x-22,0,44,h);
+  }
+});
+
+/* コイル側面(同心円+巻終端マーク → 回転視認用) */
+const coilCapTex = canvasTex(512,512,(g,w,h)=>{
+  const cx=w/2, cy=h/2;
+  g.fillStyle="#c2c8cf"; g.fillRect(0,0,w,h);
+  for(let r=8;r<w/2;r+=5){
+    g.strokeStyle=`rgba(70,80,90,${0.10+Math.random()*0.14})`;
+    g.lineWidth=1.4;
+    g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke();
+  }
+  g.strokeStyle="rgba(60,70,80,0.55)"; g.lineWidth=3.5;
+  g.beginPath(); g.moveTo(cx,cy); g.lineTo(w,cy); g.stroke();
+});
+
+/* ロール端面(スポーク → 回転視認用) */
+const rollCapTex = canvasTex(256,256,(g,w,h)=>{
+  const cx=w/2, cy=h/2;
+  g.fillStyle="#8d949c"; g.fillRect(0,0,w,h);
+  g.fillStyle="#5a6068";
+  g.beginPath(); g.arc(cx,cy,28,0,Math.PI*2); g.fill();
+  g.strokeStyle="rgba(50,56,64,0.7)"; g.lineWidth=9;
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;
+    g.beginPath(); g.moveTo(cx,cy);
+    g.lineTo(cx+Math.cos(a)*w/2, cy+Math.sin(a)*w/2); g.stroke();
+  }
+  g.strokeStyle="rgba(255,255,255,0.25)"; g.lineWidth=4;
+  g.beginPath(); g.arc(cx,cy,w/2-12,0,Math.PI*2); g.stroke();
+});
+
+/* コンクリート床 */
+const concreteTexBase = canvasTex(256,256,(g,w,h)=>{
+  g.fillStyle="#79808a"; g.fillRect(0,0,w,h);
+  for(let i=0;i<900;i++){
+    g.fillStyle=`rgba(${Math.random()<0.5?"50,54,60":"175,182,190"},${0.04+Math.random()*0.05})`;
+    g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,1+Math.random()*2);
+  }
+  g.strokeStyle="rgba(45,50,58,0.5)"; g.lineWidth=2;
+  g.strokeRect(0,0,w,h);
+});
+function concreteTex(rx,ry){
+  const t=concreteTexBase.clone();
+  t.needsUpdate=true; t.repeat.set(rx,ry);
+  return t;
+}
+
+/* トラ縞(安全表示) */
+const hazardTex = canvasTex(128,128,(g,w,h)=>{
+  g.fillStyle="#16191d"; g.fillRect(0,0,w,h);
+  g.fillStyle="#e8b324";
+  for(let x=-h;x<w+h;x+=44){
+    g.beginPath();
+    g.moveTo(x,0); g.lineTo(x+22,0); g.lineTo(x+22-h,h); g.lineTo(x-h,h);
+    g.closePath(); g.fill();
+  }
+});
+
+/* =========================================================
+ * マテリアル
+ * =======================================================*/
+const M = {
+  strip: new THREE.MeshStandardMaterial({ map:stripTex, color:0xdfe4e9,
+          metalness:0.88, roughness:0.24, side:THREE.DoubleSide }),
+  coilSide: new THREE.MeshStandardMaterial({ map:stripTex, color:0xd2d8dd,
+          metalness:0.85, roughness:0.3 }),
+  coilCap: new THREE.MeshStandardMaterial({ map:coilCapTex, metalness:0.7, roughness:0.42 }),
+  roll: new THREE.MeshStandardMaterial({ color:0x9aa2aa, metalness:0.9, roughness:0.32 }),
+  rollCap: new THREE.MeshStandardMaterial({ map:rollCapTex, metalness:0.75, roughness:0.4 }),
+  rubber: new THREE.MeshStandardMaterial({ color:0x2c3036, metalness:0.1, roughness:0.85 }),
+  mdRoll: new THREE.MeshStandardMaterial({ color:0x586472, metalness:0.55, roughness:0.45 }),
+  paint: new THREE.MeshStandardMaterial({ color:0x33688f, metalness:0.35, roughness:0.55 }),
+  paintDark: new THREE.MeshStandardMaterial({ color:0x24465f, metalness:0.35, roughness:0.6 }),
+  frame: new THREE.MeshStandardMaterial({ color:0x39424c, metalness:0.55, roughness:0.5 }),
+  steel: new THREE.MeshStandardMaterial({ color:0xb6bcc3, metalness:0.9, roughness:0.3 }),
+  knife: new THREE.MeshStandardMaterial({ color:0xd5dade, metalness:0.95, roughness:0.18 }),
+  spacer: new THREE.MeshStandardMaterial({ color:0x6f7780, metalness:0.8, roughness:0.45 }),
+  yellow: new THREE.MeshStandardMaterial({ color:0xe8b324, metalness:0.2, roughness:0.6 }),
+  hazard: new THREE.MeshStandardMaterial({ map:hazardTex, metalness:0.1, roughness:0.8 }),
+  pit: new THREE.MeshStandardMaterial({ color:0x4e545b, metalness:0.05, roughness:0.95 }),
+  screen: new THREE.MeshStandardMaterial({ color:0x0a141c, emissive:0x1d4d66,
+          emissiveIntensity:0.9, metalness:0.2, roughness:0.4 }),
+  lampLit: new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff4dc, emissiveIntensity:1.0 }),
+};
+
+/* =========================================================
+ * 形状ヘルパー
+ * =======================================================*/
+function addBox(w,h,d,mat,x,y,z,parent,shadow){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);
+  m.castShadow = shadow!==false; m.receiveShadow=true;
+  (parent||scene).add(m);
+  return m;
+}
+/* 軸Z向き円筒(回転体はすべてZ軸回転で統一) */
+function addCylZ(r,len,mats,x,y,z,parent,seg){
+  const g=new THREE.CylinderGeometry(r,r,len,seg||28);
+  g.rotateX(Math.PI/2);
+  const m=new THREE.Mesh(g,mats);
+  m.position.set(x,y,z);
+  m.castShadow=true; m.receiveShadow=true;
+  (parent||scene).add(m);
+  return m;
+}
+const rollMats =()=>[M.roll, M.rollCap, M.rollCap];
+const coilMats =()=>[M.coilSide, M.coilCap, M.coilCap];
+
+/* 回転体レジストリ {obj, r(半径 or 関数), dir} → ω = dir*v/r */
+const spinners=[];
+function spin(obj,r,dir){ spinners.push({obj,r,dir}); return obj; }
+
+/* =========================================================
+ * 接線ジオメトリ — コイル外周(円)から次のロールへ引く接線
+ *   コイル中心C, 半径R から外部点P へ。sign で上側/下側の接線を選択。
+ *   返り値: 接点(x,y)と中心から見た角度a。
+ * =======================================================*/
+function tangentPoint(cx,cy,R,px,py,sign){
+  const dx=px-cx, dy=py-cy;
+  const d=Math.hypot(dx,dy)||1e-4;
+  const base=Math.atan2(dy,dx);
+  const off=Math.acos(THREE.MathUtils.clamp(R/d,-1,1));
+  const a=base + sign*off;
+  return { x:cx+R*Math.cos(a), y:cy+R*Math.sin(a), a };
+}
+/* コイル外周に沿う円弧点列(皮を剥ぐ/巻き付く見た目) a0→a1 */
+function arcPoints(cx,cy,R,a0,a1,n,z,out){
+  for(let i=0;i<n;i++){
+    const a=THREE.MathUtils.lerp(a0,a1,i/(n-1));
+    out.push(V3(cx+R*Math.cos(a), cy+R*Math.sin(a), z));
+  }
+}
+
+/* =========================================================
+ * リボンストリップ(動的ジオメトリ)
+ * =======================================================*/
+class Ribbon{
+  constructor(width,count,material){
+    this.w=width; this.n=count;
+    const g=new THREE.BufferGeometry();
+    this.pos=new Float32Array(count*6);
+    this.nor=new Float32Array(count*6);
+    this.uv =new Float32Array(count*4);
+    const idx=[];
+    for(let i=0;i<count-1;i++){const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2);}
+    g.setIndex(idx);
+    g.setAttribute("position",new THREE.BufferAttribute(this.pos,3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute("normal",  new THREE.BufferAttribute(this.nor,3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute("uv",      new THREE.BufferAttribute(this.uv ,2).setUsage(THREE.DynamicDrawUsage));
+    this.geo=g;
+    this.mesh=new THREE.Mesh(g,material);
+    this.mesh.castShadow=true;
+    this.mesh.frustumCulled=false;
+    scene.add(this.mesh);
+  }
+  update(pts){
+    const h=this.w/2; let s=0;
+    const n=Math.min(pts.length,this.n);
+    for(let i=0;i<n;i++){
+      const p=pts[i];
+      const pp=pts[Math.max(i-1,0)], pn=pts[Math.min(i+1,n-1)];
+      let tx=pn.x-pp.x, ty=pn.y-pp.y;
+      const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+      let nx=-ty, ny=tx;                       // n = ez × t
+      const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+      if(i>0) s+=p.distanceTo(pts[i-1]);
+      const o=i*6;
+      this.pos[o  ]=p.x; this.pos[o+1]=p.y; this.pos[o+2]=p.z-h;
+      this.pos[o+3]=p.x; this.pos[o+4]=p.y; this.pos[o+5]=p.z+h;
+      this.nor[o  ]=nx;  this.nor[o+1]=ny;  this.nor[o+2]=0;
+      this.nor[o+3]=nx;  this.nor[o+4]=ny;  this.nor[o+5]=0;
+      const u=s/UV_SCALE, q=i*4;
+      this.uv[q]=u; this.uv[q+1]=0; this.uv[q+2]=u; this.uv[q+3]=1;
+    }
+    this.geo.attributes.position.needsUpdate=true;
+    this.geo.attributes.normal.needsUpdate=true;
+    this.geo.attributes.uv.needsUpdate=true;
+  }
+  dispose(){ scene.remove(this.mesh); this.geo.dispose(); }
+}
+
+/* ポリラインを等間隔n点にサンプリング(張りのある直線経路用) */
+function samplePolyline(pts,n,out){
+  out=out||[];
+  const lens=[]; let total=0;
+  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]); lens.push(l); total+=l;}
+  let seg=0, segStart=0;
+  for(let i=0;i<n;i++){
+    const d=total*i/(n-1);
+    while(seg<lens.length-1 && d>segStart+lens[seg]){segStart+=lens[seg]; seg++;}
+    const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
+    out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));
+  }
+  return out;
+}
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+
+/* =========================================================
+ * 工場床・ピット・建屋
+ * =======================================================*/
+(function buildFactory(){
+  // ピット開口: x[-3.6, 2.0] × z[-0.9, 0.9]
+  const floorY=-0.06, T=0.12;
+  const segs=[
+    {w:22.0,d:16, x:-14.0,z:0},     // 西側
+    {w:20.0,d:16, x:11.0, z:0},     // 東側
+    {w:5.6, d:7.1,x:-0.8, z:-4.45}, // ピット北
+    {w:5.6, d:7.1,x:-0.8, z:4.45},  // ピット南
+  ];
+  for(const s of segs){
+    const mat=new THREE.MeshStandardMaterial({ map:concreteTex(s.w/2.2,s.d/2.2),
+      metalness:0.05, roughness:0.92 });
+    const m=addBox(s.w,T,s.d,mat,s.x,floorY,s.z,scene,false);
+    m.receiveShadow=true;
+  }
+  // ピット内壁・底
+  addBox(5.6,1.5,0.1,M.pit,-0.8,-0.75,-0.95);
+  addBox(5.6,1.5,0.1,M.pit,-0.8,-0.75, 0.95);
+  addBox(0.1,1.5,1.9,M.pit,-3.65,-0.75,0);
+  addBox(0.1,1.5,1.9,M.pit, 2.05,-0.75,0);
+  const pb=addBox(5.6,0.1,1.9,M.pit,-0.8,-1.55,0,scene,false); pb.receiveShadow=true;
+  // トラ縞縁取り
+  addBox(5.9,0.022,0.14,M.hazard,-0.8,0.012,-0.97);
+  addBox(5.9,0.022,0.14,M.hazard,-0.8,0.012, 0.97);
+  addBox(0.14,0.022,2.1,M.hazard,-3.67,0.012,0);
+  addBox(0.14,0.022,2.1,M.hazard, 2.07,0.012,0);
+  // 手すり(南北)
+  for(const zs of [1.18,-1.18]){
+    for(let x=-3.5;x<=2.0;x+=1.37){
+      addBox(0.05,1.05,0.05,M.yellow,x,0.52,zs);
+    }
+    addBox(5.6,0.04,0.04,M.yellow,-0.75,1.02,zs);
+    addBox(5.6,0.04,0.04,M.yellow,-0.75,0.58,zs);
+  }
+  // 通路区画線
+  addBox(40,0.012,0.1,M.yellow,-3,0.011,5.6,scene,false);
+  addBox(40,0.012,0.1,M.yellow,-3,0.011,-5.6,scene,false);
+  // 建屋柱・梁・天井灯
+  for(const x of [-22,-14,-6,2,10,18]){
+    addBox(0.45,8,0.45,M.frame,x,4,-7.4);
+    addBox(0.45,8,0.45,M.frame,x,4, 7.4);
+  }
+  addBox(42,0.45,0.34,M.frame,-2,8.0,-7.4);
+  addBox(42,0.45,0.34,M.frame,-2,8.0, 7.4);
+  for(const x of [-18,-10,-2,6,14]){
+    for(const z of [-3.4,3.4]){
+      addBox(2.4,0.16,0.9,M.frame,x,7.7,z);
+      const lit=addBox(2.1,0.05,0.66,M.lampLit,x,7.6,z); lit.castShadow=false;
+      const pl=new THREE.PointLight(0xfff2dc,0.32,16,2.0);
+      pl.position.set(x,7.3,z); scene.add(pl);
+    }
+  }
+  // 操作盤(ライン前面・手前)
+  const desk=new THREE.Group(); desk.position.set(-6.0,0,4.2); desk.rotation.y=Math.PI;
+  addBox(1.5,1.05,0.55,M.paintDark,0,0.52,0,desk);
+  addBox(1.55,0.08,0.62,M.frame,0,1.07,0,desk);
+  const scr=addBox(1.0,0.56,0.04,M.screen,0,1.42,0.2,desk); scr.rotation.x=-0.32;
+  // 押ボタン
+  for(let i=0;i<3;i++){
+    const c=[0x36c46b,0xe8b324,0xff6b5e][i];
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.04,16),
+      new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0.5}));
+    b.position.set(-0.3+i*0.3,1.06,-0.12); b.rotation.x=Math.PI/2; desk.add(b);
+  }
+  scene.add(desk);
+})();
+
+/* =========================================================
+ * アンコイラ
+ * =======================================================*/
+const uncGroup=(function(){
+  // 片持ちペデスタル(駆動側)
+  addBox(1.6,1.7,1.3,M.paint,UNC_X,0.85,-1.45);
+  addBox(2.0,0.24,1.8,M.paintDark,UNC_X,0.12,-1.4);
+  addCylZ(0.38,0.6,M.paintDark,UNC_X,UNC_Y,-1.05,scene);
+  // 回転グループ(マンドレル+母コイル)
+  const g=new THREE.Group(); g.position.set(UNC_X,UNC_Y,0); scene.add(g);
+  addCylZ(R_MANDREL,1.95,rollMats(),0,0,-0.07,g);
+  const coil=addCylZ(1,1.18,coilMats(),0,0,0,g,48);
+  spin(g, ()=>st.ru, -1);
+  return {g, coil};
+})();
+
+/* =========================================================
+ * 入側ピンチロール・レベラー
+ * =======================================================*/
+(function buildEntry(){
+  const g=new THREE.Group(); g.position.set(-9.2,0,0); scene.add(g);
+  addBox(1.7,1.25,0.1,M.paint,0,1.18,-0.86,g);
+  addBox(1.7,1.25,0.1,M.paint,0,1.18, 0.86,g);
+  addBox(1.7,0.14,1.85,M.paintDark,0,1.86,0,g);
+  addBox(1.9,0.5,1.8,M.paintDark,0,0.28,0,g);
+  // ピンチロール(ゴム)
+  spin(addCylZ(0.11,1.6,M.rubber,-0.5,PASS_Y-0.11,0,g), 0.11,-1);
+  spin(addCylZ(0.11,1.6,M.rubber,-0.5,PASS_Y+0.11,0,g), 0.11, 1);
+  // レベラーロール(下3本・上2本)
+  for(const x of [-0.05,0.25,0.55])
+    spin(addCylZ(0.07,1.6,rollMats(),x,PASS_Y-0.07,0,g), 0.07,-1);
+  for(const x of [0.10,0.40])
+    spin(addCylZ(0.07,1.6,rollMats(),x,PASS_Y+0.07,0,g), 0.07, 1);
+})();
+
+/* =========================================================
+ * スリッターヘッド(条数で再構築)
+ * =======================================================*/
+const knifeGroupUp = new THREE.Group();
+const knifeGroupLo = new THREE.Group();
+knifeGroupUp.position.set(SLIT_X, PASS_Y+0.16, 0);
+knifeGroupLo.position.set(SLIT_X, PASS_Y-0.16, 0);
+scene.add(knifeGroupUp, knifeGroupLo);
+spin(knifeGroupUp, 0.18,  1);
+spin(knifeGroupLo, 0.18, -1);
+
+(function buildSlitterFrame(){
+  addBox(1.0,2.5,0.36,M.paint,SLIT_X,1.25,-1.12);
+  addBox(1.0,2.5,0.36,M.paint,SLIT_X,1.25, 1.12);
+  addBox(1.0,0.3,2.62,M.paintDark,SLIT_X,2.55,0);
+  addBox(1.5,0.24,2.9,M.paintDark,SLIT_X,0.12,0);
+  // アーバー軸端+駆動モーター
+  for(const y of [PASS_Y+0.16, PASS_Y-0.16]){
+    addCylZ(0.07,2.7,M.steel,SLIT_X,y,0,scene);
+    addCylZ(0.17,0.55,M.paintDark,SLIT_X,y,-1.68,scene);
+    addCylZ(0.05,0.3,M.steel,SLIT_X,y,-1.38,scene);
+  }
+})();
+
+function buildKnives(N){
+  for(const grp of [knifeGroupUp, knifeGroupLo]){
+    while(grp.children.length){
+      const c=grp.children.pop();
+      c.geometry.dispose(); grp.remove(c);
+    }
+  }
+  // スペーサー(全幅)
+  addCylZ(0.118,1.85,M.spacer,0,0,0,knifeGroupUp);
+  addCylZ(0.118,1.85,M.spacer,0,0,0,knifeGroupLo);
+  // 丸刃: 製品カット N+1 箇所(両耳含む)
+  const sw=EFF_W/N;
+  for(let k=0;k<=N;k++){
+    const zc=-EFF_W/2 + k*sw;
+    addCylZ(0.18,0.016,M.knife,0,0,zc-0.010,knifeGroupUp,36);
+    addCylZ(0.18,0.016,M.knife,0,0,zc+0.010,knifeGroupLo,36);
+  }
+}
+
+/* =========================================================
+ * サイドワインダー(耳屑巻取機・両側)
+ * =======================================================*/
+function buildScrapWinder(side){
+  const z=2.55*side, x=-4.6, y=1.0;
+  addBox(0.55,1.0,0.55,M.paintDark,x,0.5,z+0.45*side);
+  addCylZ(0.2,0.32,M.paintDark,x,y,z+0.34*side,scene);
+  const g=new THREE.Group(); g.position.set(x,y,z); scene.add(g);
+  addCylZ(0.12,0.44,M.steel,0,0,0,g);
+  addCylZ(0.46,0.03,rollMats(),0,0,-0.22,g,36);
+  addCylZ(0.46,0.03,rollMats(),0,0, 0.22,g,36);
+  const coil=addCylZ(1,0.34,coilMats(),0,0,0,g,32);
+  spin(g, side>0 ? ()=>st.rsR : ()=>st.rsL, -1);
+  return {coil, x, y, z};
+}
+const scrapR=buildScrapWinder( 1);
+const scrapL=buildScrapWinder(-1);
+
+/* =========================================================
+ * ルーパーロール・MDロール(ブライドル式テンション)・デフレクター
+ * =======================================================*/
+(function buildMid(){
+  // ルーパー出入りロール
+  for(const x of [LOOP_IN, LOOP_OUT]){
+    spin(addCylZ(0.1,2.0,rollMats(),x,PASS_Y-0.1,0,scene), 0.1,-1);
+    addBox(0.16,0.3,0.12,M.frame,x,PASS_Y-0.05,-1.06);
+    addBox(0.16,0.3,0.12,M.frame,x,PASS_Y-0.05, 1.06);
+    addBox(0.16,1.2,0.12,M.frame,x,0.6,-1.06);
+    addBox(0.16,1.2,0.12,M.frame,x,0.6, 1.06);
+  }
+  // MDロール(ブライドル) — 上下交互の駆動ロール群でS字に巻き付け張力付与
+  const cx=(MD_ROLLS[0].x+MD_ROLLS[MD_ROLLS.length-1].x)/2;
+  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[0].x-0.45,1.0,-1.18);
+  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[0].x-0.45,1.0, 1.18);
+  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[MD_ROLLS.length-1].x+0.45,1.0,-1.18);
+  addBox(0.14,2.0,0.14,M.paint,MD_ROLLS[MD_ROLLS.length-1].x+0.45,1.0, 1.18);
+  addBox(1.9,0.16,2.5,M.paintDark,cx,1.95,0);
+  addBox(2.1,0.4,2.3,M.paintDark,cx,0.42,0);
+  for(const m of MD_ROLLS){
+    spin(addCylZ(m.r,2.0,rollMats(),m.x,m.cy,0,scene),
+         m.r, m.side==='under' ? 1 : -1);
+    // 駆動モーター(操作側)
+    addCylZ(0.13,0.4,M.paintDark,m.x,m.cy,-1.32,scene);
+  }
+  // デフレクターロール
+  spin(addCylZ(DEFL_R,2.0,rollMats(),DEFL_X,DEFL_CY,0,scene), DEFL_R,-1);
+  addBox(0.18,1.6,0.14,M.frame,DEFL_X,0.78,-1.06);
+  addBox(0.18,1.6,0.14,M.frame,DEFL_X,0.78, 1.06);
+})();
+
+/* =========================================================
+ * オーバーアームセパレーター(条数で再構築)
+ * =======================================================*/
+const sepGroup=new THREE.Group(); scene.add(sepGroup);
+(function(){
+  addBox(0.16,3.0,0.16,M.frame,SEP_X,1.5,-1.3);
+  addBox(0.16,3.0,0.16,M.frame,SEP_X,1.5, 1.3);
+  addBox(0.2,0.16,2.76,M.yellow,SEP_X,2.95,0);
+  addCylZ(0.045,2.5,M.steel,SEP_X,1.62,0,scene);
+})();
+function buildSeparators(N){
+  while(sepGroup.children.length){
+    const c=sepGroup.children.pop();
+    c.geometry.dispose(); sepGroup.remove(c);
+  }
+  const sw=EFF_W/N;
+  for(let k=0;k<=N;k++){
+    const zc=-EFF_W/2+k*sw;
+    addCylZ(0.26,0.012,M.knife,SEP_X,1.62,zc,sepGroup,32);
+  }
+}
+
+/* =========================================================
+ * リコイラ+コイルカー
+ * =======================================================*/
+const recGroup=new THREE.Group();
+recGroup.position.set(REC_X,REC_Y,0);
+scene.add(recGroup);
+spin(recGroup, ()=>st.rr, -1);
+let recCoils=[];
+
+(function buildRecoilerFrame(){
+  addBox(1.6,1.7,1.3,M.paint,REC_X,0.85,-1.45);
+  addBox(2.0,0.24,1.8,M.paintDark,REC_X,0.12,-1.4);
+  addCylZ(0.38,0.6,M.paintDark,REC_X,REC_Y,-1.05,scene);
+  addCylZ(R_MANDREL,1.95,rollMats(),0,0,-0.07,recGroup);
+  // アウトボードベアリング(操作側支持腕)
+  addBox(0.26,1.7,0.26,M.paint,REC_X,0.85,1.2);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.055,12,28),M.paintDark);
+  ring.position.set(REC_X,REC_Y,1.02); ring.castShadow=true;
+  scene.add(ring);
+})();
+
+function buildRecCoils(N){
+  for(const c of recCoils){ c.geometry.dispose(); recGroup.remove(c); }
+  recCoils=[];
+  const sw=EFF_W/N;
+  for(let i=0;i<N;i++){
+    const zc=-EFF_W/2+(i+0.5)*sw;
+    const c=addCylZ(1, sw-0.014, coilMats(), 0,0,zc, recGroup, 40);
+    recCoils.push(c);
+  }
+}
+
+const coilCar=(function(){
+  addBox(3.4,0.06,0.12,M.frame,10.2,0.03, 0.42,scene,false);
+  addBox(3.4,0.06,0.12,M.frame,10.2,0.03,-0.42,scene,false);
+  const g=new THREE.Group(); g.position.set(10.8,0,0); scene.add(g);
+  addBox(1.6,0.28,1.05,M.yellow,0,0.32,0,g);
+  const s1=addBox(1.3,0.07,0.5,M.paintDark,0,0.55,-0.24,g); s1.rotation.x= 0.5;
+  const s2=addBox(1.3,0.07,0.5,M.paintDark,0,0.55, 0.24,g); s2.rotation.x=-0.5;
+  for(const [wx,wz] of [[-0.6,0.42],[0.6,0.42],[-0.6,-0.42],[0.6,-0.42]])
+    addCylZ(0.11,0.1,M.frame,wx,0.11,wz,g);
   return g;
-}
+})();
 
-// pedestal / bearing housing
-function pedestal(x, y, z, h = 2.4, mat = matFrame) {
-  const p = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), mat);
-  p.position.set(x, h / 2, z); p.castShadow = true; p.receiveShadow = true;
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.6), matDarkSteel);
-  top.position.set(x, h + 0.1, z); top.castShadow = true;
-  scene.add(p, top);
-  return p;
-}
+/* =========================================================
+ * ストリップ(リボン)構築
+ * =======================================================*/
+const entryRibbon=new Ribbon(STRIP_W-0.01, ENTRY_N, M.strip);
+let strandRibbons=[], strandZ=[];
+const trimRibbonR=new Ribbon(TRIM_W-0.006, TRIM_N, M.strip);
+const trimRibbonL=new Ribbon(TRIM_W-0.006, TRIM_N, M.strip);
 
-// Line geometry constants — flow runs along +X (uncoiler at -X, recoiler at +X)
-const LINE_Y = 4.2;     // pass-line height
-const STRIP_W = 6.0;    // full strip width (z extent)
-const STRIP_T = 0.12;   // strip thickness
-
-// ============================================================
-//  1) UNCOILER (アンコイラ)
-// ============================================================
-function buildUncoiler() {
-  const root = new THREE.Group();
-  root.position.set(-26, 0, 0);
-
-  // base
-  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.8, 9), matDarkSteel);
-  base.position.y = 0.4; base.castShadow = true; base.receiveShadow = true; root.add(base);
-
-  // stand (cantilever housing)
-  const stand = new THREE.Mesh(new THREE.BoxGeometry(3, 7.5, 7), matFrame);
-  stand.position.set(-1.6, LINE_Y - 0.3, 0); stand.castShadow = true; root.add(stand);
-
-  // mandrel + coil group (rotates)
-  const coilGrp = new THREE.Group();
-  coilGrp.position.set(1.5, LINE_Y, 0);
-
-  // mandrel shaft
-  const mandrel = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, STRIP_W + 1.5, 24), matDarkSteel);
-  mandrel.rotation.x = Math.PI / 2; mandrel.castShadow = true; coilGrp.add(mandrel);
-
-  // aluminium master coil
-  const coilOuter = 3.6;
-  const coil = new THREE.Mesh(
-    new THREE.CylinderGeometry(coilOuter, coilOuter, STRIP_W, 48, 1, false),
-    new THREE.MeshStandardMaterial({ color: 0xcfd6dc, metalness: 0.92, roughness: 0.3 }));
-  coil.rotation.x = Math.PI / 2; coil.castShadow = true; coil.receiveShadow = true;
-  coilGrp.add(coil);
-
-  // coil wound-edge rings to read rotation
-  for (let i = 0; i < 5; i++) {
-    const r = coilOuter - 0.02 - i * 0.001;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r - i*0.12, 0.015, 6, 64),
-      new THREE.MeshStandardMaterial({ color: 0x9aa3ab, metalness: 0.9, roughness: 0.35 }));
-    ring.position.z = STRIP_W/2 - 0.01; ring.rotation.x = 0; coilGrp.add(ring);
-  }
-  // radial mark to visualise spin
-  const mark = new THREE.Mesh(new THREE.BoxGeometry(coilOuter * 0.95, 0.06, 0.18),
-    new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x5a3500, emissiveIntensity: 0.4 }));
-  mark.position.set(coilOuter * 0.48, 0, STRIP_W/2 + 0.01);
-  coilGrp.add(mark);
-
-  root.add(coilGrp);
-  groups.uncoiler = coilGrp;
-
-  // hold-down / peeler arm
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, STRIP_W + 0.5), matFrameY);
-  arm.position.set(3.0, LINE_Y + coilOuter + 0.4, 0); arm.castShadow = true; root.add(arm);
-
-  scene.add(root);
-}
-
-// ============================================================
-//  2) PINCH / LEVELLER rolls
-// ============================================================
-function buildPinchLeveller() {
-  const root = new THREE.Group();
-  root.position.set(-17, 0, 0);
-
-  // frame
-  for (const s of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(1, 6.5, 1), matFrame);
-    post.position.set(0, 3.25, s * (STRIP_W/2 + 0.8)); post.castShadow = true; root.add(post);
-  }
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, STRIP_W + 2.4), matDarkSteel);
-  cap.position.set(0, 6.6, 0); cap.castShadow = true; root.add(cap);
-
-  // pinch rolls (top & bottom)
-  const top = makeRoller(0.55, STRIP_W + 0.4, matRubber);
-  top.position.set(0, LINE_Y + 0.62, 0); root.add(top); groups.pinchTop = top;
-  const bot = makeRoller(0.55, STRIP_W + 0.4, matSteel);
-  bot.position.set(0, LINE_Y - 0.62, 0); root.add(bot); groups.pinchBot = bot;
-
-  // small leveller work rolls
-  groups.levellers = [];
-  for (let i = 0; i < 5; i++) {
-    const r = makeRoller(0.22, STRIP_W + 0.2, matSteel);
-    const off = (i - 2) * 0.7;
-    const yy = LINE_Y + (i % 2 === 0 ? 0.34 : -0.34);
-    r.position.set(2.6 + off, yy, 0); root.add(r); groups.levellers.push(r);
-  }
-  scene.add(root);
-}
-
-// ============================================================
-//  3) EDGE GUIDE rollers
-// ============================================================
-function buildEdgeGuide() {
-  const root = new THREE.Group();
-  root.position.set(-11, 0, 0);
-  pedestal(0, 0, STRIP_W/2 + 0.9, LINE_Y - 0.6);
-  pedestal(0, 0, -(STRIP_W/2 + 0.9), LINE_Y - 0.6);
-  const guide = makeRoller(0.45, STRIP_W + 0.3, matSteel);
-  // carrier roll: dropped by its radius so its crown sits on the pass line
-  guide.position.set(0, LINE_Y - 0.45, 0); root.add(guide); groups.edgeGuide = guide;
-  // vertical edge rollers
-  for (const s of [-1, 1]) {
-    const v = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16), matRubber);
-    v.position.set(0, LINE_Y + 0.45, s * (STRIP_W/2 + 0.18)); v.castShadow = true; root.add(v);
-  }
-  scene.add(root);
-}
-
-// ============================================================
-//  4) SLITTER HEAD (スリッタヘッド) — multiple circular knives
-// ============================================================
-let knifeArbors = { top: null, bottom: null };
-let knifeState = { count: 6 };
-
-function buildSlitterHead() {
-  const root = new THREE.Group();
-  root.position.set(-3, 0, 0);
-  groups.slitterRoot = root;
-
-  // heavy housing (two side frames + top beam)
-  for (const s of [-1, 1]) {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(4.2, 9, 1.4), matFrame);
-    side.position.set(0, 4.5, s * (STRIP_W/2 + 1.4)); side.castShadow = true; root.add(side);
-    // window cut illusion
-    const win = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4.5, 1.5), matDarkSteel);
-    win.position.set(0, 4.6, s * (STRIP_W/2 + 1.4)); root.add(win);
-  }
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1.4, STRIP_W + 4), matFrameY);
-  beam.position.set(0, 9.3, 0); beam.castShadow = true; root.add(beam);
-  const base = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, STRIP_W + 4), matDarkSteel);
-  base.position.set(0, 0.4, 0); base.castShadow = true; base.receiveShadow = true; root.add(base);
-
-  // two arbors (top & bottom) carrying interleaved knives + spacers
-  const topArbor = new THREE.Group(); topArbor.position.set(0, LINE_Y + 0.55, 0);
-  const botArbor = new THREE.Group(); botArbor.position.set(0, LINE_Y - 0.55, 0);
-
-  // arbor shafts
-  for (const [grp, mat] of [[topArbor, matDarkSteel], [botArbor, matDarkSteel]]) {
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, STRIP_W + 2.2, 24), mat);
-    shaft.rotation.x = Math.PI / 2; shaft.castShadow = true; grp.add(shaft);
-  }
-  root.add(topArbor, botArbor);
-  knifeArbors.top = topArbor; knifeArbors.bottom = botArbor;
-  groups.knifeTop = topArbor; groups.knifeBottom = botArbor;
-
-  rebuildKnives(knifeState.count);
-  scene.add(root);
-}
-
-// (Re)build the circular knives + spacers for a given strip count
-function rebuildKnives(stripCount) {
-  knifeState.count = stripCount;
-  const cuts = stripCount - 1; // number of slitting knife pairs (interior cuts)
-
-  for (const arbor of [knifeArbors.top, knifeArbors.bottom]) {
-    // remove old knives (keep shaft = child 0)
-    for (let i = arbor.children.length - 1; i >= 1; i--) arbor.remove(arbor.children[i]);
-  }
-
-  // spacer cylinders along arbor (decorative full length)
-  for (const arbor of [knifeArbors.top, knifeArbors.bottom]) {
-    const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, STRIP_W, 24), matSpacer);
-    sp.rotation.x = Math.PI / 2; sp.castShadow = true; arbor.add(sp);
-  }
-
-  // knife z positions = interior cut lines, evenly spaced across width
-  for (let i = 1; i <= cuts; i++) {
-    const z = -STRIP_W/2 + (STRIP_W * i) / stripCount;
-    // top knife
-    const kt = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.08, 48), matKnife);
-    kt.rotation.x = Math.PI / 2; kt.position.set(0, 0, z); kt.castShadow = true;
-    knifeArbors.top.add(kt);
-    // bottom knife slightly offset (overlap shear)
-    const kb = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.08, 48), matKnife);
-    kb.rotation.x = Math.PI / 2; kb.position.set(0, 0, z); kb.castShadow = true;
-    knifeArbors.bottom.add(kb);
+function buildStrands(N){
+  for(const r of strandRibbons) r.dispose();
+  strandRibbons=[]; strandZ=[];
+  const sw=EFF_W/N;
+  for(let i=0;i<N;i++){
+    strandZ.push(-EFF_W/2+(i+0.5)*sw);
+    strandRibbons.push(new Ribbon(sw-0.014, STRAND_N, M.strip));
   }
 }
 
-// ============================================================
-//  5) LOOP PIT (ループピット) — slack control
-// ============================================================
-function buildLoopPit() {
-  const root = new THREE.Group();
-  root.position.set(6, 0, 0);
-  // pit opening
-  const pit = new THREE.Mesh(new THREE.BoxGeometry(7, 0.3, STRIP_W + 1.5),
-    new THREE.MeshStandardMaterial({ color: 0x0a0e13, roughness: 1 }));
-  pit.position.set(0, 0.03, 0); root.add(pit);
-  // edge rails
-  for (const s of [-1, 1]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.3, 0.3), matFrameY);
-    rail.position.set(0, 0.2, s * (STRIP_W/2 + 0.85)); root.add(rail);
+/* ---- 経路生成 ---- */
+const ENTRY_GUIDE = V3(-10.4, PASS_Y+0.02, 0); // 入側ピンチ手前の案内点
+const _entryPts=[];
+function updateEntryRibbon(){
+  _entryPts.length=0;
+  const pre=[];
+  // コイル外周からの接線で払い出し(中心ではなく外周から皮を剥ぐ)
+  const T=tangentPoint(UNC_X,UNC_Y,st.ru, ENTRY_GUIDE.x,ENTRY_GUIDE.y, +1);
+  // 接点の手前にわずかな巻き付き弧を付け、コイルに沿わせる
+  arcPoints(UNC_X,UNC_Y,st.ru+0.004, T.a+0.85, T.a, 6, 0, pre);
+  const path=[
+    ...pre,
+    V3(ENTRY_GUIDE.x, ENTRY_GUIDE.y, 0),
+    V3(-9.72, PASS_Y, 0),
+    V3(SLIT_X+0.02, PASS_Y, 0),
+  ];
+  samplePolyline(path, ENTRY_N, _entryPts);
+  entryRibbon.update(_entryPts);
+}
+
+function updateStrandRibbon(rib, zc, sag){
+  const pts=[];
+  // スリッター出側 → ルーパー入りロール(直線)
+  for(let j=0;j<6;j++){
+    const t=j/5;
+    pts.push(V3(THREE.MathUtils.lerp(SLIT_X-0.02,LOOP_IN,t), PASS_Y, zc));
   }
-  // entry/exit guide rolls
-  // deflector rolls: crowns on the pass line; the strip rides over and the
-  // free loop sags down into the pit between them
-  const r1 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r1.position.set(-3.5, LINE_Y - 0.4, 0); root.add(r1); groups.loopIn = r1;
-  const r2 = makeRoller(0.4, STRIP_W + 0.3, matSteel); r2.position.set(3.5, LINE_Y - 0.4, 0); root.add(r2); groups.loopOut = r2;
-  scene.add(root);
-}
-
-// ============================================================
-//  6) TENSION STAND (テンションパッドローラ)
-// ============================================================
-function buildTensionStand() {
-  const root = new THREE.Group();
-  root.position.set(13, 0, 0);
-  for (const s of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(1, 7, 1), matFrame);
-    post.position.set(0, 3.5, s * (STRIP_W/2 + 0.8)); post.castShadow = true; root.add(post);
+  // ルーパー垂み(放物線)
+  for(let j=1;j<=36;j++){
+    const t=j/36;
+    pts.push(V3(
+      THREE.MathUtils.lerp(LOOP_IN,LOOP_OUT,t),
+      PASS_Y - sag*4*t*(1-t), zc));
   }
-  // S-wrap tension rolls
-  const t1 = makeRoller(0.6, STRIP_W + 0.3, matRubber); t1.position.set(-0.8, LINE_Y + 0.8, 0); root.add(t1); groups.tens1 = t1;
-  const t2 = makeRoller(0.6, STRIP_W + 0.3, matRubber); t2.position.set(0.8, LINE_Y - 0.8, 0); root.add(t2); groups.tens2 = t2;
-  scene.add(root);
+  // MDロール(ブライドル)をS字に巻き付け → デフレクター
+  const mid=[ V3(LOOP_OUT, PASS_Y, zc) ];
+  for(const m of MD_ROLLS) mid.push(V3(m.x, mdContactY(m), zc));
+  mid.push(V3(4.7, PASS_Y, zc));
+  mid.push(V3(DEFL_X, DEFL_CY+DEFL_R, zc));     // デフレクター上面に接触
+  mid.push(V3(SEP_X, PASS_Y+0.04, zc));         // セパレーター位置
+  // リコイラ: コイル外周への接線で巻き取り(中心ではなく外周へ)
+  const G=mid[mid.length-1];
+  const T=tangentPoint(REC_X,REC_Y,st.rr, G.x,G.y, -1);
+  mid.push(V3(T.x, T.y, zc));
+  const tail=samplePolyline(mid, 30);
+  for(let j=1;j<tail.length;j++) pts.push(tail[j]);
+  // 巻き付き弧(コイル外周に沿って吸い込まれる見た目)
+  arcPoints(REC_X,REC_Y,st.rr+0.004, T.a, T.a-0.85, 5, zc, pts);
+  rib.update(pts);
 }
 
-// ============================================================
-//  7) RECOILER (リコイラ) with separator discs
-// ============================================================
-function buildRecoiler() {
-  const root = new THREE.Group();
-  root.position.set(24, 0, 0);
-
-  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.8, 9), matDarkSteel);
-  base.position.y = 0.4; base.castShadow = true; base.receiveShadow = true; root.add(base);
-
-  const stand = new THREE.Mesh(new THREE.BoxGeometry(3, 7.5, 7), matFrame);
-  stand.position.set(2.0, LINE_Y - 0.3, 0); stand.castShadow = true; root.add(stand);
-
-  const coilGrp = new THREE.Group();
-  coilGrp.position.set(-1.2, LINE_Y, 0);
-
-  // mandrel
-  const mandrel = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, STRIP_W + 1.6, 24), matDarkSteel);
-  mandrel.rotation.x = Math.PI / 2; mandrel.castShadow = true; coilGrp.add(mandrel);
-
-  coilGrp._strips = coilGrp; // placeholder
-  root.add(coilGrp);
-  groups.recoiler = coilGrp;
-  groups.recoilerStrips = new THREE.Group();
-  coilGrp.add(groups.recoilerStrips);
-
-  buildRecoilStrips(knifeState.count);
-
-  scene.add(root);
+const _trimCurveR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
+const _trimCurveL=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
+function updateTrimRibbon(rib, curve, sw, side, rs){
+  const z0=(EFF_W/2+TRIM_W/2)*side;
+  // 耳屑: スリッター出側からサイドワインダーへ。外周接線で巻き取り。
+  const approach=V3(-4.95, 1.2, sw.z - 0.5*side);
+  const T=tangentPoint(sw.x, sw.y, rs, approach.x, approach.y, +1);
+  curve.points[0].set(SLIT_X-0.02, PASS_Y, z0);
+  curve.points[1].set(-5.2, PASS_Y-0.04, z0+0.3*side);
+  curve.points[2].set(-5.05, 1.15, sw.z*0.55);
+  curve.points[3].set(approach.x, approach.y, sw.z - 0.18*side);
+  curve.points[4].set(T.x, T.y, sw.z);
+  rib.update(curve.getPoints(TRIM_N-1));
 }
 
-// build the wound coils (one per slit strip) + separator discs on recoiler
-function buildRecoilStrips(stripCount) {
-  const host = groups.recoilerStrips;
-  for (let i = host.children.length - 1; i >= 0; i--) host.remove(host.children[i]);
+/* =========================================================
+ * パスライン可視化(中心線)
+ * =======================================================*/
+const pathLineGroup=new THREE.Group(); pathLineGroup.visible=false; scene.add(pathLineGroup);
+function rebuildPathLine(){
+  while(pathLineGroup.children.length){
+    const c=pathLineGroup.children.pop(); c.geometry.dispose();
+  }
+  const mat=new THREE.LineBasicMaterial({color:0x4fc6ff});
+  const eg=new THREE.BufferGeometry().setFromPoints(_entryPts);
+  pathLineGroup.add(new THREE.Line(eg,mat));
+}
 
-  const stripW = STRIP_W / stripCount;
-  const gap = 0.06;
-  const coilR = 2.6;
-  const palette = [0xd8dde2, 0xc9d0d6, 0xe2e6ea];
+/* =========================================================
+ * 機器名ラベル(スプライト)
+ * =======================================================*/
+const labelGroup=new THREE.Group(); scene.add(labelGroup);
+function makeLabel(text,x,y,z){
+  const c=document.createElement("canvas");
+  const g=c.getContext("2d");
+  const font='600 30px "Segoe UI","Hiragino Sans",Meiryo,sans-serif';
+  g.font=font;
+  const tw=Math.ceil(g.measureText(text).width);
+  c.width=tw+40; c.height=54;
+  g.font=font;
+  g.fillStyle="rgba(10,15,21,0.82)";
+  g.strokeStyle="rgba(79,198,255,0.45)";
+  g.lineWidth=2;
+  const r=10,w=c.width,h=c.height;
+  g.beginPath();
+  g.moveTo(r,1); g.lineTo(w-r,1); g.quadraticCurveTo(w-1,1,w-1,r);
+  g.lineTo(w-1,h-r); g.quadraticCurveTo(w-1,h-1,w-r,h-1);
+  g.lineTo(r,h-1); g.quadraticCurveTo(1,h-1,1,h-r);
+  g.lineTo(1,r); g.quadraticCurveTo(1,1,r,1);
+  g.closePath(); g.fill(); g.stroke();
+  g.fillStyle="#cfe3f2"; g.textBaseline="middle";
+  g.fillText(text,20,h/2+1);
+  const tex=new THREE.CanvasTexture(c);
+  tex.encoding=THREE.sRGBEncoding; tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true}));
+  const scale=0.55;
+  sp.scale.set(c.width/c.height*scale, scale, 1);
+  sp.position.set(x,y,z);
+  labelGroup.add(sp);
+}
+makeLabel("アンコイラ",              UNC_X, 3.5, 0);
+makeLabel("入側ピンチ・レベラー",     -9.2, 2.7, 0);
+makeLabel("スリッターヘッド",         SLIT_X, 3.4, 0);
+makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, 2.55);
+makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, -2.55);
+makeLabel("ルーパーピット",          -0.8, 1.9, 0);
+makeLabel("MDロール(ブライドル)",     3.2, 2.55, 0);
+makeLabel("セパレーター",             SEP_X, 3.5, 0);
+makeLabel("リコイラ",                REC_X, 3.5, 0);
+makeLabel("コイルカー",              10.8, 1.45, 0);
 
-  for (let i = 0; i < stripCount; i++) {
-    const z = -STRIP_W/2 + stripW * (i + 0.5);
-    const c = new THREE.Mesh(
-      new THREE.CylinderGeometry(coilR, coilR, stripW - gap, 40),
-      new THREE.MeshStandardMaterial({ color: palette[i % palette.length], metalness: 0.92, roughness: 0.3 }));
-    c.rotation.x = Math.PI / 2; c.position.z = z; c.castShadow = true; c.receiveShadow = true;
-    host.add(c);
-    // spin mark
-    const mark = new THREE.Mesh(new THREE.BoxGeometry(coilR * 0.9, 0.05, (stripW - gap) * 0.9),
-      new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x06384a, emissiveIntensity: 0.5 }));
-    mark.position.set(coilR * 0.45, 0, z); host.add(mark);
-    // separator disc
-    if (i < stripCount - 1) {
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(coilR + 0.4, coilR + 0.4, 0.04, 40), matDarkSteel);
-      disc.rotation.x = Math.PI / 2; disc.position.z = z + stripW/2; host.add(disc);
+/* =========================================================
+ * 条数依存部の一括再構築
+ * =======================================================*/
+function rebuildStrandDependent(N){
+  st.N=N;
+  buildKnives(N);
+  buildSeparators(N);
+  buildRecCoils(N);
+  buildStrands(N);
+  document.getElementById("roStrandW").textContent=Math.round(EFF_W/N*1000);
+}
+rebuildStrandDependent(4);
+
+/* =========================================================
+ * UI
+ * =======================================================*/
+const ui={
+  led:document.getElementById("statusLed"),
+  status:document.getElementById("statusText"),
+  roSpeed:document.getElementById("roSpeed"),
+  roUnc:document.getElementById("roUnc"),
+  roRec:document.getElementById("roRec"),
+  roTen:document.getElementById("roTen"),
+  roLen:document.getElementById("roLen"),
+  roProg:document.getElementById("roProg"),
+  prog:document.getElementById("coilProg"),
+  btnRun:document.getElementById("btnRun"),
+};
+
+ui.btnRun.addEventListener("click",()=>{
+  st.paused=!st.paused;
+  ui.btnRun.innerHTML = st.paused
+    ? '<i class="fa-solid fa-play"></i><span>ライン起動</span>'
+    : '<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
+  ui.btnRun.classList.toggle("running", st.paused);
+});
+
+const rng=document.getElementById("rngSpeed");
+rng.addEventListener("input",()=>{
+  document.getElementById("speedVal").textContent=rng.value;
+  st.target=rng.value/60;
+});
+
+document.getElementById("strandGroup").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  rebuildStrandDependent(parseInt(b.dataset.n,10));
+});
+
+const CAM_PRESETS={
+  all:  [-2.5,1.3,0, 20, 0.50,1.12],
+  unc:  [-13.4,1.7,0, 7.5,0.72,1.10],
+  slit: [-5.5,1.4,0,  6,  0.62,1.02],
+  loop: [-0.8,0.5,0,  8.5,0.50,0.98],
+  md:   [ 3.2,1.4,0,  5.5,0.66,1.02],
+  rec:  [ 8.4,1.7,0,  8,  0.62,1.08],
+};
+document.querySelectorAll("[data-cam]").forEach(b=>{
+  b.addEventListener("click",()=>controls.flyTo(...CAM_PRESETS[b.dataset.cam]));
+});
+
+document.getElementById("chkLabels").addEventListener("change",e=>{
+  labelGroup.visible=e.target.checked;
+});
+document.getElementById("chkPath").addEventListener("change",e=>{
+  pathLineGroup.visible=e.target.checked;
+});
+
+/* =========================================================
+ * 状態機械・アニメーションループ
+ * =======================================================*/
+function easeIO(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+function stepLine(dt){
+  // 目標速度(状態に応じて0に絞る)
+  const tgt=(st.paused||st.state!=="RUN") ? 0 : st.target;
+  const dv=tgt-st.v;
+  st.v+=THREE.MathUtils.clamp(dv, -DECEL*dt, ACCEL*dt);
+  if(Math.abs(st.v)<0.004 && tgt===0) st.v=0;
+
+  // 通板に伴う径変化(断面積保存: dr/dt = ±v·h / 2πr)
+  if(st.v>0){
+    st.len+=st.v*dt;
+    st.ru=Math.max(RU_MIN-0.01, st.ru - st.v*H_VIS/(2*Math.PI*st.ru)*dt);
+    st.rr=Math.min(RR_MAX+0.01, st.rr + st.v*H_VIS/(2*Math.PI*st.rr)*dt);
+    const dScrap=st.v*0.004/(2*Math.PI);
+    st.rsR=Math.min(0.42, st.rsR + dScrap/st.rsR*dt);
+    st.rsL=Math.min(0.42, st.rsL + dScrap/st.rsL*dt);
+    st.texOfs-=st.v*dt/UV_SCALE;
+    stripTex.offset.x=st.texOfs;
+  }
+
+  // コイル交換トリガー
+  if(st.state==="RUN" && (st.ru<=RU_MIN || st.rr>=RR_MAX)) st.state="DECEL";
+  if(st.state==="DECEL" && st.v<=0.004){ st.state="CHANGE"; st.tChange=0; st.swapped=false; }
+
+  // コイル交換シーケンス(コイルカー進入 → 交換 → 退出)
+  if(st.state==="CHANGE"){
+    st.tChange+=dt;
+    const t=st.tChange;
+    if(t<1.4){
+      coilCar.position.x=THREE.MathUtils.lerp(10.8,REC_X,easeIO(t/1.4));
+    }else if(t<2.4){
+      coilCar.position.x=REC_X;
+      if(!st.swapped && t>1.9){
+        st.ru=RU_MAX; st.rr=RR_MIN; st.rsL=0.13; st.rsR=0.13;
+        st.swapped=true;
+      }
+    }else if(t<3.8){
+      coilCar.position.x=THREE.MathUtils.lerp(REC_X,10.8,easeIO((t-2.4)/1.4));
+    }else{
+      coilCar.position.x=10.8;
+      st.state="RUN";
     }
   }
 }
 
-// ============================================================
-//  STRIP — the moving aluminium sheet (animated scrolling texture)
-// ============================================================
-function makeStripTexture(repeat) {
-  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
-  const ctx = c.getContext('2d');
-  const grd = ctx.createLinearGradient(0, 0, 0, 64);
-  grd.addColorStop(0, '#c2c9cf'); grd.addColorStop(0.5, '#e6ebef'); grd.addColorStop(1, '#bcc3c9');
-  ctx.fillStyle = grd; ctx.fillRect(0, 0, 256, 64);
-  // rolling lines along travel direction
-  ctx.strokeStyle = 'rgba(140,150,160,0.35)'; ctx.lineWidth = 1;
-  for (let i = 0; i < 64; i += 6) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke(); }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(repeat, 1);
-  tex.anisotropy = 8;
-  return tex;
-}
-
-const PL = LINE_Y; // pass-line height
-
-// Build a ribbon (strip) mesh that follows a 2D centreline path in the X-Y
-// plane and spans [z0, z1] across the width. The path is the line the strip
-// actually takes: it rests ON the contact apex of each roll (never through the
-// roll body), dips into the loop pit, and wraps the coils tangentially.
-function makeRibbonMesh(path2D, z0, z1, color = 0xdfe4e9) {
-  const curve = new THREE.CatmullRomCurve3(
-    path2D.map(p => new THREE.Vector3(p[0], p[1], 0)), false, 'catmullrom', 0.5);
-  const SEG = 160;
-  const pts = curve.getPoints(SEG);
-
-  // arc-length for UV + tangents for correct surface normals
-  const lens = [0];
-  for (let i = 1; i < pts.length; i++) lens.push(lens[i-1] + pts[i].distanceTo(pts[i-1]));
-  const total = lens[lens.length - 1];
-
-  const pos = [], uv = [], nor = [], idx = [];
-  const tile = 1.2; // texture metre per tile
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i];
-    // tangent in XY -> surface normal (perp, pointing up-ish)
-    const a = pts[Math.max(0, i-1)], b = pts[Math.min(pts.length-1, i+1)];
-    const tx = b.x - a.x, ty = b.y - a.y;
-    const tl = Math.hypot(tx, ty) || 1;
-    const nx = -ty / tl, ny = tx / tl; // rotate tangent +90deg
-    const sign = ny < 0 ? -1 : 1;
-    pos.push(p.x, p.y, z0, p.x, p.y, z1);
-    nor.push(nx*sign, ny*sign, 0, nx*sign, ny*sign, 0);
-    const u = lens[i] / tile;
-    uv.push(u, 0, u, 1);
+function updateGeometry(){
+  // コイル径反映
+  uncGroup.coil.scale.set(st.ru,st.ru,1);
+  for(const c of recCoils) c.scale.set(st.rr,st.rr,1);
+  scrapR.coil.scale.set(st.rsR,st.rsR,1);
+  scrapL.coil.scale.set(st.rsL,st.rsL,1);
+  // ストリップ経路
+  updateEntryRibbon();
+  const sw=EFF_W/st.N;
+  for(let i=0;i<strandRibbons.length;i++){
+    const sag=1.55 + 0.32*Math.sin(st.len*0.05 + i*1.9) + 0.02*i;
+    updateStrandRibbon(strandRibbons[i], strandZ[i], sag);
   }
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = i*2, b = i*2+1, c = (i+1)*2, d = (i+1)*2+1;
-    idx.push(a, c, b, b, c, d);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-
-  const tex = makeStripTexture(Math.max(2, Math.round(total / tile)));
-  tex.repeat.set(1, 1); // UVs already carry the repeat in metres/tile
-  const mat = new THREE.MeshStandardMaterial({
-    map: tex, color, metalness: 0.92, roughness: 0.3, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(g, mat);
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  return mesh;
+  updateTrimRibbon(trimRibbonR,_trimCurveR, sw,  1, st.rsR);
+  updateTrimRibbon(trimRibbonL,_trimCurveL, sw, -1, st.rsL);
+  if(pathLineGroup.visible) rebuildPathLine();
 }
 
-// Centreline the strip follows from the uncoiler coil to the slitter nip.
-// Heights are tied to each roll's function (see comments).
-function entryPath() {
-  return [
-    [-24.5, PL + 3.6],   // leaves the uncoiler coil tangent to its OD (top)
-    [-22.6, PL + 1.7],   // pays off and descends
-    [-19.6, PL + 0.45],  // approaches the pinch nip
-    [-17.0, PL],         // PINCH ROLLS: gripped at the nip (pass line)
-    [-15.8, PL + 0.12],  // LEVELLER: threads under the upper work roll
-    [-15.1, PL - 0.12],  //   ... over the lower work roll
-    [-14.4, PL + 0.12],
-    [-13.7, PL - 0.12],
-    [-13.0, PL + 0.12],
-    [-11.0, PL],         // EDGE-GUIDE carrier roll: rides over the top
-    [-6.0,  PL],
-    [-3.0,  PL],         // SLITTER: enters the knife nip on the pass line
-  ];
-}
-
-// Centreline from the slitter to the recoiler (each slit strip shares it).
-function exitPath() {
-  return [
-    [-3.0, PL],          // leaves the slitter knives
-    [2.5,  PL],          // rides over the loop-pit entry deflector roll
-    [6.0,  PL - 2.8],    // LOOP PIT: free loop sags down for tension buffering
-    [9.5,  PL],          // rides over the loop-pit exit deflector roll
-    [12.2, PL + 0.2],    // TENSION S-WRAP: wraps under the upper bridle roll
-    [13.8, PL - 0.2],    //   ... and over the lower bridle roll
-    [16.5, PL],
-    [20.2, PL],          // meets the recoiler coil OD and winds on
-  ];
-}
-
-// Entry strip: single full-width ribbon (uncoiler -> slitter)
-function buildEntryStrip() {
-  const strip = makeRibbonMesh(entryPath(), -STRIP_W/2, STRIP_W/2);
-  scene.add(strip);
-  groups.entryStrip = strip;
-}
-
-// Exit strips: one ribbon per slit lane (slitter -> recoiler)
-function buildExitStrips(stripCount) {
-  if (groups.exitStrips) { for (const s of groups.exitStrips) { scene.remove(s); s.geometry.dispose(); } }
-  groups.exitStrips = [];
-  const laneW = STRIP_W / stripCount;
-  const gap = 0.06;
-  const path = exitPath();
-  for (let i = 0; i < stripCount; i++) {
-    const z0 = -STRIP_W/2 + laneW * i + gap/2;
-    const z1 = -STRIP_W/2 + laneW * (i + 1) - gap/2;
-    const strip = makeRibbonMesh(path, z0, z1);
-    scene.add(strip);
-    groups.exitStrips.push(strip);
+function updateSpinners(dt){
+  if(st.v<=0) return;
+  for(const s of spinners){
+    const r=(typeof s.r==="function")?s.r():s.r;
+    s.obj.rotation.z += s.dir*(st.v/r)*dt;
   }
 }
 
-// ============================================================
-//  Floor signage text (canvas plane)
-// ============================================================
-function labelPlane(text, x, z, color = '#38bdf8') {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = 'rgba(13,20,29,0.0)'; ctx.fillRect(0,0,512,128);
-  ctx.font = 'bold 56px "Segoe UI", sans-serif';
-  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, 256, 64);
-  const tex = new THREE.CanvasTexture(c);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
-  m.position.set(x, 0.05, z); m.rotation.x = -Math.PI/2;
-  scene.add(m);
-}
-labelPlane('① UNCOILER', -26, 6, '#f59e0b');
-labelPlane('④ SLITTER', -3, 6, '#38bdf8');
-labelPlane('⑦ RECOILER', 24, 6, '#f59e0b');
+/* ---- 計器表示(120ms間隔で更新) ---- */
+let uiTimer=0;
+function updateHUD(dt){
+  uiTimer+=dt; if(uiTimer<0.12) return;
+  uiTimer=0;
+  ui.roSpeed.textContent=Math.round(st.v*60);
+  ui.roUnc.textContent=Math.round(st.ru*2000);
+  ui.roRec.textContent=Math.round(st.rr*2000);
+  ui.roTen.textContent=(st.v>0.004 ? (8 + st.v*9).toFixed(1) : "0.0");
+  ui.roLen.textContent=Math.round(st.len).toLocaleString();
+  const prog=THREE.MathUtils.clamp(
+    (RU_MAX*RU_MAX-st.ru*st.ru)/(RU_MAX*RU_MAX-RU_MIN*RU_MIN),0,1);
+  ui.roProg.textContent=Math.round(prog*100);
+  ui.prog.style.width=(prog*100).toFixed(1)+"%";
 
-// ============================================================
-//  Build everything
-// ============================================================
-buildUncoiler();
-buildPinchLeveller();
-buildEdgeGuide();
-buildSlitterHead();
-buildLoopPit();
-buildTensionStand();
-buildRecoiler();
-buildEntryStrip();
-buildExitStrips(knifeState.count);
-
-document.getElementById('loading').style.display = 'none';
-
-// ============================================================
-//  Animation / state
-// ============================================================
-const state = { running: true, lineSpeed: 120 /* m/min */, };
-const clock = new THREE.Clock();
-
-// physical radii used to convert line speed -> angular velocity
-const R = {
-  uncoiler: 3.6, recoiler: 2.6, roller: 0.5, knife: 1.05, pinch: 0.55,
-};
-
-function lineSpeedToRad(radius) {
-  // m/min -> m/s -> rad/s  (omega = v / r), exaggerated x1.0 for visual
-  const v = (state.lineSpeed / 60); // m/s (scene units ~ m)
-  return v / radius;
+  let text,cls;
+  const tgt=(st.paused||st.state!=="RUN")?0:st.target;
+  if(st.state==="CHANGE"){ text="コイル交換中"; cls="info"; }
+  else if(st.state==="DECEL"){ text="コイル交換準備 ─ 減速中"; cls="warn"; }
+  else if(st.paused && st.v<=0.004){ text="ライン停止"; cls="stop"; }
+  else if(st.v<tgt-0.01){ text="加速中"; cls="warn"; }
+  else if(st.v>tgt+0.01){ text="減速中"; cls="warn"; }
+  else if(st.v>0.004){ text="定常運転中"; cls="ok"; }
+  else { text="ライン停止"; cls="stop"; }
+  ui.status.textContent=text;
+  ui.led.className="led "+cls;
 }
 
-// Every roll, coil and arbor spins about its OWN axis, which lies along Z
-// (perpendicular to the +X line travel). Sign convention for the strip moving
-// in +X: a roll the strip rests ON TOP of must turn so its crown moves +X,
-// which is the -Z (negative) direction; a roll pressing from ABOVE turns +Z.
-function spinZ(obj, omega, dt, dir = 1) { if (obj) obj.rotation.z += dir * omega * dt; }
-
-function animate() {
+/* ---- メインループ ---- */
+const clock=new THREE.Clock();
+function animate(){
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  controls.update();
-
-  if (state.running && state.lineSpeed > 0) {
-    const v = state.lineSpeed / 60; // m/s
-
-    // coils — strip pays off / winds over the top, so crown moves +X => -Z
-    spinZ(groups.uncoiler, lineSpeedToRad(R.uncoiler), dt, -1);
-    spinZ(groups.recoiler, lineSpeedToRad(R.recoiler), dt, -1);
-
-    // rollers under the strip turn -Z so their top surface travels with it
-    const wr = lineSpeedToRad(R.roller);
-    [groups.edgeGuide, groups.loopIn, groups.loopOut].forEach(o => spinZ(o, wr, dt, -1));
-    // pinch pair: top roll presses from above (+Z), bottom roll carries (-Z)
-    spinZ(groups.pinchTop, lineSpeedToRad(R.pinch), dt, +1);
-    spinZ(groups.pinchBot, lineSpeedToRad(R.pinch), dt, -1);
-    // leveller work rolls alternate above/below the pass line -> alternate sign
-    groups.levellers && groups.levellers.forEach((o,i)=> spinZ(o, lineSpeedToRad(0.22), dt, i%2? -1:+1));
-    // S-wrap tension rolls: upper from above (+Z), lower carries (-Z)
-    spinZ(groups.tens1, wr, dt, +1); spinZ(groups.tens2, wr, dt, -1);
-
-    // slitter knives — upper arbor (above pass line) +Z, lower arbor -Z,
-    // i.e. they counter-rotate so the cut surfaces shear the strip moving +X
-    const wk = lineSpeedToRad(R.knife);
-    spinZ(groups.knifeTop, wk, dt, +1);
-    spinZ(groups.knifeBottom, wk, dt, -1);
-
-    // moving strip texture scroll — UVs are in metres/tile (tile = 1.2 m),
-    // so advance the offset by the distance travelled this frame / tile
-    const scroll = (v * dt) / 1.2;
-    if (groups.entryStrip) groups.entryStrip.material.map.offset.x -= scroll;
-    if (groups.exitStrips) groups.exitStrips.forEach(s => s.material.map.offset.x -= scroll);
-
-    // HUD live stats
-    hudUn.textContent = (lineSpeedToRad(R.uncoiler) * 60 / (2*Math.PI)).toFixed(1) + ' rpm';
-    hudRe.textContent = (lineSpeedToRad(R.recoiler) * 60 / (2*Math.PI)).toFixed(1) + ' rpm';
-    hudKnife.textContent = state.lineSpeed.toFixed(0) + ' m/min';
-  }
-
-  renderer.render(scene, camera);
+  const dt=Math.min(clock.getDelta(),0.05);
+  stepLine(dt);
+  updateSpinners(dt);
+  updateGeometry();
+  updateHUD(dt);
+  controls.update(dt);
+  renderer.render(scene,camera);
 }
 
-// ============================================================
-//  UI wiring
-// ============================================================
-const speedEl = document.getElementById('speed');
-const speedVal = document.getElementById('speedVal');
-const stripsEl = document.getElementById('strips');
-const stripVal = document.getElementById('stripVal');
-const toggleBtn = document.getElementById('toggle');
-const viewBtn = document.getElementById('view');
-const stState = document.getElementById('stState');
-const hudUn = document.getElementById('stUn');
-const hudRe = document.getElementById('stRe');
-const hudKnife = document.getElementById('stKnife');
-
-speedEl.addEventListener('input', () => {
-  state.lineSpeed = +speedEl.value;
-  speedVal.textContent = state.lineSpeed + ' m/min';
-});
-
-stripsEl.addEventListener('input', () => {
-  const n = +stripsEl.value;
-  stripVal.textContent = n + ' 条';
-  rebuildKnives(n);
-  buildRecoilStrips(n);
-  buildExitStrips(n);
-});
-
-toggleBtn.addEventListener('click', () => {
-  state.running = !state.running;
-  toggleBtn.textContent = state.running ? '⏸ 停止' : '▶ 運転';
-  stState.textContent = state.running ? '運転中' : '停止中';
-  if (!state.running) { hudUn.textContent = hudRe.textContent = '0.0 rpm'; hudKnife.textContent = '0 m/min'; }
-});
-
-// camera presets
-const views = [
-  { pos: [26, 16, 30], tgt: [0, 2.5, 0] },     // overview
-  { pos: [-3, 8, 14], tgt: [-3, 4, 0] },        // slitter close-up
-  { pos: [-26, 7, 14], tgt: [-25, 4, 0] },      // uncoiler
-  { pos: [24, 7, 14], tgt: [24, 4, 0] },        // recoiler
-  { pos: [0, 38, 1], tgt: [0, 0, 0] },          // top-down
-];
-let viewIdx = 0;
-viewBtn.addEventListener('click', () => {
-  viewIdx = (viewIdx + 1) % views.length;
-  const v = views[viewIdx];
-  // simple tween
-  const startPos = camera.position.clone();
-  const startTgt = controls.target.clone();
-  const endPos = new THREE.Vector3(...v.pos);
-  const endTgt = new THREE.Vector3(...v.tgt);
-  let t = 0;
-  (function tween() {
-    t += 0.04; const k = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
-    camera.position.lerpVectors(startPos, endPos, k);
-    controls.target.lerpVectors(startTgt, endTgt, k);
-    controls.update();
-    if (t < 1) requestAnimationFrame(tween);
-  })();
-});
-
-// ============================================================
-//  Resize
-// ============================================================
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+window.addEventListener("resize",()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space" && document.activeElement.tagName!=="INPUT"){
+    e.preventDefault(); ui.btnRun.click();
+  }
 });
 
-// ============================================================
-//  Start render loop (after all UI refs are initialised)
-// ============================================================
 animate();
+})();
 </script>
 </body>
 </html>
