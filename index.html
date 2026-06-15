@@ -7,46 +7,30 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
   :root{
-    --bg:#11151a;
-    --panel:rgba(15,20,26,.88);
-    --panel-line:#273340;
-    --txt:#d7e1ea;
-    --sub:#8aa0b4;
-    --acc:#4fc6ff;
-    --val:#62f0c4;
-    --ok:#3ad98c;
-    --warn:#f0b429;
-    --info:#5b9bff;
-    --stop:#ff6b5e;
+    --bg:#11151a; --panel:rgba(15,20,26,.88); --panel-line:#273340;
+    --txt:#d7e1ea; --sub:#8aa0b4; --acc:#4fc6ff; --val:#62f0c4;
+    --ok:#3ad98c; --warn:#f0b429; --info:#5b9bff; --stop:#ff6b5e;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
     font-family:"Segoe UI","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--txt);}
   #scene{position:fixed;inset:0;}
   canvas{display:block;}
-
-  /* ===== 操作盤パネル ===== */
-  #panel{
-    position:fixed;left:14px;top:14px;width:304px;max-height:calc(100vh - 28px);
+  #panel{position:fixed;left:14px;top:14px;width:304px;max-height:calc(100vh - 28px);
     overflow-y:auto;background:var(--panel);backdrop-filter:blur(10px);
     border:1px solid var(--panel-line);border-radius:10px;
-    box-shadow:0 8px 30px rgba(0,0,0,.45);padding:14px 16px 16px;z-index:10;
-  }
+    box-shadow:0 8px 30px rgba(0,0,0,.45);padding:14px 16px 16px;z-index:10;}
   #panel::-webkit-scrollbar{width:6px;}
   #panel::-webkit-scrollbar-thumb{background:#33414f;border-radius:3px;}
-
   .panel-title{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;
     letter-spacing:.04em;padding-bottom:10px;border-bottom:1px solid var(--panel-line);}
   .panel-title i{color:var(--acc);font-size:15px;}
   .panel-title small{display:block;font-size:10px;font-weight:400;color:var(--sub);letter-spacing:.12em;}
-
   .sec{margin-top:13px;}
   .sec-h{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--sub);
     letter-spacing:.18em;margin-bottom:8px;}
   .sec-h i{color:var(--acc);width:13px;text-align:center;}
   .sec-h::after{content:"";flex:1;height:1px;background:var(--panel-line);}
-
-  /* 状態カード */
   .status-card{background:#0a0e13;border:1px solid var(--panel-line);border-radius:8px;
     padding:10px 12px;display:flex;align-items:center;gap:12px;}
   .led{width:11px;height:11px;border-radius:50%;flex:none;background:#444;
@@ -60,8 +44,6 @@
   .speed-big{font-family:Consolas,"Cascadia Mono",monospace;font-size:24px;color:var(--val);
     line-height:1.1;font-weight:600;}
   .speed-big small{font-size:11px;color:var(--sub);font-weight:400;margin-left:4px;}
-
-  /* ボタン */
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
     padding:9px 0;border:1px solid var(--panel-line);border-radius:7px;cursor:pointer;
     background:#1a232d;color:var(--txt);font-size:13px;font-weight:600;letter-spacing:.06em;
@@ -69,8 +51,6 @@
   .btn:hover{background:#22303d;border-color:#3a4c5d;}
   .btn.running{border-color:#5a3030;background:#2a1c1c;color:#ffb0a8;}
   .btn.running:hover{background:#352222;}
-
-  /* スライダー */
   .slider-row{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;
     color:var(--sub);margin-bottom:5px;}
   .slider-row b{font-family:Consolas,monospace;color:var(--val);font-size:13px;font-weight:600;}
@@ -81,16 +61,12 @@
     box-shadow:0 0 6px rgba(79,198,255,.5);}
   input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
     background:var(--acc);border:2px solid #0d1117;cursor:pointer;}
-
-  /* 条数セグメント */
   .seg{display:flex;gap:5px;}
   .seg button{flex:1;padding:7px 0;border:1px solid var(--panel-line);border-radius:6px;
     background:#161e26;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;
     font-family:Consolas,monospace;transition:all .15s;}
   .seg button:hover{border-color:#3a4c5d;color:var(--txt);}
   .seg button.active{background:#11364a;border-color:var(--acc);color:var(--acc);}
-
-  /* 計測値 */
   .ro{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px;color:var(--sub);}
   .ro i{width:14px;text-align:center;color:#5a7186;font-size:11px;}
   .ro span{flex:1;}
@@ -100,8 +76,6 @@
   .prog{height:6px;background:#1a232d;border-radius:3px;overflow:hidden;margin-top:4px;}
   .prog>div{height:100%;width:0%;background:linear-gradient(90deg,#2e8fc4,var(--acc));
     border-radius:3px;transition:width .4s;}
-
-  /* カメラグリッド */
   .cam-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
   .cam-grid button{display:flex;align-items:center;gap:7px;padding:7px 10px;
     border:1px solid var(--panel-line);border-radius:6px;background:#161e26;color:var(--txt);
@@ -109,21 +83,16 @@
   .cam-grid button:hover{background:#1f2b37;border-color:#3a4c5d;}
   .cam-grid button i{color:var(--acc);width:13px;text-align:center;font-size:11px;}
   .cam-grid button.wide{grid-column:1 / -1;}
-
-  /* トグルスイッチ */
   .toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;
     color:var(--txt);padding:3px 0;}
   .toggle-row i{color:#5a7186;margin-right:7px;font-size:11px;}
   .switch{position:relative;width:36px;height:19px;flex:none;}
   .switch input{opacity:0;width:0;height:0;}
-  .switch .knob{position:absolute;inset:0;background:#2a3642;border-radius:10px;cursor:pointer;
-    transition:background .2s;}
+  .switch .knob{position:absolute;inset:0;background:#2a3642;border-radius:10px;cursor:pointer;transition:background .2s;}
   .switch .knob::before{content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;
     border-radius:50%;background:#8aa0b4;transition:transform .2s,background .2s;}
   .switch input:checked + .knob{background:#11364a;}
   .switch input:checked + .knob::before{transform:translateX(17px);background:var(--acc);}
-
-  /* 操作ヘルプ */
   #help{position:fixed;right:14px;bottom:12px;z-index:10;font-size:10.5px;color:var(--sub);
     background:rgba(13,17,22,.7);border:1px solid var(--panel-line);border-radius:6px;
     padding:6px 11px;letter-spacing:.04em;backdrop-filter:blur(6px);}
@@ -132,7 +101,6 @@
 </style>
 </head>
 <body>
-
 <div id="scene"></div>
 
 <div id="panel">
@@ -140,8 +108,6 @@
     <i class="fa-solid fa-industry"></i>
     <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
   </div>
-
-  <!-- 状態 -->
   <div class="sec">
     <div class="status-card">
       <div class="led" id="statusLed"></div>
@@ -151,8 +117,6 @@
       </div>
     </div>
   </div>
-
-  <!-- 操業 -->
   <div class="sec">
     <div class="sec-h"><i class="fa-solid fa-sliders"></i>操業操作</div>
     <button class="btn" id="btnRun"><i class="fa-solid fa-stop"></i><span>ライン停止</span></button>
@@ -161,24 +125,17 @@
       <input type="range" id="rngSpeed" min="10" max="180" step="5" value="80">
     </div>
   </div>
-
-  <!-- 設定 -->
   <div class="sec">
     <div class="sec-h"><i class="fa-solid fa-table-columns"></i>スリット条数</div>
     <div class="seg" id="strandGroup">
-      <button data-n="2">2</button>
-      <button data-n="3">3</button>
-      <button data-n="4" class="active">4</button>
-      <button data-n="5">5</button>
-      <button data-n="6">6</button>
+      <button data-n="2">2</button><button data-n="3">3</button>
+      <button data-n="4" class="active">4</button><button data-n="5">5</button><button data-n="6">6</button>
     </div>
     <div class="ro" style="margin-top:7px;">
       <i class="fa-solid fa-ruler-horizontal"></i><span>母材幅 / 条幅</span>
       <b>1200<small>mm</small> / <span id="roStrandW">272</span><small>mm</small></b>
     </div>
   </div>
-
-  <!-- 計測 -->
   <div class="sec">
     <div class="sec-h"><i class="fa-solid fa-gauge-high"></i>計測値</div>
     <div class="ro"><i class="fa-solid fa-arrow-rotate-left"></i><span>アンコイラ残径</span>
@@ -193,25 +150,24 @@
       <span>コイル消化率</span><b><span id="roProg">0</span><small>%</small></b></div>
     <div class="prog"><div id="coilProg"></div></div>
   </div>
-
-  <!-- カメラ・表示 -->
   <div class="sec">
     <div class="sec-h"><i class="fa-solid fa-video"></i>カメラ・表示</div>
     <div class="cam-grid">
       <button class="wide" data-cam="all"><i class="fa-solid fa-expand"></i>ライン全景</button>
       <button data-cam="unc"><i class="fa-solid fa-arrow-rotate-left"></i>アンコイラ</button>
       <button data-cam="slit"><i class="fa-solid fa-scissors"></i>スリッター</button>
-      <button data-cam="loop"><i class="fa-solid fa-arrows-down-to-line"></i>ルーパー</button>
+      <button data-cam="loop1"><i class="fa-solid fa-arrows-down-to-line"></i>No.1ルーパー</button>
+      <button data-cam="loop2"><i class="fa-solid fa-arrows-down-to-line"></i>No.2ルーパー</button>
       <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
       <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
     </div>
     <div class="toggle-row" style="margin-top:10px;">
-      <span><i class="fa-solid fa-tags"></i>機器名ラベル表示</span>
+      <span><i class="fa-solid fa-tags"></i>設備名ラベル</span>
       <label class="switch"><input type="checkbox" id="chkLabels" checked><span class="knob"></span></label>
     </div>
     <div class="toggle-row">
-      <span><i class="fa-solid fa-route"></i>パスライン表示</span>
-      <label class="switch"><input type="checkbox" id="chkPath"><span class="knob"></span></label>
+      <span><i class="fa-solid fa-hashtag"></i>ロール番号(BOM)</span>
+      <label class="switch"><input type="checkbox" id="chkIds"><span class="knob"></span></label>
     </div>
   </div>
 </div>
@@ -228,1032 +184,570 @@
 (function(){
 
 /* =========================================================
- * 定数 — ライン緒元
+ * ライン緒元 / レイアウト(横からの概略図に準拠・1単位=1m)
  * =======================================================*/
-const PASS_Y   = 1.30;            // パスライン高さ [m]
-const STRIP_W  = 1.20;            // 母材幅 [m]
-const TRIM_W   = 0.05;            // 耳屑幅(片側) [m]
-const EFF_W    = STRIP_W - TRIM_W*2;   // 製品有効幅
-const UNC_X    = -14.0, UNC_Y = 1.55;  // アンコイラ中心
-const REC_X    =   8.6, REC_Y = 1.55;  // リコイラ中心
-const SLIT_X   =  -6.0;                // スリッターヘッド
-const LOOP_IN  =  -3.5, LOOP_OUT = 1.9;// ルーパー出入りロール
-const R_MANDREL= 0.25;
-const RU_MAX = 1.05, RU_MIN = 0.33;    // アンコイラ径範囲
-const RR_MIN = 0.28, RR_MAX = 1.03;    // リコイラ径範囲
-const H_VIS  = 0.020;                  // 見かけ板厚(径変化の体感速度)
-const UV_SCALE = 2.0;                  // ストリップテクスチャ 1リピート長 [m]
-const ACCEL = 0.40, DECEL = 0.55;      // 速度ランプ [m/s2]
-const ENTRY_N = 54, STRAND_N = 96, TRIM_N = 26;  // リボン分割数
+const PL      = 2.2;              // パスライン高さ [m]
+const STRIP_W = 1.20;             // 母材幅 [m]
+const TRIM_W  = 0.05, EFF_W = STRIP_W - TRIM_W*2;
+const UNC_X = -31.0, UNC_Y = PL;  // アンコイラ中心
+const REC_X =  24.5, REC_Y = PL;  // リコイラ中心
+const SLIT_X = 0;                 // スリッターヘッド
+const R_MANDREL = 0.20;
+const RU_MAX = 1.05, RU_MIN = 0.40;
+const RR_MIN = 0.30, RR_MAX = 1.00;
+const H_VIS  = 0.020, UV_SCALE = 2.0;
+const ACCEL = 0.40, DECEL = 0.55;
+const ENTRY_N = 150, STRAND_N = 180, TRIM_N = 26;
+const d2r = (mm)=> mm/2000;       // 直径[mm] → 半径[m]
 
-/* MDロール(ゴムミニディスクロール / 山王鐵工) — 張力装置。
- * 1本の軸に幅の狭い輪切り状ゴム円盤を多数組み合わせた単一ロール。
- * 各条がロール上を通過し、ゴム円盤が弾性変形することで、同軸・同回転数で
- * 多条を巻き取る際の径差による張力差を緩和する。ブライドルロールではない。 */
-const MDX = 3.3, MD_LEN = 2.0, MD_R = 0.27, MD_CY = PASS_Y - 0.04;
-const MD_CONTACT_Y = MD_CY + MD_R;             // 帯はロール上面に接触
-const DEFL_X = 5.8, DEFL_CY = PASS_Y + 0.15, DEFL_R = 0.15; // デフレクターロール
-const SEP_X  = 7.3;                                          // セパレーター
-
-/* =========================================================
- * 状態
- * =======================================================*/
 const st = {
-  v: 0,                       // 現在速度 [m/s]
-  target: 80/60,              // 設定速度 [m/s]
-  paused: false,
-  state: "RUN",               // RUN / DECEL / CHANGE
-  tChange: 0, swapped: false,
-  ru: RU_MAX, rr: RR_MIN,
-  rsL: 0.13, rsR: 0.13,       // 耳屑巻取径
-  len: 0,                     // 累計通板長 [m]
-  N: 4,                       // 条数
-  texOfs: 0,
+  v:0, target:80/60, paused:false, state:"RUN", tChange:0, swapped:false,
+  ru:RU_MAX, rr:RR_MIN, rsL:0.13, rsR:0.13, len:0, N:4, texOfs:0,
 };
 
 /* =========================================================
- * 基本セットアップ
+ * レンダラ / シーン / カメラ
  * =======================================================*/
-const container = document.getElementById("scene");
-const renderer = new THREE.WebGLRenderer({ antialias:true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.18;
+const container=document.getElementById("scene");
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.18;
 container.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1b222b);
-scene.fog = new THREE.Fog(0x1b222b, 40, 92);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x1b222b);
+scene.fog=new THREE.Fog(0x1b222b,70,150);
+const camera=new THREE.PerspectiveCamera(48,window.innerWidth/window.innerHeight,0.1,400);
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 220);
-
-/* ---- 環境マップ(金属の映り込み用に明るい工場環境をPMREM化) ---- */
 (function buildEnvironment(){
-  const env = new THREE.Scene();
-  const sphereGeo = new THREE.SphereGeometry(50, 24, 16);
-  const pos = sphereGeo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  const cTop = new THREE.Color(0xcfe2f4), cBot = new THREE.Color(0x39404a);
-  const tmp = new THREE.Color();
-  for(let i=0;i<pos.count;i++){
-    const t = THREE.MathUtils.clamp(pos.getY(i)/50*0.5+0.5, 0, 1);
-    tmp.copy(cBot).lerp(cTop, t);
-    colors[i*3]=tmp.r; colors[i*3+1]=tmp.g; colors[i*3+2]=tmp.b;
+  const env=new THREE.Scene();
+  const sg=new THREE.SphereGeometry(70,24,16);
+  const pos=sg.attributes.position, colors=new Float32Array(pos.count*3);
+  const cTop=new THREE.Color(0xcfe2f4), cBot=new THREE.Color(0x39404a), tmp=new THREE.Color();
+  for(let i=0;i<pos.count;i++){const t=THREE.MathUtils.clamp(pos.getY(i)/70*0.5+0.5,0,1);
+    tmp.copy(cBot).lerp(cTop,t); colors[i*3]=tmp.r; colors[i*3+1]=tmp.g; colors[i*3+2]=tmp.b;}
+  sg.setAttribute("color",new THREE.BufferAttribute(colors,3));
+  env.add(new THREE.Mesh(sg,new THREE.MeshBasicMaterial({side:THREE.BackSide,vertexColors:true})));
+  const lampMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  for(let x=-34;x<=28;x+=8) for(const z of [-6,6]){
+    const lamp=new THREE.Mesh(new THREE.PlaneGeometry(5,1.6),lampMat);
+    lamp.position.set(x,34,z); lamp.rotation.x=Math.PI/2; env.add(lamp);
   }
-  sphereGeo.setAttribute("color", new THREE.BufferAttribute(colors,3));
-  env.add(new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({side:THREE.BackSide, vertexColors:true})));
-  // 天井灯(環境反射用)
-  const lampMat = new THREE.MeshBasicMaterial({color:0xffffff});
-  for(const x of [-24,-16,-8,0,8,16,24]) for(const z of [-5,5]){
-    const lamp = new THREE.Mesh(new THREE.PlaneGeometry(5,1.6), lampMat);
-    lamp.position.set(x, 28, z); lamp.rotation.x = Math.PI/2;
-    env.add(lamp);
-  }
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(env, 0.04).texture;
-  pmrem.dispose();
+  const pm=new THREE.PMREMGenerator(renderer);
+  scene.environment=pm.fromScene(env,0.04).texture; pm.dispose();
 })();
 
-/* ---- 照明(明るい工場) ---- */
-scene.add(new THREE.HemisphereLight(0xbcd6ef, 0x3a3832, 0.85));
-const sun = new THREE.DirectionalLight(0xfff3e2, 1.45);
-sun.position.set(10, 19, 9);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left=-24; sun.shadow.camera.right=18;
-sun.shadow.camera.top=14;   sun.shadow.camera.bottom=-14;
-sun.shadow.camera.far=55;   sun.shadow.bias=-0.0006;
+scene.add(new THREE.HemisphereLight(0xbcd6ef,0x3a3832,0.85));
+const sun=new THREE.DirectionalLight(0xfff3e2,1.4);
+sun.position.set(12,26,12); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-40; sun.shadow.camera.right=40;
+sun.shadow.camera.top=20; sun.shadow.camera.bottom=-12;
+sun.shadow.camera.far=80; sun.shadow.bias=-0.0006;
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0xb8d2ee, 0.35);
-fill.position.set(-12, 10, -10);
-scene.add(fill);
-const back = new THREE.DirectionalLight(0xdfe9f4, 0.25);
-back.position.set(2, 8, -14);
-scene.add(back);
+const fill=new THREE.DirectionalLight(0xb8d2ee,0.35); fill.position.set(-16,12,-12); scene.add(fill);
+const back=new THREE.DirectionalLight(0xdfe9f4,0.22); back.position.set(4,10,-18); scene.add(back);
 
 /* =========================================================
- * カメラコントロール(軌道+パン+プリセットトゥイーン)
+ * カメラコントロール
  * =======================================================*/
 class OrbitCam{
-  constructor(cam, dom){
-    this.cam=cam; this.dom=dom;
-    this.target=new THREE.Vector3(-2.5,1.3,0);
-    this.r=20; this.theta=0.5; this.phi=1.12;
-    this.minR=3.5; this.maxR=52; this.minPhi=0.12; this.maxPhi=1.52;
+  constructor(cam,dom){
+    this.cam=cam; this.dom=dom; this.target=new THREE.Vector3(-3,2,0);
+    this.r=40; this.theta=0.55; this.phi=1.14;
+    this.minR=4; this.maxR=100; this.minPhi=0.12; this.maxPhi=1.52;
     this._btn=-1; this._px=0; this._py=0; this.tween=null;
-    dom.addEventListener("pointerdown",e=>{
-      this._btn=e.button; this._px=e.clientX; this._py=e.clientY;
-      dom.setPointerCapture(e.pointerId);
-    });
+    dom.addEventListener("pointerdown",e=>{this._btn=e.button;this._px=e.clientX;this._py=e.clientY;dom.setPointerCapture(e.pointerId);});
     dom.addEventListener("pointermove",e=>{
-      if(this._btn<0) return;
-      const dx=e.clientX-this._px, dy=e.clientY-this._py;
-      this._px=e.clientX; this._py=e.clientY;
-      if(this._btn===0){
-        this.theta-=dx*0.005;
-        this.phi=THREE.MathUtils.clamp(this.phi-dy*0.005,this.minPhi,this.maxPhi);
-      }else{
-        this._pan(dx,dy);
-      }
-      this.tween=null;
-    });
+      if(this._btn<0)return; const dx=e.clientX-this._px,dy=e.clientY-this._py; this._px=e.clientX;this._py=e.clientY;
+      if(this._btn===0){this.theta-=dx*0.005;this.phi=THREE.MathUtils.clamp(this.phi-dy*0.005,this.minPhi,this.maxPhi);}
+      else this._pan(dx,dy); this.tween=null;});
     dom.addEventListener("pointerup",()=>{this._btn=-1;});
-    dom.addEventListener("wheel",e=>{
-      e.preventDefault();
-      this.r=THREE.MathUtils.clamp(this.r*(e.deltaY>0?1.1:0.9),this.minR,this.maxR);
-      this.tween=null;
-    },{passive:false});
+    dom.addEventListener("wheel",e=>{e.preventDefault();this.r=THREE.MathUtils.clamp(this.r*(e.deltaY>0?1.1:0.9),this.minR,this.maxR);this.tween=null;},{passive:false});
     dom.addEventListener("contextmenu",e=>e.preventDefault());
   }
-  _pan(dx,dy){
-    const s=this.r*0.0012;
+  _pan(dx,dy){const s=this.r*0.0012;
     const fwd=new THREE.Vector3().subVectors(this.target,this.cam.position).normalize();
     const right=new THREE.Vector3().crossVectors(fwd,this.cam.up).normalize();
     const up=new THREE.Vector3().crossVectors(right,fwd).normalize();
-    this.target.addScaledVector(right,-dx*s).addScaledVector(up,dy*s);
-  }
-  flyTo(tx,ty,tz,r,theta,phi){
-    this.tween={k:0,
-      f:{x:this.target.x,y:this.target.y,z:this.target.z,r:this.r,th:this.theta,ph:this.phi},
-      t:{x:tx,y:ty,z:tz,r:r,th:theta,ph:phi}};
-  }
+    this.target.addScaledVector(right,-dx*s).addScaledVector(up,dy*s);}
+  flyTo(tx,ty,tz,r,theta,phi){this.tween={k:0,
+    f:{x:this.target.x,y:this.target.y,z:this.target.z,r:this.r,th:this.theta,ph:this.phi},
+    t:{x:tx,y:ty,z:tz,r:r,th:theta,ph:phi}};}
   update(dt){
-    if(this.tween){
-      const tw=this.tween;
-      tw.k=Math.min(tw.k+dt/0.9,1);
-      const e=tw.k<0.5 ? 2*tw.k*tw.k : 1-Math.pow(-2*tw.k+2,2)/2;
-      this.target.set(
-        THREE.MathUtils.lerp(tw.f.x,tw.t.x,e),
-        THREE.MathUtils.lerp(tw.f.y,tw.t.y,e),
-        THREE.MathUtils.lerp(tw.f.z,tw.t.z,e));
-      this.r    =THREE.MathUtils.lerp(tw.f.r ,tw.t.r ,e);
-      this.theta=THREE.MathUtils.lerp(tw.f.th,tw.t.th,e);
-      this.phi  =THREE.MathUtils.lerp(tw.f.ph,tw.t.ph,e);
-      if(tw.k>=1) this.tween=null;
-    }
+    if(this.tween){const tw=this.tween; tw.k=Math.min(tw.k+dt/0.9,1);
+      const e=tw.k<0.5?2*tw.k*tw.k:1-Math.pow(-2*tw.k+2,2)/2;
+      this.target.set(THREE.MathUtils.lerp(tw.f.x,tw.t.x,e),THREE.MathUtils.lerp(tw.f.y,tw.t.y,e),THREE.MathUtils.lerp(tw.f.z,tw.t.z,e));
+      this.r=THREE.MathUtils.lerp(tw.f.r,tw.t.r,e); this.theta=THREE.MathUtils.lerp(tw.f.th,tw.t.th,e); this.phi=THREE.MathUtils.lerp(tw.f.ph,tw.t.ph,e);
+      if(tw.k>=1)this.tween=null;}
     const sp=Math.sin(this.phi);
-    this.cam.position.set(
-      this.target.x + this.r*sp*Math.sin(this.theta),
-      this.target.y + this.r*Math.cos(this.phi),
-      this.target.z + this.r*sp*Math.cos(this.theta));
-    this.cam.lookAt(this.target);
-  }
+    this.cam.position.set(this.target.x+this.r*sp*Math.sin(this.theta),this.target.y+this.r*Math.cos(this.phi),this.target.z+this.r*sp*Math.cos(this.theta));
+    this.cam.lookAt(this.target);}
 }
-const controls = new OrbitCam(camera, renderer.domElement);
+const controls=new OrbitCam(camera,renderer.domElement);
 
 /* =========================================================
- * テクスチャ生成(Canvas)
+ * テクスチャ / マテリアル
  * =======================================================*/
-function canvasTex(w,h,draw){
-  const c=document.createElement("canvas"); c.width=w; c.height=h;
-  draw(c.getContext("2d"),w,h);
-  const t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  t.encoding=THREE.sRGBEncoding;
-  return t;
-}
+function canvasTex(w,h,draw){const c=document.createElement("canvas");c.width=w;c.height=h;draw(c.getContext("2d"),w,h);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();t.encoding=THREE.sRGBEncoding;return t;}
+const stripTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle="#d8dde2";g.fillRect(0,0,w,h);
+  for(let i=0;i<90;i++){const y=Math.random()*h,len=40+Math.random()*200;
+    g.fillStyle=`rgba(${Math.random()<0.5?"90,100,110":"255,255,255"},${0.03+Math.random()*0.06})`;g.fillRect(Math.random()*w,y,len,1+Math.random()*1.5);}
+  for(let i=0;i<5;i++){const x=Math.random()*w;const gr=g.createLinearGradient(x-22,0,x+22,0);
+    gr.addColorStop(0,"rgba(255,255,255,0)");gr.addColorStop(0.5,"rgba(255,255,255,0.10)");gr.addColorStop(1,"rgba(255,255,255,0)");g.fillStyle=gr;g.fillRect(x-22,0,44,h);}});
+const coilCapTex=canvasTex(512,512,(g,w,h)=>{const cx=w/2,cy=h/2;g.fillStyle="#c2c8cf";g.fillRect(0,0,w,h);
+  for(let r=8;r<w/2;r+=5){g.strokeStyle=`rgba(70,80,90,${0.10+Math.random()*0.14})`;g.lineWidth=1.4;g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.stroke();}
+  g.strokeStyle="rgba(60,70,80,0.55)";g.lineWidth=3.5;g.beginPath();g.moveTo(cx,cy);g.lineTo(w,cy);g.stroke();});
+const rollCapTex=canvasTex(256,256,(g,w,h)=>{const cx=w/2,cy=h/2;g.fillStyle="#8d949c";g.fillRect(0,0,w,h);
+  g.fillStyle="#5a6068";g.beginPath();g.arc(cx,cy,28,0,Math.PI*2);g.fill();g.strokeStyle="rgba(50,56,64,0.7)";g.lineWidth=9;
+  for(let i=0;i<4;i++){const a=i*Math.PI/2;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+Math.cos(a)*w/2,cy+Math.sin(a)*w/2);g.stroke();}
+  g.strokeStyle="rgba(255,255,255,0.25)";g.lineWidth=4;g.beginPath();g.arc(cx,cy,w/2-12,0,Math.PI*2);g.stroke();});
+const concreteTexBase=canvasTex(256,256,(g,w,h)=>{g.fillStyle="#79808a";g.fillRect(0,0,w,h);
+  for(let i=0;i<900;i++){g.fillStyle=`rgba(${Math.random()<0.5?"50,54,60":"175,182,190"},${0.04+Math.random()*0.05})`;g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,1+Math.random()*2);}
+  g.strokeStyle="rgba(45,50,58,0.5)";g.lineWidth=2;g.strokeRect(0,0,w,h);});
+function concreteTex(rx,ry){const t=concreteTexBase.clone();t.needsUpdate=true;t.repeat.set(rx,ry);return t;}
+const hazardTex=canvasTex(128,128,(g,w,h)=>{g.fillStyle="#16191d";g.fillRect(0,0,w,h);g.fillStyle="#e8b324";
+  for(let x=-h;x<w+h;x+=44){g.beginPath();g.moveTo(x,0);g.lineTo(x+22,0);g.lineTo(x+22-h,h);g.lineTo(x-h,h);g.closePath();g.fill();}});
 
-/* ストリップ表面(圧延目+輝度ムラ) */
-const stripTex = canvasTex(512,128,(g,w,h)=>{
-  g.fillStyle="#d8dde2"; g.fillRect(0,0,w,h);
-  for(let i=0;i<90;i++){
-    const y=Math.random()*h, len=40+Math.random()*200;
-    g.fillStyle=`rgba(${Math.random()<0.5?"90,100,110":"255,255,255"},${0.03+Math.random()*0.06})`;
-    g.fillRect(Math.random()*w,y,len,1+Math.random()*1.5);
-  }
-  for(let i=0;i<5;i++){
-    const x=Math.random()*w;
-    const grad=g.createLinearGradient(x-22,0,x+22,0);
-    grad.addColorStop(0,"rgba(255,255,255,0)");
-    grad.addColorStop(0.5,"rgba(255,255,255,0.10)");
-    grad.addColorStop(1,"rgba(255,255,255,0)");
-    g.fillStyle=grad; g.fillRect(x-22,0,44,h);
-  }
-});
-
-/* コイル側面(同心円+巻終端マーク → 回転視認用) */
-const coilCapTex = canvasTex(512,512,(g,w,h)=>{
-  const cx=w/2, cy=h/2;
-  g.fillStyle="#c2c8cf"; g.fillRect(0,0,w,h);
-  for(let r=8;r<w/2;r+=5){
-    g.strokeStyle=`rgba(70,80,90,${0.10+Math.random()*0.14})`;
-    g.lineWidth=1.4;
-    g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke();
-  }
-  g.strokeStyle="rgba(60,70,80,0.55)"; g.lineWidth=3.5;
-  g.beginPath(); g.moveTo(cx,cy); g.lineTo(w,cy); g.stroke();
-});
-
-/* ロール端面(スポーク → 回転視認用) */
-const rollCapTex = canvasTex(256,256,(g,w,h)=>{
-  const cx=w/2, cy=h/2;
-  g.fillStyle="#8d949c"; g.fillRect(0,0,w,h);
-  g.fillStyle="#5a6068";
-  g.beginPath(); g.arc(cx,cy,28,0,Math.PI*2); g.fill();
-  g.strokeStyle="rgba(50,56,64,0.7)"; g.lineWidth=9;
-  for(let i=0;i<4;i++){
-    const a=i*Math.PI/2;
-    g.beginPath(); g.moveTo(cx,cy);
-    g.lineTo(cx+Math.cos(a)*w/2, cy+Math.sin(a)*w/2); g.stroke();
-  }
-  g.strokeStyle="rgba(255,255,255,0.25)"; g.lineWidth=4;
-  g.beginPath(); g.arc(cx,cy,w/2-12,0,Math.PI*2); g.stroke();
-});
-
-/* コンクリート床 */
-const concreteTexBase = canvasTex(256,256,(g,w,h)=>{
-  g.fillStyle="#79808a"; g.fillRect(0,0,w,h);
-  for(let i=0;i<900;i++){
-    g.fillStyle=`rgba(${Math.random()<0.5?"50,54,60":"175,182,190"},${0.04+Math.random()*0.05})`;
-    g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,1+Math.random()*2);
-  }
-  g.strokeStyle="rgba(45,50,58,0.5)"; g.lineWidth=2;
-  g.strokeRect(0,0,w,h);
-});
-function concreteTex(rx,ry){
-  const t=concreteTexBase.clone();
-  t.needsUpdate=true; t.repeat.set(rx,ry);
-  return t;
-}
-
-/* トラ縞(安全表示) */
-const hazardTex = canvasTex(128,128,(g,w,h)=>{
-  g.fillStyle="#16191d"; g.fillRect(0,0,w,h);
-  g.fillStyle="#e8b324";
-  for(let x=-h;x<w+h;x+=44){
-    g.beginPath();
-    g.moveTo(x,0); g.lineTo(x+22,0); g.lineTo(x+22-h,h); g.lineTo(x-h,h);
-    g.closePath(); g.fill();
-  }
-});
-
-/* =========================================================
- * マテリアル
- * =======================================================*/
-const M = {
-  strip: new THREE.MeshStandardMaterial({ map:stripTex, color:0xeef2f5,
-          metalness:0.45, roughness:0.5, side:THREE.DoubleSide }),
-  coilSide: new THREE.MeshStandardMaterial({ map:stripTex, color:0xd2d8dd,
-          metalness:0.85, roughness:0.3 }),
-  coilCap: new THREE.MeshStandardMaterial({ map:coilCapTex, metalness:0.7, roughness:0.42 }),
-  roll: new THREE.MeshStandardMaterial({ color:0x9aa2aa, metalness:0.9, roughness:0.32 }),
-  rollCap: new THREE.MeshStandardMaterial({ map:rollCapTex, metalness:0.75, roughness:0.4 }),
-  rubber: new THREE.MeshStandardMaterial({ color:0x2c3036, metalness:0.1, roughness:0.85 }),
-  rubberA: new THREE.MeshStandardMaterial({ color:0x42474e, metalness:0.04, roughness:0.92 }),
-  rubberB: new THREE.MeshStandardMaterial({ color:0x32363c, metalness:0.04, roughness:0.95 }),
-  paint: new THREE.MeshStandardMaterial({ color:0x33688f, metalness:0.35, roughness:0.55 }),
-  paintDark: new THREE.MeshStandardMaterial({ color:0x24465f, metalness:0.35, roughness:0.6 }),
-  frame: new THREE.MeshStandardMaterial({ color:0x39424c, metalness:0.55, roughness:0.5 }),
-  steel: new THREE.MeshStandardMaterial({ color:0xb6bcc3, metalness:0.9, roughness:0.3 }),
-  knife: new THREE.MeshStandardMaterial({ color:0xd5dade, metalness:0.95, roughness:0.18 }),
-  spacer: new THREE.MeshStandardMaterial({ color:0x6f7780, metalness:0.8, roughness:0.45 }),
-  yellow: new THREE.MeshStandardMaterial({ color:0xe8b324, metalness:0.2, roughness:0.6 }),
-  hazard: new THREE.MeshStandardMaterial({ map:hazardTex, metalness:0.1, roughness:0.8 }),
-  pit: new THREE.MeshStandardMaterial({ color:0x4e545b, metalness:0.05, roughness:0.95 }),
-  screen: new THREE.MeshStandardMaterial({ color:0x0a141c, emissive:0x1d4d66,
-          emissiveIntensity:0.9, metalness:0.2, roughness:0.4 }),
-  lampLit: new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff4dc, emissiveIntensity:1.0 }),
+const M={
+  strip:new THREE.MeshStandardMaterial({map:stripTex,color:0xeef2f5,metalness:0.45,roughness:0.5,side:THREE.DoubleSide}),
+  coilSide:new THREE.MeshStandardMaterial({map:stripTex,color:0xd2d8dd,metalness:0.8,roughness:0.32}),
+  coilCap:new THREE.MeshStandardMaterial({map:coilCapTex,metalness:0.7,roughness:0.42}),
+  roll:new THREE.MeshStandardMaterial({color:0x9aa2aa,metalness:0.9,roughness:0.32}),
+  rollCap:new THREE.MeshStandardMaterial({map:rollCapTex,metalness:0.75,roughness:0.4}),
+  rubber:new THREE.MeshStandardMaterial({color:0x2c3036,metalness:0.1,roughness:0.85}),
+  rubberA:new THREE.MeshStandardMaterial({color:0x42474e,metalness:0.04,roughness:0.92}),
+  rubberB:new THREE.MeshStandardMaterial({color:0x32363c,metalness:0.04,roughness:0.95}),
+  paint:new THREE.MeshStandardMaterial({color:0x33688f,metalness:0.35,roughness:0.55}),
+  paintDark:new THREE.MeshStandardMaterial({color:0x24465f,metalness:0.35,roughness:0.6}),
+  frame:new THREE.MeshStandardMaterial({color:0x39424c,metalness:0.55,roughness:0.5}),
+  steel:new THREE.MeshStandardMaterial({color:0xb6bcc3,metalness:0.9,roughness:0.3}),
+  knife:new THREE.MeshStandardMaterial({color:0xd5dade,metalness:0.95,roughness:0.18}),
+  spacer:new THREE.MeshStandardMaterial({color:0x6f7780,metalness:0.8,roughness:0.45}),
+  yellow:new THREE.MeshStandardMaterial({color:0xe8b324,metalness:0.2,roughness:0.6}),
+  hazard:new THREE.MeshStandardMaterial({map:hazardTex,metalness:0.1,roughness:0.8}),
+  pit:new THREE.MeshStandardMaterial({color:0x4e545b,metalness:0.05,roughness:0.95}),
+  screen:new THREE.MeshStandardMaterial({color:0x0a141c,emissive:0x1d4d66,emissiveIntensity:0.9,metalness:0.2,roughness:0.4}),
+  lampLit:new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff4dc,emissiveIntensity:1.0}),
 };
 
 /* =========================================================
- * 形状ヘルパー
+ * ヘルパー
  * =======================================================*/
-function addBox(w,h,d,mat,x,y,z,parent,shadow){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-  m.position.set(x,y,z);
-  m.castShadow = shadow!==false; m.receiveShadow=true;
-  (parent||scene).add(m);
-  return m;
-}
-/* 軸Z向き円筒(回転体はすべてZ軸回転で統一) */
-function addCylZ(r,len,mats,x,y,z,parent,seg){
-  const g=new THREE.CylinderGeometry(r,r,len,seg||28);
-  g.rotateX(Math.PI/2);
-  const m=new THREE.Mesh(g,mats);
-  m.position.set(x,y,z);
-  m.castShadow=true; m.receiveShadow=true;
-  (parent||scene).add(m);
-  return m;
-}
-const rollMats =()=>[M.roll, M.rollCap, M.rollCap];
-const coilMats =()=>[M.coilSide, M.coilCap, M.coilCap];
+function addBox(w,h,d,mat,x,y,z,parent,shadow){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);m.castShadow=shadow!==false;m.receiveShadow=true;(parent||scene).add(m);return m;}
+function addCylZ(r,len,mats,x,y,z,parent,seg){const g=new THREE.CylinderGeometry(r,r,len,seg||28);g.rotateX(Math.PI/2);
+  const m=new THREE.Mesh(g,mats);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(parent||scene).add(m);return m;}
+const rollMats=()=>[M.roll,M.rollCap,M.rollCap];
+const coilMats=()=>[M.coilSide,M.coilCap,M.coilCap];
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
 
-/* 回転体レジストリ {obj, r(半径 or 関数), dir} → ω = dir*v/r */
 const spinners=[];
-function spin(obj,r,dir){ spinners.push({obj,r,dir}); return obj; }
+function spin(obj,r,dir){spinners.push({obj,r,dir});return obj;}
+
+/* 回転体(ロール)レジストリ — BOM準拠 */
+const R={};                       // id -> {x,y,r}
+const idLabelGroup=new THREE.Group(); scene.add(idLabelGroup);
+function regRoll(id,x,y,r){R[id]={x,y,r}; if(id) makeIdLabel(id,x,y+r+0.12,0);}
+
+/* 一般ロール(鋼) — 幅方向Z軸。frame:床までの軸受柱 */
+function roll(id,x,y,dMM,dir,opt){opt=opt||{};
+  const r=d2r(dMM), len=opt.len||(STRIP_W+0.34), seg=dMM>=200?40:22;
+  const m=addCylZ(r,len,opt.mats||rollMats(),x,y,0,scene,seg);
+  spin(m,r,dir==null?-1:dir);
+  if(opt.frame!==false && y-r>0.12){const hh=y-r;
+    addBox(0.1,hh,0.13,M.frame,x,hh/2,-(len/2+0.05));
+    addBox(0.1,hh,0.13,M.frame,x,hh/2, (len/2+0.05));}
+  regRoll(id,x,y,r); return m;}
+
+/* MDロール — 1軸に幅狭ゴム輪切り円盤を多数(山王鐵工MDロール) */
+function discRoll(id,x,y,dMM,dir){
+  const r=d2r(dMM), len=STRIP_W+0.16;
+  addCylZ(0.05,len+0.5,M.steel,x,y,0,scene);
+  const g=new THREE.Group(); g.position.set(x,y,0); scene.add(g);
+  const nd=Math.max(22,Math.round(len/0.038)), dz=len/nd;
+  for(let i=0;i<nd;i++){const z=-len/2+dz*(i+0.5);addCylZ(r,dz*0.8,(i%2?M.rubberA:M.rubberB),0,0,z,g,18);}
+  spin(g,r,dir); regRoll(id,x,y,r); return g;}
+
+/* スタンドハウジング(2柱+天梁) */
+function housing(x,h,mat){mat=mat||M.paint;
+  addBox(0.16,h,0.16,mat,x,h/2,-(STRIP_W/2+0.42));
+  addBox(0.16,h,0.16,mat,x,h/2, (STRIP_W/2+0.42));
+  addBox(0.24,0.18,STRIP_W+1.1,M.paintDark,x,h+0.02,0);}
+
+/* 接線(コイル外周→外部点) */
+function tangentPoint(cx,cy,Rr,px,py,sign){const dx=px-cx,dy=py-cy,d=Math.hypot(dx,dy)||1e-4;
+  const base=Math.atan2(dy,dx),off=Math.acos(THREE.MathUtils.clamp(Rr/d,-1,1)),a=base+sign*off;
+  return {x:cx+Rr*Math.cos(a),y:cy+Rr*Math.sin(a),a};}
 
 /* =========================================================
- * 接線ジオメトリ — コイル外周(円)から次のロールへ引く接線
- *   コイル中心C, 半径R から外部点P へ。sign で上側/下側の接線を選択。
- *   返り値: 接点(x,y)と中心から見た角度a。
- * =======================================================*/
-function tangentPoint(cx,cy,R,px,py,sign){
-  const dx=px-cx, dy=py-cy;
-  const d=Math.hypot(dx,dy)||1e-4;
-  const base=Math.atan2(dy,dx);
-  const off=Math.acos(THREE.MathUtils.clamp(R/d,-1,1));
-  const a=base + sign*off;
-  return { x:cx+R*Math.cos(a), y:cy+R*Math.sin(a), a };
-}
-/* コイル外周に沿う円弧点列(皮を剥ぐ/巻き付く見た目) a0→a1 */
-function arcPoints(cx,cy,R,a0,a1,n,z,out){
-  for(let i=0;i<n;i++){
-    const a=THREE.MathUtils.lerp(a0,a1,i/(n-1));
-    out.push(V3(cx+R*Math.cos(a), cy+R*Math.sin(a), z));
-  }
-}
-
-/* =========================================================
- * リボンストリップ(動的ジオメトリ)
+ * リボンストリップ(動的)
  * =======================================================*/
 class Ribbon{
-  constructor(width,count,material){
-    this.w=width; this.n=count;
+  constructor(width,count,material){this.w=width;this.n=count;
     const g=new THREE.BufferGeometry();
-    this.pos=new Float32Array(count*6);
-    this.nor=new Float32Array(count*6);
-    this.uv =new Float32Array(count*4);
-    const idx=[];
-    for(let i=0;i<count-1;i++){const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2);}
+    this.pos=new Float32Array(count*6);this.nor=new Float32Array(count*6);this.uv=new Float32Array(count*4);
+    const idx=[];for(let i=0;i<count-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
     g.setIndex(idx);
     g.setAttribute("position",new THREE.BufferAttribute(this.pos,3).setUsage(THREE.DynamicDrawUsage));
-    g.setAttribute("normal",  new THREE.BufferAttribute(this.nor,3).setUsage(THREE.DynamicDrawUsage));
-    g.setAttribute("uv",      new THREE.BufferAttribute(this.uv ,2).setUsage(THREE.DynamicDrawUsage));
-    this.geo=g;
-    this.mesh=new THREE.Mesh(g,material);
-    this.mesh.castShadow=true;
-    this.mesh.frustumCulled=false;
-    scene.add(this.mesh);
-  }
-  update(pts){
-    const h=this.w/2; let s=0;
-    const n=Math.min(pts.length,this.n);
-    let pnx=0, pny=1;                            // 前フレームの法線(退化時に流用)
-    for(let i=0;i<n;i++){
-      const p=pts[i];
-      const pp=pts[Math.max(i-1,0)], pn=pts[Math.min(i+1,n-1)];
-      let tx=pn.x-pp.x, ty=pn.y-pp.y;
-      const tl=Math.hypot(tx,ty);
-      let nx,ny;
-      if(tl<1e-5){ nx=pnx; ny=pny; }            // 重複点 → 直前の法線を維持(黒面防止)
-      else { tx/=tl; ty/=tl; nx=-ty; ny=tx; pnx=nx; pny=ny; }  // n = ez × t
-      if(i>0) s+=p.distanceTo(pts[i-1]);
-      const o=i*6;
-      this.pos[o  ]=p.x; this.pos[o+1]=p.y; this.pos[o+2]=p.z-h;
-      this.pos[o+3]=p.x; this.pos[o+4]=p.y; this.pos[o+5]=p.z+h;
-      this.nor[o  ]=nx;  this.nor[o+1]=ny;  this.nor[o+2]=0;
-      this.nor[o+3]=nx;  this.nor[o+4]=ny;  this.nor[o+5]=0;
-      const u=s/UV_SCALE, q=i*4;
-      this.uv[q]=u; this.uv[q+1]=0; this.uv[q+2]=u; this.uv[q+3]=1;
-    }
-    this.geo.attributes.position.needsUpdate=true;
-    this.geo.attributes.normal.needsUpdate=true;
-    this.geo.attributes.uv.needsUpdate=true;
-  }
-  dispose(){ scene.remove(this.mesh); this.geo.dispose(); }
+    g.setAttribute("normal",new THREE.BufferAttribute(this.nor,3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute("uv",new THREE.BufferAttribute(this.uv,2).setUsage(THREE.DynamicDrawUsage));
+    this.geo=g;this.mesh=new THREE.Mesh(g,material);this.mesh.castShadow=true;this.mesh.frustumCulled=false;scene.add(this.mesh);}
+  update(pts){const h=this.w/2;let s=0;const n=Math.min(pts.length,this.n);let pnx=0,pny=1;
+    for(let i=0;i<n;i++){const p=pts[i];const pp=pts[Math.max(i-1,0)],pn=pts[Math.min(i+1,n-1)];
+      let tx=pn.x-pp.x,ty=pn.y-pp.y;const tl=Math.hypot(tx,ty);let nx,ny;
+      if(tl<1e-5){nx=pnx;ny=pny;}else{tx/=tl;ty/=tl;nx=-ty;ny=tx;pnx=nx;pny=ny;}
+      if(i>0)s+=p.distanceTo(pts[i-1]);const o=i*6;
+      this.pos[o]=p.x;this.pos[o+1]=p.y;this.pos[o+2]=p.z-h;this.pos[o+3]=p.x;this.pos[o+4]=p.y;this.pos[o+5]=p.z+h;
+      this.nor[o]=nx;this.nor[o+1]=ny;this.nor[o+2]=0;this.nor[o+3]=nx;this.nor[o+4]=ny;this.nor[o+5]=0;
+      const u=s/UV_SCALE,q=i*4;this.uv[q]=u;this.uv[q+1]=0;this.uv[q+2]=u;this.uv[q+3]=1;}
+    this.geo.attributes.position.needsUpdate=true;this.geo.attributes.normal.needsUpdate=true;this.geo.attributes.uv.needsUpdate=true;}
+  dispose(){scene.remove(this.mesh);this.geo.dispose();}
 }
-
-/* ポリラインを等間隔n点にサンプリング(張りのある直線経路用) */
-function samplePolyline(pts,n,out){
-  out=out||[];
-  const lens=[]; let total=0;
-  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]); lens.push(l); total+=l;}
-  let seg=0, segStart=0;
-  for(let i=0;i<n;i++){
-    const d=total*i/(n-1);
-    while(seg<lens.length-1 && d>segStart+lens[seg]){segStart+=lens[seg]; seg++;}
+function samplePolyline(pts,n,out){out=out||[];const lens=[];let total=0;
+  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]);lens.push(l);total+=l;}
+  let seg=0,segStart=0;
+  for(let i=0;i<n;i++){const d=total*i/(n-1);
+    while(seg<lens.length-1&&d>segStart+lens[seg]){segStart+=lens[seg];seg++;}
     const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
-    out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));
-  }
-  return out;
-}
-const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+    out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));}
+  return out;}
+
+/* =========================================================
+ * ラベル(スプライト)
+ * =======================================================*/
+const labelGroup=new THREE.Group(); scene.add(labelGroup);
+function spriteText(text,size,bg,bd,fg){const c=document.createElement("canvas"),g=c.getContext("2d");
+  const font=`600 ${size}px "Segoe UI","Hiragino Sans",Meiryo,sans-serif`;g.font=font;
+  const tw=Math.ceil(g.measureText(text).width);c.width=tw+24;c.height=size+22;g.font=font;
+  g.fillStyle=bg;g.strokeStyle=bd;g.lineWidth=2;const r=8,w=c.width,h=c.height;
+  g.beginPath();g.moveTo(r,1);g.lineTo(w-r,1);g.quadraticCurveTo(w-1,1,w-1,r);g.lineTo(w-1,h-r);
+  g.quadraticCurveTo(w-1,h-1,w-r,h-1);g.lineTo(r,h-1);g.quadraticCurveTo(1,h-1,1,h-r);g.lineTo(1,r);g.quadraticCurveTo(1,1,r,1);g.closePath();g.fill();g.stroke();
+  g.fillStyle=fg;g.textBaseline="middle";g.fillText(text,12,h/2+1);
+  const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true}));
+  sp._aspect=c.width/c.height;return sp;}
+function makeLabel(text,x,y,z){const sp=spriteText(text,30,"rgba(10,15,21,0.82)","rgba(79,198,255,0.45)","#cfe3f2");
+  const s=0.62;sp.scale.set(sp._aspect*s,s,1);sp.position.set(x,y,z);labelGroup.add(sp);}
+function makeIdLabel(text,x,y,z){const sp=spriteText(text,26,"rgba(20,12,6,0.8)","rgba(240,180,40,0.6)","#ffe6a8");
+  const s=0.3;sp.scale.set(sp._aspect*s,s,1);sp.position.set(x,y,z);idLabelGroup.add(sp);}
+idLabelGroup.visible=false;
 
 /* =========================================================
  * 工場床・ピット・建屋
  * =======================================================*/
+const PIT1={x0:-15.2,x1:-8.4}, PIT2={x0:5.6,x1:11.6};
 (function buildFactory(){
-  // ピット開口: x[-3.6, 2.0] × z[-0.9, 0.9]
-  const floorY=-0.06, T=0.12;
+  const floorY=-0.06,T=0.12;
+  // 床(ピット開口を避けて分割)
   const segs=[
-    {w:22.0,d:16, x:-14.0,z:0},     // 西側
-    {w:20.0,d:16, x:11.0, z:0},     // 東側
-    {w:5.6, d:7.1,x:-0.8, z:-4.45}, // ピット北
-    {w:5.6, d:7.1,x:-0.8, z:4.45},  // ピット南
+    {w:PIT1.x0-(-36)+0.0, x:(-36+PIT1.x0)/2-0.0, d:18},
+    {w:PIT2.x0-PIT1.x1, x:(PIT1.x1+PIT2.x0)/2, d:18},
+    {w:30-PIT2.x1, x:(PIT2.x1+30)/2, d:18},
   ];
-  for(const s of segs){
-    const mat=new THREE.MeshStandardMaterial({ map:concreteTex(s.w/2.2,s.d/2.2),
-      metalness:0.05, roughness:0.92 });
-    const m=addBox(s.w,T,s.d,mat,s.x,floorY,s.z,scene,false);
-    m.receiveShadow=true;
-  }
-  // ピット内壁・底
-  addBox(5.6,1.5,0.1,M.pit,-0.8,-0.75,-0.95);
-  addBox(5.6,1.5,0.1,M.pit,-0.8,-0.75, 0.95);
-  addBox(0.1,1.5,1.9,M.pit,-3.65,-0.75,0);
-  addBox(0.1,1.5,1.9,M.pit, 2.05,-0.75,0);
-  const pb=addBox(5.6,0.1,1.9,M.pit,-0.8,-1.55,0,scene,false); pb.receiveShadow=true;
-  // トラ縞縁取り
-  addBox(5.9,0.022,0.14,M.hazard,-0.8,0.012,-0.97);
-  addBox(5.9,0.022,0.14,M.hazard,-0.8,0.012, 0.97);
-  addBox(0.14,0.022,2.1,M.hazard,-3.67,0.012,0);
-  addBox(0.14,0.022,2.1,M.hazard, 2.07,0.012,0);
-  // 手すり(南北)
-  for(const zs of [1.18,-1.18]){
-    for(let x=-3.5;x<=2.0;x+=1.37){
-      addBox(0.05,1.05,0.05,M.yellow,x,0.52,zs);
-    }
-    addBox(5.6,0.04,0.04,M.yellow,-0.75,1.02,zs);
-    addBox(5.6,0.04,0.04,M.yellow,-0.75,0.58,zs);
+  for(const s of segs){const mat=new THREE.MeshStandardMaterial({map:concreteTex(Math.max(2,s.w/2.2),8),metalness:0.05,roughness:0.92});
+    const m=addBox(s.w,T,s.d,mat,s.x,floorY,0,scene,false);m.receiveShadow=true;}
+  // ピット北/南床
+  for(const p of [PIT1,PIT2]){
+    const w=p.x1-p.x0,cx=(p.x0+p.x1)/2;
+    for(const z of [-5.6,5.6]){const mat=new THREE.MeshStandardMaterial({map:concreteTex(w/2.2,3),metalness:0.05,roughness:0.92});
+      addBox(w,T,7,mat,cx,floorY,z,scene,false).receiveShadow=true;}
+    // ピット壁・底
+    addBox(w,2.4,0.1,M.pit,cx,-1.2,-1.05);addBox(w,2.4,0.1,M.pit,cx,-1.2,1.05);
+    addBox(0.1,2.4,2.1,M.pit,p.x0-0.05,-1.2,0);addBox(0.1,2.4,2.1,M.pit,p.x1+0.05,-1.2,0);
+    addBox(w,0.1,2.1,M.pit,cx,-2.4,0,scene,false).receiveShadow=true;
+    addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,-1.06);addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,1.06);
   }
   // 通路区画線
-  addBox(40,0.012,0.1,M.yellow,-3,0.011,5.6,scene,false);
-  addBox(40,0.012,0.1,M.yellow,-3,0.011,-5.6,scene,false);
+  addBox(70,0.012,0.12,M.yellow,-3,0.011,6.4,scene,false);
+  addBox(70,0.012,0.12,M.yellow,-3,0.011,-6.4,scene,false);
   // 建屋柱・梁・天井灯
-  for(const x of [-22,-14,-6,2,10,18]){
-    addBox(0.45,8,0.45,M.frame,x,4,-7.4);
-    addBox(0.45,8,0.45,M.frame,x,4, 7.4);
-  }
-  addBox(42,0.45,0.34,M.frame,-2,8.0,-7.4);
-  addBox(42,0.45,0.34,M.frame,-2,8.0, 7.4);
-  for(const x of [-18,-10,-2,6,14]){
-    for(const z of [-3.4,3.4]){
-      addBox(2.4,0.16,0.9,M.frame,x,7.7,z);
-      const lit=addBox(2.1,0.05,0.66,M.lampLit,x,7.6,z); lit.castShadow=false;
-      const pl=new THREE.PointLight(0xfff2dc,0.32,16,2.0);
-      pl.position.set(x,7.3,z); scene.add(pl);
-    }
-  }
-  // 操作盤(オペレータコンソール) — ライン手前(+z)に設置し、操作員はラインを向く。
-  // 傾斜した操作デスク(押釦・セレクタ・非常停止)＋立上りHMIモニタ。
-  const desk=new THREE.Group(); desk.position.set(-6.0,0,4.6); scene.add(desk);
+  for(let x=-34;x<=28;x+=8){addBox(0.5,9,0.5,M.frame,x,4.5,-8.6);addBox(0.5,9,0.5,M.frame,x,4.5,8.6);}
+  addBox(70,0.5,0.4,M.frame,-3,9.1,-8.6);addBox(70,0.5,0.4,M.frame,-3,9.1,8.6);
+  for(let x=-32;x<=28;x+=6) for(const z of [-4,4]){addBox(2.4,0.16,0.9,M.frame,x,8.7,z);
+    addBox(2.1,0.05,0.66,M.lampLit,x,8.6,z,scene,false).castShadow=false;
+    const pl=new THREE.PointLight(0xfff2dc,0.22,20,2.0);pl.position.set(x,8.3,z);scene.add(pl);}
+})();
+
+/* =========================================================
+ * 操作盤(オペレータコンソール)
+ * =======================================================*/
+(function buildConsole(){
+  const desk=new THREE.Group();desk.position.set(-5.5,0,5.0);scene.add(desk);
   const litBtn=(c)=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0.6,roughness:0.4});
-  // 下部キャビネット
   addBox(1.7,0.92,0.7,M.paint,0,0.46,0,desk);
   addBox(1.74,0.05,0.74,M.frame,0,0.93,0,desk);
-  // 傾斜操作面(操作員=-z 側へ向け上面を倒す)
-  const top=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.05,0.5),M.paintDark);
-  top.position.set(0,1.02,-0.16); top.rotation.x=0.5; top.castShadow=true; desk.add(top);
-  // 押釦(緑=起動/赤=停止/黄=リセット)＋セレクタ
-  const btnY=1.1, btnZ=-0.28;
-  [0x36c46b,0xe8b324].forEach((c,i)=>{
-    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.05,18),litBtn(c));
-    b.position.set(-0.55+i*0.22, btnY, btnZ); b.rotation.x=Math.PI/2-0.5; desk.add(b);
-  });
-  // 非常停止(赤キノコ釦)
-  const estopBase=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,18),
-    new THREE.MeshStandardMaterial({color:0xf0c419,roughness:0.5}));
-  estopBase.position.set(0.5,btnY-0.01,btnZ); estopBase.rotation.x=Math.PI/2-0.5; desk.add(estopBase);
-  const estop=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.05,18),litBtn(0xd03020));
-  estop.position.set(0.5,btnY+0.03,btnZ-0.03); estop.rotation.x=Math.PI/2-0.5; desk.add(estop);
-  // セレクタスイッチ
-  const sel=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.07,16),M.steel);
-  sel.position.set(0.05,btnY+0.02,btnZ-0.02); sel.rotation.x=-0.5; desk.add(sel);
-  // 立上りHMIモニタ(操作員側 -z を向く)
-  const post=addBox(0.1,0.55,0.1,M.frame,0,1.28,0.18,desk);
-  const mon=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.6,0.06),M.frame);
-  mon.position.set(0,1.68,0.13); mon.rotation.x=0.22; mon.castShadow=true; desk.add(mon);
-  const scr=new THREE.Mesh(new THREE.BoxGeometry(0.86,0.5,0.02),M.screen);
-  scr.position.set(0,1.68,0.10); scr.rotation.x=0.22; desk.add(scr);
-  // 操作員が立つ安全マット
+  const top=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.05,0.5),M.paintDark);top.position.set(0,1.02,-0.16);top.rotation.x=0.5;top.castShadow=true;desk.add(top);
+  const btnY=1.1,btnZ=-0.28;
+  [0x36c46b,0xe8b324].forEach((c,i)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.05,18),litBtn(c));b.position.set(-0.55+i*0.22,btnY,btnZ);b.rotation.x=Math.PI/2-0.5;desk.add(b);});
+  const eb=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,18),new THREE.MeshStandardMaterial({color:0xf0c419,roughness:0.5}));eb.position.set(0.5,btnY-0.01,btnZ);eb.rotation.x=Math.PI/2-0.5;desk.add(eb);
+  const es=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.05,18),litBtn(0xd03020));es.position.set(0.5,btnY+0.03,btnZ-0.03);es.rotation.x=Math.PI/2-0.5;desk.add(es);
+  const sel=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.07,16),M.steel);sel.position.set(0.05,btnY+0.02,btnZ-0.02);sel.rotation.x=-0.5;desk.add(sel);
+  addBox(0.1,0.55,0.1,M.frame,0,1.28,0.18,desk);
+  const mon=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.6,0.06),M.frame);mon.position.set(0,1.68,0.13);mon.rotation.x=0.22;mon.castShadow=true;desk.add(mon);
+  const scr=new THREE.Mesh(new THREE.BoxGeometry(0.86,0.5,0.02),M.screen);scr.position.set(0,1.68,0.10);scr.rotation.x=0.22;desk.add(scr);
   addBox(1.2,0.02,0.8,M.hazard,0,0.011,-0.7,desk,false);
-  scene.add(desk);
 })();
 
 /* =========================================================
- * アンコイラ
+ * アンコイラ / リコイラ
  * =======================================================*/
 const uncGroup=(function(){
-  // 片持ちペデスタル(駆動側)
-  addBox(1.6,1.7,1.3,M.paint,UNC_X,0.85,-1.45);
-  addBox(2.0,0.24,1.8,M.paintDark,UNC_X,0.12,-1.4);
-  addCylZ(0.38,0.6,M.paintDark,UNC_X,UNC_Y,-1.05,scene);
-  // 回転グループ(マンドレル+母コイル)
-  const g=new THREE.Group(); g.position.set(UNC_X,UNC_Y,0); scene.add(g);
-  addCylZ(R_MANDREL,1.95,rollMats(),0,0,-0.07,g);
-  const coil=addCylZ(1,1.18,coilMats(),0,0,0,g,48);
-  spin(g, ()=>st.ru, -1);
-  return {g, coil};
-})();
+  addBox(1.7,1.9,1.4,M.paint,UNC_X,0.95,-1.5);
+  addBox(2.2,0.26,1.9,M.paintDark,UNC_X,0.13,-1.45);
+  addCylZ(0.42,0.62,M.paintDark,UNC_X,UNC_Y,-1.1,scene);
+  // コイルサドル(V受台)
+  const sd=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,1.6),M.frame);sd.position.set(UNC_X,0.1,0.4);scene.add(sd);
+  const g=new THREE.Group();g.position.set(UNC_X,UNC_Y,0);scene.add(g);
+  addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,g);
+  const coil=addCylZ(1,1.2,coilMats(),0,0,0,g,48);
+  spin(g,()=>st.ru,-1);return{g,coil};})();
+
+const recGroup=new THREE.Group();recGroup.position.set(REC_X,REC_Y,0);scene.add(recGroup);
+spin(recGroup,()=>st.rr,-1);
+let recCoils=[];
+(function(){
+  addBox(1.7,1.9,1.4,M.paint,REC_X,0.95,-1.5);
+  addBox(2.2,0.26,1.9,M.paintDark,REC_X,0.13,-1.45);
+  addCylZ(0.42,0.62,M.paintDark,REC_X,REC_Y,-1.1,scene);
+  addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,recGroup);
+  addBox(0.28,1.95,0.28,M.paint,REC_X,0.97,1.25);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.06,12,28),M.paintDark);ring.position.set(REC_X,REC_Y,1.08);ring.castShadow=true;scene.add(ring);})();
+function buildRecCoils(N){for(const c of recCoils){c.geometry.dispose();recGroup.remove(c);}recCoils=[];
+  const sw=EFF_W/N;for(let i=0;i<N;i++){const zc=-EFF_W/2+(i+0.5)*sw;
+    recCoils.push(addCylZ(1,sw-0.014,coilMats(),0,0,zc,recGroup,40));}}
+const coilCar=(function(){addBox(3.6,0.06,0.12,M.frame,REC_X+3.6,0.03,0.42,scene,false);addBox(3.6,0.06,0.12,M.frame,REC_X+3.6,0.03,-0.42,scene,false);
+  const g=new THREE.Group();g.position.set(REC_X+4.2,0,0);scene.add(g);addBox(1.7,0.3,1.1,M.yellow,0,0.34,0,g);
+  const s1=addBox(1.4,0.07,0.55,M.paintDark,0,0.6,-0.26,g);s1.rotation.x=0.5;const s2=addBox(1.4,0.07,0.55,M.paintDark,0,0.6,0.26,g);s2.rotation.x=-0.5;
+  for(const [wx,wz] of [[-0.65,0.45],[0.65,0.45],[-0.65,-0.45],[0.65,-0.45]])addCylZ(0.12,0.1,M.frame,wx,0.12,wz,g);return g;})();
 
 /* =========================================================
- * 入側ピンチロール・レベラー
+ * 全ロール配置(BOM準拠) — 横からの概略図に沿って西→東
  * =======================================================*/
-(function buildEntry(){
-  const g=new THREE.Group(); g.position.set(-9.2,0,0); scene.add(g);
-  addBox(1.7,1.25,0.1,M.paint,0,1.18,-0.86,g);
-  addBox(1.7,1.25,0.1,M.paint,0,1.18, 0.86,g);
-  addBox(1.7,0.14,1.85,M.paintDark,0,1.86,0,g);
-  addBox(1.9,0.5,1.8,M.paintDark,0,0.28,0,g);
-  // ピンチロール(ゴム)
-  spin(addCylZ(0.11,1.6,M.rubber,-0.5,PASS_Y-0.11,0,g), 0.11,-1);
-  spin(addCylZ(0.11,1.6,M.rubber,-0.5,PASS_Y+0.11,0,g), 0.11, 1);
-  // レベラーロール(下3本・上2本)
-  for(const x of [-0.05,0.25,0.55])
-    spin(addCylZ(0.07,1.6,rollMats(),x,PASS_Y-0.07,0,g), 0.07,-1);
-  for(const x of [0.10,0.40])
-    spin(addCylZ(0.07,1.6,rollMats(),x,PASS_Y+0.07,0,g), 0.07, 1);
-})();
+// 入側
+roll('A',-29.0,PL+0.55,280,-1);                       // スナバーロール
+roll('B',-28.0,PL+0.16,100,-1);                       // ベンドロール
+housing(-26.9,PL+0.9); roll('C1',-26.9,PL+0.25,500,1);roll('C2',-26.9,PL-0.25,500,-1); // 入側ピンチ
+roll('D1',-25.95,PL,60,-1,{frame:false});
+roll('E2-1',-25.7,PL-0.06,150,-1,{frame:false});roll('E1-1',-25.4,PL+0.06,150,1,{frame:false});
+roll('E2-2',-25.1,PL-0.06,150,-1,{frame:false});roll('E1-2',-24.8,PL+0.06,150,1,{frame:false});
+roll('E2-3',-24.5,PL-0.06,150,-1,{frame:false});roll('D2',-24.2,PL,60,-1,{frame:false});
+housing(-22.7,PL+0.95,M.paintDark);                   // 入側シャー
+roll('F',-22.7,PL+0.45,100,1);roll('G',-22.7,PL-0.30,60,-1,{frame:false});
+addBox(0.04,0.5,STRIP_W+0.4,M.steel,-22.45,PL+0.55,0); // 上刃
+addBox(0.04,0.4,STRIP_W+0.4,M.steel,-22.45,PL-0.35,0); // 下刃
+roll('H1-1',-21.2,PL-d2r(98),98,-1,{frame:false});roll('H1-2',-20.6,PL-d2r(98),98,-1,{frame:false});roll('H1-3',-20.0,PL-d2r(98),98,-1,{frame:false});
+housing(-18.0,PL+0.95);                               // 板押え/検査/ループ前ピンチ
+roll('J4',-18.4,PL-0.085,150,-1,{frame:false});roll('J1',-18.8,PL+0.085,150,1,{frame:false});
+roll('J5',-17.6,PL-0.085,150,-1,{frame:false});roll('J2',-18.0,PL+0.085,150,1,{frame:false});
+roll('J3',-17.2,PL+0.085,150,1,{frame:false});
+// No.1ルーパー(入側カテナリー K1 / テーブル H2 / 出側カテナリー K2)
+roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-15.0,PL-d2r(98),98,-1,{frame:false});
+const H2pts=[]; (function(){const x0=-14.5,x1=-9.6,depth=1.5,r=d2r(98);
+  for(let i=0;i<9;i++){const x=THREE.MathUtils.lerp(x0,x1,i/8);const t=(x-x0)/(x1-x0);const py=PL-depth*4*t*(1-t);
+    roll('H2-'+(i+1),x,py-r,98,-1,{frame:false});H2pts.push(V3(x,py,0));}})();
+roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
+// VCロール / パスロール / スリッター前ピンチ
+housing(-7.4,PL+0.9); roll('L1',-7.4,PL+0.16,80,1);roll('L2',-7.4,PL-0.16,80,-1);
+roll('M',-6.4,PL-d2r(60),60,-1,{frame:false});
+housing(-5.1,PL+0.9); roll('N1',-5.1,PL+0.11,200,1);roll('N2',-5.1,PL-d2r(98),98,-1);
+// サイドガイドロール(5)
+for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL+0.0,60,-1,{frame:false,len:0.5});
+roll('Q',-1.0,PL+0.13,120,1,{frame:false});           // 板押えロール
+// スリッター(I=スチールシャフトφ98 アーバー + 上下丸刃群)
+const knifeUp=new THREE.Group(),knifeLo=new THREE.Group();
+knifeUp.position.set(SLIT_X,PL+0.20,0);knifeLo.position.set(SLIT_X,PL-0.20,0);scene.add(knifeUp,knifeLo);
+spin(knifeUp,0.18,1);spin(knifeLo,0.18,-1);
+(function(){housing(SLIT_X,PL+1.1,M.paintDark);
+  for(const y of [PL+0.20,PL-0.20]){addCylZ(d2r(98),STRIP_W+1.0,M.steel,SLIT_X,y,0,scene);
+    addCylZ(0.16,0.5,M.paintDark,SLIT_X,y,-(STRIP_W/2+0.85),scene);}
+  regRoll('I',SLIT_X,PL+0.20,d2r(98));})();
+// 出側テーブル
+for(let i=0;i<5;i++)roll('R1-'+(i+1),1.4+i*0.6,PL-d2r(98),98,-1,{frame:false});
+// No.2ルーパー(入側カテナリー S1 / テーブル R2 / 出側カテナリー S2)
+roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1,{frame:false});roll('S1-3',5.6,PL-d2r(94),94,-1,{frame:false});
+const R2pts=[]; (function(){const x0=6.1,x1=11.1,depth=1.6,r=d2r(98);
+  for(let i=0;i<11;i++){const x=THREE.MathUtils.lerp(x0,x1,i/10);const t=(x-x0)/(x1-x0);const py=PL-depth*4*t*(1-t);
+    roll('R2-'+(i+1),x,py-r,98,-1,{frame:false});R2pts.push(V3(x,py,0));}})();
+roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
+// セパ押え / MDミニ前
+roll('T1',13.6,PL+0.16,80,1,{frame:false});roll('T2',14.3,PL-d2r(80),80,-1,{frame:false});
+// MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク) — 帯は上下間を通板
+housing(15.2,PL+1.1); discRoll('V1',15.2,PL+0.16,250,1);discRoll('V2',15.2,PL-0.16,250,-1);
+housing(16.8,PL+1.2,M.paintDark); discRoll('W1',16.8,PL+0.22,400,1);discRoll('W2',16.8,PL-0.22,400,-1);
+addCylZ(0.18,0.5,M.paintDark,16.8,PL+0.22,-(STRIP_W/2+0.95),scene); // MD駆動モーター
+addCylZ(0.18,0.5,M.paintDark,16.8,PL-0.22,-(STRIP_W/2+0.95),scene);
+// 出側ピンチ
+housing(18.4,PL+0.9); roll('X1',18.4,PL+0.11,200,1);roll('X2',18.4,PL-0.11,200,-1);
+// デフロール(上下φ500)
+roll('Y2',19.9,PL+0.27,500,1);roll('Y1',20.6,PL-0.27,500,-1);
+// テールキャッチャー
+roll('Z',22.0,PL+0.10,190,1,{frame:false});
 
 /* =========================================================
- * スリッターヘッド(条数で再構築)
+ * スリッター丸刃 / セパレーター(条数依存)
  * =======================================================*/
-const knifeGroupUp = new THREE.Group();
-const knifeGroupLo = new THREE.Group();
-knifeGroupUp.position.set(SLIT_X, PASS_Y+0.16, 0);
-knifeGroupLo.position.set(SLIT_X, PASS_Y-0.16, 0);
-scene.add(knifeGroupUp, knifeGroupLo);
-spin(knifeGroupUp, 0.18,  1);
-spin(knifeGroupLo, 0.18, -1);
-
-(function buildSlitterFrame(){
-  addBox(1.0,2.5,0.36,M.paint,SLIT_X,1.25,-1.12);
-  addBox(1.0,2.5,0.36,M.paint,SLIT_X,1.25, 1.12);
-  addBox(1.0,0.3,2.62,M.paintDark,SLIT_X,2.55,0);
-  addBox(1.5,0.24,2.9,M.paintDark,SLIT_X,0.12,0);
-  // アーバー軸端+駆動モーター
-  for(const y of [PASS_Y+0.16, PASS_Y-0.16]){
-    addCylZ(0.07,2.7,M.steel,SLIT_X,y,0,scene);
-    addCylZ(0.17,0.55,M.paintDark,SLIT_X,y,-1.68,scene);
-    addCylZ(0.05,0.3,M.steel,SLIT_X,y,-1.38,scene);
-  }
-})();
-
-function buildKnives(N){
-  for(const grp of [knifeGroupUp, knifeGroupLo]){
-    while(grp.children.length){
-      const c=grp.children.pop();
-      c.geometry.dispose(); grp.remove(c);
-    }
-  }
-  // スペーサー(全幅)
-  addCylZ(0.118,1.85,M.spacer,0,0,0,knifeGroupUp);
-  addCylZ(0.118,1.85,M.spacer,0,0,0,knifeGroupLo);
-  // 丸刃: 製品カット N+1 箇所(両耳含む)
+function buildKnives(N){for(const grp of [knifeUp,knifeLo]){while(grp.children.length){const c=grp.children.pop();c.geometry.dispose();grp.remove(c);}}
+  addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
+  const sw=EFF_W/N;for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
+    addCylZ(0.18,0.016,M.knife,0,0,zc-0.010,knifeUp,36);addCylZ(0.18,0.016,M.knife,0,0,zc+0.010,knifeLo,36);}}
+const sepGroups=[];
+function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.length){const c=sg.g.children.pop();c.geometry.dispose();sg.g.remove(c);}}
   const sw=EFF_W/N;
-  for(let k=0;k<=N;k++){
-    const zc=-EFF_W/2 + k*sw;
-    addCylZ(0.18,0.016,M.knife,0,0,zc-0.010,knifeGroupUp,36);
-    addCylZ(0.18,0.016,M.knife,0,0,zc+0.010,knifeGroupLo,36);
-  }
-}
+  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;addCylZ(0.22,0.012,M.knife,sg.x,PL+0.32,zc,sg.g,28);}}}
+(function(){for(const x of [13.0,21.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
+  addBox(0.16,3.0,0.16,M.frame,x,1.5,-1.3);addBox(0.16,3.0,0.16,M.frame,x,1.5,1.3);addBox(0.2,0.16,2.76,M.yellow,x,3.0,0);
+  addCylZ(0.04,STRIP_W+0.8,M.steel,x,PL+0.32,0,scene);}})();
 
 /* =========================================================
  * サイドワインダー(耳屑巻取機・両側)
  * =======================================================*/
-function buildScrapWinder(side){
-  const z=2.55*side, x=-4.6, y=1.0;
-  addBox(0.55,1.0,0.55,M.paintDark,x,0.5,z+0.45*side);
-  addCylZ(0.2,0.32,M.paintDark,x,y,z+0.34*side,scene);
-  const g=new THREE.Group(); g.position.set(x,y,z); scene.add(g);
-  addCylZ(0.12,0.44,M.steel,0,0,0,g);
-  addCylZ(0.46,0.03,rollMats(),0,0,-0.22,g,36);
-  addCylZ(0.46,0.03,rollMats(),0,0, 0.22,g,36);
-  const coil=addCylZ(1,0.34,coilMats(),0,0,0,g,32);
-  spin(g, side>0 ? ()=>st.rsR : ()=>st.rsL, -1);
-  return {coil, x, y, z};
-}
-const scrapR=buildScrapWinder( 1);
-const scrapL=buildScrapWinder(-1);
+function buildScrapWinder(side){const z=2.7*side,x=1.2,y=1.0;
+  addBox(0.55,1.0,0.55,M.paintDark,x,0.5,z+0.45*side);addCylZ(0.2,0.32,M.paintDark,x,y,z+0.34*side,scene);
+  const g=new THREE.Group();g.position.set(x,y,z);scene.add(g);
+  addCylZ(0.1,0.44,M.steel,0,0,0,g);addCylZ(0.42,0.03,rollMats(),0,0,-0.21,g,32);addCylZ(0.42,0.03,rollMats(),0,0,0.21,g,32);
+  const coil=addCylZ(1,0.32,coilMats(),0,0,0,g,32);spin(g,side>0?()=>st.rsR:()=>st.rsL,-1);return{coil,x,y,z};}
+const scrapR=buildScrapWinder(1),scrapL=buildScrapWinder(-1);
 
 /* =========================================================
- * ルーパーロール・MDロール(ブライドル式テンション)・デフレクター
+ * ストリップ(リボン)
  * =======================================================*/
-(function buildMid(){
-  // ルーパー出入りロール
-  for(const x of [LOOP_IN, LOOP_OUT]){
-    spin(addCylZ(0.1,2.0,rollMats(),x,PASS_Y-0.1,0,scene), 0.1,-1);
-    addBox(0.16,0.3,0.12,M.frame,x,PASS_Y-0.05,-1.06);
-    addBox(0.16,0.3,0.12,M.frame,x,PASS_Y-0.05, 1.06);
-    addBox(0.16,1.2,0.12,M.frame,x,0.6,-1.06);
-    addBox(0.16,1.2,0.12,M.frame,x,0.6, 1.06);
-  }
-  // MDロール(ゴムミニディスクロール) — 1軸に幅狭のゴム輪切り円盤を多数組合せ。
-  // 各条がロール上面を通過。ゴム円盤の弾性変形で条間の張力差を緩和する張力装置。
-  addCylZ(0.085, MD_LEN+0.6, M.steel, MDX, MD_CY, 0, scene);   // 貫通軸
-  const mdg=new THREE.Group(); mdg.position.set(MDX, MD_CY, 0); scene.add(mdg);
-  const nd=54, dz=MD_LEN/nd;
-  for(let i=0;i<nd;i++){
-    const z=-MD_LEN/2 + dz*(i+0.5);
-    addCylZ(MD_R, dz*0.8, (i%2?M.rubberA:M.rubberB), 0,0,z, mdg, 22);
-  }
-  spin(mdg, MD_R, -1);                                          // 帯は上面 → -Z回転
-  // 軸受台・フレーム・駆動モーター
-  addBox(0.2,1.0,0.34,M.paint,MDX,0.5,-(MD_LEN/2+0.22));
-  addBox(0.2,1.0,0.34,M.paint,MDX,0.5, (MD_LEN/2+0.22));
-  addCylZ(0.14,0.45,M.paintDark,MDX,MD_CY,-(MD_LEN/2+0.45),scene);
-  // デフレクターロール
-  spin(addCylZ(DEFL_R,2.0,rollMats(),DEFL_X,DEFL_CY,0,scene), DEFL_R,-1);
-  addBox(0.18,1.6,0.14,M.frame,DEFL_X,0.78,-1.06);
-  addBox(0.18,1.6,0.14,M.frame,DEFL_X,0.78, 1.06);
-})();
+const entryRibbon=new Ribbon(STRIP_W-0.01,ENTRY_N,M.strip);
+let strandRibbons=[],strandZ=[];
+const trimRibbonR=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip),trimRibbonL=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip);
+function buildStrands(N){for(const r of strandRibbons)r.dispose();strandRibbons=[];strandZ=[];
+  const sw=EFF_W/N;for(let i=0;i<N;i++){strandZ.push(-EFF_W/2+(i+0.5)*sw);strandRibbons.push(new Ribbon(sw-0.014,STRAND_N,M.strip));}}
+const TOP=(id)=>{const o=R[id];return V3(o.x,o.y+o.r,0);};
+const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
+
+const _e=[];
+function updateEntryRibbon(){const raw=_e;raw.length=0;
+  // アンコイラ外周からの接線で払い出し
+  const A=R.A,Tt=tangentPoint(UNC_X,UNC_Y,st.ru,A.x,A.y+A.r,+1);
+  for(let i=0;i<6;i++){const a=THREE.MathUtils.lerp(Tt.a+0.8,Tt.a,i/5);raw.push(V3(UNC_X+(st.ru+0.004)*Math.cos(a),UNC_Y+(st.ru+0.004)*Math.sin(a),0));}
+  raw.push(TOP('A'));raw.push(TOP('B'));raw.push(NIP('C1'));
+  raw.push(V3(R['H1-1'].x,PL,0));raw.push(V3(R['H1-3'].x,PL,0));
+  raw.push(NIP('J2'));raw.push(V3(R['K1-2'].x,PL,0));
+  for(const p of H2pts)raw.push(p.clone());                 // No.1ルーパー垂み
+  raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(V3(R.M.x,PL,0));raw.push(NIP('N1'));raw.push(TOP('Q'));
+  raw.push(V3(SLIT_X,PL,0));
+  const out=[];samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);}
+
+const _sraw=[],_sout=[];
+function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
+  raw.push(V3(SLIT_X,PL,zc));
+  raw.push(V3(R['R1-1'].x,PL,zc));raw.push(V3(R['R1-5'].x,PL,zc));raw.push(V3(R['S1-2'].x,PL,zc));
+  for(const p of R2pts)raw.push(V3(p.x,p.y,zc));            // No.2ルーパー垂み
+  raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
+  raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
+  raw.push(V3(R.Y2.x,R.Y2.y+R.Y2.r,zc));raw.push(V3(R.Y1.x,R.Y1.y-R.Y1.r,zc));     // デフS字
+  raw.push(V3(R.Z.x,R.Z.y+R.Z.r,zc));
+  const Tt=tangentPoint(REC_X,REC_Y,st.rr,R.Z.x,R.Z.y,-1);  // リコイラ外周へ接線巻取り
+  raw.push(V3(Tt.x,Tt.y,zc));
+  for(let j=1;j<=4;j++){const a=THREE.MathUtils.lerp(Tt.a,Tt.a-0.7,j/4);raw.push(V3(REC_X+(st.rr+0.004)*Math.cos(a),REC_Y+(st.rr+0.004)*Math.sin(a),zc));}
+  _sout.length=0;samplePolyline(raw,STRAND_N,_sout);rib.update(_sout);}
+
+const _tcR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
+const _tcL=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
+function updateTrim(rib,curve,side,rs){const z0=(EFF_W/2+TRIM_W/2)*side;const sw=scrapR;
+  const ap=V3(0.85,1.2,sw.z-0.5*side);const Tt=tangentPoint(sw.x,sw.y,rs,ap.x,ap.y,+1);
+  curve.points[0].set(SLIT_X,PL,z0);curve.points[1].set(0.3,PL-0.05,z0+0.3*side);
+  curve.points[2].set(0.7,1.5,sw.z*0.55);curve.points[3].set(ap.x,ap.y,sw.z-0.18*side);curve.points[4].set(Tt.x,Tt.y,sw.z);
+  rib.update(curve.getPoints(TRIM_N-1));}
 
 /* =========================================================
- * オーバーアームセパレーター(条数で再構築)
+ * ラベル(設備名)
  * =======================================================*/
-const sepGroup=new THREE.Group(); scene.add(sepGroup);
-(function(){
-  addBox(0.16,3.0,0.16,M.frame,SEP_X,1.5,-1.3);
-  addBox(0.16,3.0,0.16,M.frame,SEP_X,1.5, 1.3);
-  addBox(0.2,0.16,2.76,M.yellow,SEP_X,2.95,0);
-  addCylZ(0.045,2.5,M.steel,SEP_X,1.62,0,scene);
-})();
-function buildSeparators(N){
-  while(sepGroup.children.length){
-    const c=sepGroup.children.pop();
-    c.geometry.dispose(); sepGroup.remove(c);
-  }
-  const sw=EFF_W/N;
-  for(let k=0;k<=N;k++){
-    const zc=-EFF_W/2+k*sw;
-    addCylZ(0.26,0.012,M.knife,SEP_X,1.62,zc,sepGroup,32);
-  }
-}
+makeLabel("アンコイラ",UNC_X,PL+1.7,0);
+makeLabel("入側ピンチ",-26.9,PL+1.3,0);
+makeLabel("ラフレベラー",-25.1,PL+0.9,0);
+makeLabel("入側シャー",-22.7,PL+1.4,0);
+makeLabel("ループ前ピンチ",-18.0,PL+1.4,0);
+makeLabel("No.1ルーパー",-12.0,PL+0.5,0);
+makeLabel("VCロール",-7.4,PL+1.3,0);
+makeLabel("スリッター前ピンチ",-5.1,PL+1.35,0);
+makeLabel("スリッターヘッド",SLIT_X,PL+1.55,0);
+makeLabel("サイドワインダー(耳屑)",1.2,2.1,2.7);
+makeLabel("No.2ルーパー",8.6,PL+0.5,0);
+makeLabel("セパレーター",13.0,PL+1.45,0);
+makeLabel("MDロール(上下ピンチ)",16.0,PL+1.65,0);
+makeLabel("出側ピンチ",18.4,PL+1.3,0);
+makeLabel("デフロール",20.2,PL+1.5,0);
+makeLabel("テールキャッチャー",22.0,PL+0.9,0);
+makeLabel("リコイラ",REC_X,PL+1.7,0);
 
 /* =========================================================
- * リコイラ+コイルカー
+ * 条数依存部の再構築
  * =======================================================*/
-const recGroup=new THREE.Group();
-recGroup.position.set(REC_X,REC_Y,0);
-scene.add(recGroup);
-spin(recGroup, ()=>st.rr, -1);
-let recCoils=[];
-
-(function buildRecoilerFrame(){
-  addBox(1.6,1.7,1.3,M.paint,REC_X,0.85,-1.45);
-  addBox(2.0,0.24,1.8,M.paintDark,REC_X,0.12,-1.4);
-  addCylZ(0.38,0.6,M.paintDark,REC_X,REC_Y,-1.05,scene);
-  addCylZ(R_MANDREL,1.95,rollMats(),0,0,-0.07,recGroup);
-  // アウトボードベアリング(操作側支持腕)
-  addBox(0.26,1.7,0.26,M.paint,REC_X,0.85,1.2);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.055,12,28),M.paintDark);
-  ring.position.set(REC_X,REC_Y,1.02); ring.castShadow=true;
-  scene.add(ring);
-})();
-
-function buildRecCoils(N){
-  for(const c of recCoils){ c.geometry.dispose(); recGroup.remove(c); }
-  recCoils=[];
-  const sw=EFF_W/N;
-  for(let i=0;i<N;i++){
-    const zc=-EFF_W/2+(i+0.5)*sw;
-    const c=addCylZ(1, sw-0.014, coilMats(), 0,0,zc, recGroup, 40);
-    recCoils.push(c);
-  }
-}
-
-const coilCar=(function(){
-  addBox(3.4,0.06,0.12,M.frame,10.2,0.03, 0.42,scene,false);
-  addBox(3.4,0.06,0.12,M.frame,10.2,0.03,-0.42,scene,false);
-  const g=new THREE.Group(); g.position.set(10.8,0,0); scene.add(g);
-  addBox(1.6,0.28,1.05,M.yellow,0,0.32,0,g);
-  const s1=addBox(1.3,0.07,0.5,M.paintDark,0,0.55,-0.24,g); s1.rotation.x= 0.5;
-  const s2=addBox(1.3,0.07,0.5,M.paintDark,0,0.55, 0.24,g); s2.rotation.x=-0.5;
-  for(const [wx,wz] of [[-0.6,0.42],[0.6,0.42],[-0.6,-0.42],[0.6,-0.42]])
-    addCylZ(0.11,0.1,M.frame,wx,0.11,wz,g);
-  return g;
-})();
-
-/* =========================================================
- * ストリップ(リボン)構築
- * =======================================================*/
-const entryRibbon=new Ribbon(STRIP_W-0.01, ENTRY_N, M.strip);
-let strandRibbons=[], strandZ=[];
-const trimRibbonR=new Ribbon(TRIM_W-0.006, TRIM_N, M.strip);
-const trimRibbonL=new Ribbon(TRIM_W-0.006, TRIM_N, M.strip);
-
-function buildStrands(N){
-  for(const r of strandRibbons) r.dispose();
-  strandRibbons=[]; strandZ=[];
-  const sw=EFF_W/N;
-  for(let i=0;i<N;i++){
-    strandZ.push(-EFF_W/2+(i+0.5)*sw);
-    strandRibbons.push(new Ribbon(sw-0.014, STRAND_N, M.strip));
-  }
-}
-
-/* ---- 経路生成 ---- */
-const ENTRY_GUIDE = V3(-10.4, PASS_Y+0.02, 0); // 入側ピンチ手前の案内点
-const _entryPts=[];
-function updateEntryRibbon(){
-  _entryPts.length=0;
-  const pre=[];
-  // コイル外周からの接線で払い出し(中心ではなく外周から皮を剥ぐ)
-  const T=tangentPoint(UNC_X,UNC_Y,st.ru, ENTRY_GUIDE.x,ENTRY_GUIDE.y, +1);
-  // 接点の手前にわずかな巻き付き弧を付け、コイルに沿わせる
-  arcPoints(UNC_X,UNC_Y,st.ru+0.004, T.a+0.85, T.a, 6, 0, pre);
-  const path=[
-    ...pre,
-    V3(ENTRY_GUIDE.x, ENTRY_GUIDE.y, 0),
-    V3(-9.72, PASS_Y, 0),
-    V3(SLIT_X+0.02, PASS_Y, 0),
-  ];
-  samplePolyline(path, ENTRY_N, _entryPts);
-  entryRibbon.update(_entryPts);
-}
-
-const _strandRaw=[], _strandOut=[];
-function updateStrandRibbon(rib, zc, sag){
-  const raw=_strandRaw; raw.length=0;
-  // スリッター出側 → ルーパー入りロール
-  raw.push(V3(SLIT_X-0.02, PASS_Y, zc));
-  raw.push(V3(LOOP_IN, PASS_Y, zc));
-  // ルーパー垂み(放物線)
-  for(let j=1;j<=22;j++){
-    const t=j/22;
-    raw.push(V3(THREE.MathUtils.lerp(LOOP_IN,LOOP_OUT,t), PASS_Y - sag*4*t*(1-t), zc));
-  }
-  // MDロール上面 → デフレクター上面 → セパレーター
-  raw.push(V3(MDX, MD_CONTACT_Y, zc));
-  raw.push(V3(4.7, PASS_Y, zc));
-  raw.push(V3(DEFL_X, DEFL_CY+DEFL_R, zc));
-  raw.push(V3(SEP_X, PASS_Y+0.04, zc));
-  // リコイラ: コイル外周への接線で巻き取り(中心ではなく外周へ)
-  const G=raw[raw.length-1];
-  const T=tangentPoint(REC_X,REC_Y,st.rr, G.x,G.y, -1);
-  raw.push(V3(T.x, T.y, zc));
-  for(let j=1;j<=4;j++){               // 巻き付き弧
-    const a=THREE.MathUtils.lerp(T.a, T.a-0.8, j/4);
-    raw.push(V3(REC_X+(st.rr+0.004)*Math.cos(a), REC_Y+(st.rr+0.004)*Math.sin(a), zc));
-  }
-  // 必ず STRAND_N 点へ再サンプル(頂点数を一致させ余り頂点=黒い破片を出さない)
-  _strandOut.length=0;
-  samplePolyline(raw, STRAND_N, _strandOut);
-  rib.update(_strandOut);
-}
-
-const _trimCurveR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
-const _trimCurveL=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
-function updateTrimRibbon(rib, curve, sw, side, rs){
-  const z0=(EFF_W/2+TRIM_W/2)*side;
-  // 耳屑: スリッター出側からサイドワインダーへ。外周接線で巻き取り。
-  const approach=V3(-4.95, 1.2, sw.z - 0.5*side);
-  const T=tangentPoint(sw.x, sw.y, rs, approach.x, approach.y, +1);
-  curve.points[0].set(SLIT_X-0.02, PASS_Y, z0);
-  curve.points[1].set(-5.2, PASS_Y-0.04, z0+0.3*side);
-  curve.points[2].set(-5.05, 1.15, sw.z*0.55);
-  curve.points[3].set(approach.x, approach.y, sw.z - 0.18*side);
-  curve.points[4].set(T.x, T.y, sw.z);
-  rib.update(curve.getPoints(TRIM_N-1));
-}
-
-/* =========================================================
- * パスライン可視化(中心線)
- * =======================================================*/
-const pathLineGroup=new THREE.Group(); pathLineGroup.visible=false; scene.add(pathLineGroup);
-function rebuildPathLine(){
-  while(pathLineGroup.children.length){
-    const c=pathLineGroup.children.pop(); c.geometry.dispose();
-  }
-  const mat=new THREE.LineBasicMaterial({color:0x4fc6ff});
-  const eg=new THREE.BufferGeometry().setFromPoints(_entryPts);
-  pathLineGroup.add(new THREE.Line(eg,mat));
-}
-
-/* =========================================================
- * 機器名ラベル(スプライト)
- * =======================================================*/
-const labelGroup=new THREE.Group(); scene.add(labelGroup);
-function makeLabel(text,x,y,z){
-  const c=document.createElement("canvas");
-  const g=c.getContext("2d");
-  const font='600 30px "Segoe UI","Hiragino Sans",Meiryo,sans-serif';
-  g.font=font;
-  const tw=Math.ceil(g.measureText(text).width);
-  c.width=tw+40; c.height=54;
-  g.font=font;
-  g.fillStyle="rgba(10,15,21,0.82)";
-  g.strokeStyle="rgba(79,198,255,0.45)";
-  g.lineWidth=2;
-  const r=10,w=c.width,h=c.height;
-  g.beginPath();
-  g.moveTo(r,1); g.lineTo(w-r,1); g.quadraticCurveTo(w-1,1,w-1,r);
-  g.lineTo(w-1,h-r); g.quadraticCurveTo(w-1,h-1,w-r,h-1);
-  g.lineTo(r,h-1); g.quadraticCurveTo(1,h-1,1,h-r);
-  g.lineTo(1,r); g.quadraticCurveTo(1,1,r,1);
-  g.closePath(); g.fill(); g.stroke();
-  g.fillStyle="#cfe3f2"; g.textBaseline="middle";
-  g.fillText(text,20,h/2+1);
-  const tex=new THREE.CanvasTexture(c);
-  tex.encoding=THREE.sRGBEncoding; tex.minFilter=THREE.LinearFilter;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true}));
-  const scale=0.55;
-  sp.scale.set(c.width/c.height*scale, scale, 1);
-  sp.position.set(x,y,z);
-  labelGroup.add(sp);
-}
-makeLabel("アンコイラ",              UNC_X, 3.5, 0);
-makeLabel("入側ピンチ・レベラー",     -9.2, 2.7, 0);
-makeLabel("スリッターヘッド",         SLIT_X, 3.4, 0);
-makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, 2.55);
-makeLabel("サイドワインダー(耳屑)",   -4.6, 2.3, -2.55);
-makeLabel("ルーパーピット",          -0.8, 1.9, 0);
-makeLabel("MDロール(ゴムディスク)",   MDX, 2.5, 0);
-makeLabel("セパレーター",             SEP_X, 3.5, 0);
-makeLabel("リコイラ",                REC_X, 3.5, 0);
-makeLabel("コイルカー",              10.8, 1.45, 0);
-
-/* =========================================================
- * 条数依存部の一括再構築
- * =======================================================*/
-function rebuildStrandDependent(N){
-  st.N=N;
-  buildKnives(N);
-  buildSeparators(N);
-  buildRecCoils(N);
-  buildStrands(N);
-  document.getElementById("roStrandW").textContent=Math.round(EFF_W/N*1000);
-}
+function rebuildStrandDependent(N){st.N=N;buildKnives(N);buildSeparators(N);buildRecCoils(N);buildStrands(N);
+  document.getElementById("roStrandW").textContent=Math.round(EFF_W/N*1000);}
 rebuildStrandDependent(4);
 
 /* =========================================================
  * UI
  * =======================================================*/
-const ui={
-  led:document.getElementById("statusLed"),
-  status:document.getElementById("statusText"),
-  roSpeed:document.getElementById("roSpeed"),
-  roUnc:document.getElementById("roUnc"),
-  roRec:document.getElementById("roRec"),
-  roTen:document.getElementById("roTen"),
-  roLen:document.getElementById("roLen"),
-  roProg:document.getElementById("roProg"),
-  prog:document.getElementById("coilProg"),
-  btnRun:document.getElementById("btnRun"),
-};
-
-ui.btnRun.addEventListener("click",()=>{
-  st.paused=!st.paused;
-  ui.btnRun.innerHTML = st.paused
-    ? '<i class="fa-solid fa-play"></i><span>ライン起動</span>'
-    : '<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
-  ui.btnRun.classList.toggle("running", st.paused);
-});
-
+const ui={led:document.getElementById("statusLed"),status:document.getElementById("statusText"),
+  roSpeed:document.getElementById("roSpeed"),roUnc:document.getElementById("roUnc"),roRec:document.getElementById("roRec"),
+  roTen:document.getElementById("roTen"),roLen:document.getElementById("roLen"),roProg:document.getElementById("roProg"),
+  prog:document.getElementById("coilProg"),btnRun:document.getElementById("btnRun")};
+ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
+  ui.btnRun.innerHTML=st.paused?'<i class="fa-solid fa-play"></i><span>ライン起動</span>':'<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
+  ui.btnRun.classList.toggle("running",st.paused);});
 const rng=document.getElementById("rngSpeed");
-rng.addEventListener("input",()=>{
-  document.getElementById("speedVal").textContent=rng.value;
-  st.target=rng.value/60;
-});
-
-document.getElementById("strandGroup").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.remove("active"));
-  b.classList.add("active");
-  rebuildStrandDependent(parseInt(b.dataset.n,10));
-});
-
-const CAM_PRESETS={
-  all:  [-2.5,1.3,0, 20, 0.50,1.12],
-  unc:  [-13.4,1.7,0, 7.5,0.72,1.10],
-  slit: [-5.5,1.4,0,  6,  0.62,1.02],
-  loop: [-0.8,0.5,0,  8.5,0.50,0.98],
-  md:   [ MDX,1.4,0,  4.8,0.62,1.02],
-  rec:  [ 8.4,1.7,0,  8,  0.62,1.08],
-};
-document.querySelectorAll("[data-cam]").forEach(b=>{
-  b.addEventListener("click",()=>controls.flyTo(...CAM_PRESETS[b.dataset.cam]));
-});
-
-document.getElementById("chkLabels").addEventListener("change",e=>{
-  labelGroup.visible=e.target.checked;
-});
-document.getElementById("chkPath").addEventListener("change",e=>{
-  pathLineGroup.visible=e.target.checked;
-});
+rng.addEventListener("input",()=>{document.getElementById("speedVal").textContent=rng.value;st.target=rng.value/60;});
+document.getElementById("strandGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.remove("active"));b.classList.add("active");rebuildStrandDependent(parseInt(b.dataset.n,10));});
+const CAM={all:[-3,2,0,42,0.55,1.14],unc:[-30,2.3,0,9,0.72,1.10],slit:[0,2.3,0,7,0.62,1.0],
+  loop1:[-12,1.2,0,9,0.5,0.98],loop2:[8.6,1.1,0,9,0.5,0.98],md:[16.2,2.2,0,7,0.66,1.02],rec:[24,2.3,0,9,0.62,1.08]};
+document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
+document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
+document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
 
 /* =========================================================
- * 状態機械・アニメーションループ
+ * 状態機械・アニメーション
  * =======================================================*/
-function easeIO(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
-
-function stepLine(dt){
-  // 目標速度(状態に応じて0に絞る)
-  const tgt=(st.paused||st.state!=="RUN") ? 0 : st.target;
-  const dv=tgt-st.v;
-  st.v+=THREE.MathUtils.clamp(dv, -DECEL*dt, ACCEL*dt);
-  if(Math.abs(st.v)<0.004 && tgt===0) st.v=0;
-
-  // 通板に伴う径変化(断面積保存: dr/dt = ±v·h / 2πr)
-  if(st.v>0){
-    st.len+=st.v*dt;
-    st.ru=Math.max(RU_MIN-0.01, st.ru - st.v*H_VIS/(2*Math.PI*st.ru)*dt);
-    st.rr=Math.min(RR_MAX+0.01, st.rr + st.v*H_VIS/(2*Math.PI*st.rr)*dt);
-    const dScrap=st.v*0.004/(2*Math.PI);
-    st.rsR=Math.min(0.42, st.rsR + dScrap/st.rsR*dt);
-    st.rsL=Math.min(0.42, st.rsL + dScrap/st.rsL*dt);
-    st.texOfs-=st.v*dt/UV_SCALE;
-    stripTex.offset.x=st.texOfs;
-  }
-
-  // コイル交換トリガー
-  if(st.state==="RUN" && (st.ru<=RU_MIN || st.rr>=RR_MAX)) st.state="DECEL";
-  if(st.state==="DECEL" && st.v<=0.004){ st.state="CHANGE"; st.tChange=0; st.swapped=false; }
-
-  // コイル交換シーケンス(コイルカー進入 → 交換 → 退出)
-  if(st.state==="CHANGE"){
-    st.tChange+=dt;
-    const t=st.tChange;
-    if(t<1.4){
-      coilCar.position.x=THREE.MathUtils.lerp(10.8,REC_X,easeIO(t/1.4));
-    }else if(t<2.4){
-      coilCar.position.x=REC_X;
-      if(!st.swapped && t>1.9){
-        st.ru=RU_MAX; st.rr=RR_MIN; st.rsL=0.13; st.rsR=0.13;
-        st.swapped=true;
-      }
-    }else if(t<3.8){
-      coilCar.position.x=THREE.MathUtils.lerp(REC_X,10.8,easeIO((t-2.4)/1.4));
-    }else{
-      coilCar.position.x=10.8;
-      st.state="RUN";
-    }
-  }
-}
-
+function easeIO(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
+  st.v+=THREE.MathUtils.clamp(tgt-st.v,-DECEL*dt,ACCEL*dt);if(Math.abs(st.v)<0.004&&tgt===0)st.v=0;
+  if(st.v>0){st.len+=st.v*dt;
+    st.ru=Math.max(RU_MIN-0.01,st.ru-st.v*H_VIS/(2*Math.PI*st.ru)*dt);
+    st.rr=Math.min(RR_MAX+0.01,st.rr+st.v*H_VIS/(2*Math.PI*st.rr)*dt);
+    const ds=st.v*0.004/(2*Math.PI);st.rsR=Math.min(0.42,st.rsR+ds/st.rsR*dt);st.rsL=Math.min(0.42,st.rsL+ds/st.rsL*dt);
+    st.texOfs-=st.v*dt/UV_SCALE;stripTex.offset.x=st.texOfs;}
+  if(st.state==="RUN"&&(st.ru<=RU_MIN||st.rr>=RR_MAX))st.state="DECEL";
+  if(st.state==="DECEL"&&st.v<=0.004){st.state="CHANGE";st.tChange=0;st.swapped=false;}
+  if(st.state==="CHANGE"){st.tChange+=dt;const t=st.tChange;
+    if(t<1.4)coilCar.position.x=THREE.MathUtils.lerp(REC_X+4.2,REC_X,easeIO(t/1.4));
+    else if(t<2.4){coilCar.position.x=REC_X;if(!st.swapped&&t>1.9){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}}
+    else if(t<3.8)coilCar.position.x=THREE.MathUtils.lerp(REC_X,REC_X+4.2,easeIO((t-2.4)/1.4));
+    else{coilCar.position.x=REC_X+4.2;st.state="RUN";}}}
 function updateGeometry(){
-  // コイル径反映
-  uncGroup.coil.scale.set(st.ru,st.ru,1);
-  for(const c of recCoils) c.scale.set(st.rr,st.rr,1);
-  scrapR.coil.scale.set(st.rsR,st.rsR,1);
-  scrapL.coil.scale.set(st.rsL,st.rsL,1);
-  // ストリップ経路
+  uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
+  scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1);
   updateEntryRibbon();
-  const sw=EFF_W/st.N;
-  for(let i=0;i<strandRibbons.length;i++){
-    const sag=1.5 + 0.05*i + 0.10*Math.sin(st.len*0.04 + i*0.7);
-    updateStrandRibbon(strandRibbons[i], strandZ[i], sag);
-  }
-  updateTrimRibbon(trimRibbonR,_trimCurveR, sw,  1, st.rsR);
-  updateTrimRibbon(trimRibbonL,_trimCurveL, sw, -1, st.rsL);
-  if(pathLineGroup.visible) rebuildPathLine();
-}
-
-function updateSpinners(dt){
-  if(st.v<=0) return;
-  for(const s of spinners){
-    const r=(typeof s.r==="function")?s.r():s.r;
-    s.obj.rotation.z += s.dir*(st.v/r)*dt;
-  }
-}
-
-/* ---- 計器表示(120ms間隔で更新) ---- */
-let uiTimer=0;
-function updateHUD(dt){
-  uiTimer+=dt; if(uiTimer<0.12) return;
-  uiTimer=0;
-  ui.roSpeed.textContent=Math.round(st.v*60);
-  ui.roUnc.textContent=Math.round(st.ru*2000);
-  ui.roRec.textContent=Math.round(st.rr*2000);
-  ui.roTen.textContent=(st.v>0.004 ? (8 + st.v*9).toFixed(1) : "0.0");
-  ui.roLen.textContent=Math.round(st.len).toLocaleString();
-  const prog=THREE.MathUtils.clamp(
-    (RU_MAX*RU_MAX-st.ru*st.ru)/(RU_MAX*RU_MAX-RU_MIN*RU_MIN),0,1);
-  ui.roProg.textContent=Math.round(prog*100);
-  ui.prog.style.width=(prog*100).toFixed(1)+"%";
-
-  let text,cls;
-  const tgt=(st.paused||st.state!=="RUN")?0:st.target;
-  if(st.state==="CHANGE"){ text="コイル交換中"; cls="info"; }
-  else if(st.state==="DECEL"){ text="コイル交換準備 ─ 減速中"; cls="warn"; }
-  else if(st.paused && st.v<=0.004){ text="ライン停止"; cls="stop"; }
-  else if(st.v<tgt-0.01){ text="加速中"; cls="warn"; }
-  else if(st.v>tgt+0.01){ text="減速中"; cls="warn"; }
-  else if(st.v>0.004){ text="定常運転中"; cls="ok"; }
-  else { text="ライン停止"; cls="stop"; }
-  ui.status.textContent=text;
-  ui.led.className="led "+cls;
-}
-
-/* ---- メインループ ---- */
+  for(let i=0;i<strandRibbons.length;i++)updateStrandRibbon(strandRibbons[i],strandZ[i]);
+  updateTrim(trimRibbonR,_tcR,1,st.rsR);updateTrim(trimRibbonL,_tcL,-1,st.rsL);}
+function updateSpinners(dt){if(st.v<=0)return;for(const s of spinners){const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation.z+=s.dir*(st.v/r)*dt;}}
+let uiT=0;
+function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
+  ui.roSpeed.textContent=Math.round(st.v*60);ui.roUnc.textContent=Math.round(st.ru*2000);ui.roRec.textContent=Math.round(st.rr*2000);
+  ui.roTen.textContent=(st.v>0.004?(8+st.v*9).toFixed(1):"0.0");ui.roLen.textContent=Math.round(st.len).toLocaleString();
+  const prog=THREE.MathUtils.clamp((RU_MAX*RU_MAX-st.ru*st.ru)/(RU_MAX*RU_MAX-RU_MIN*RU_MIN),0,1);
+  ui.roProg.textContent=Math.round(prog*100);ui.prog.style.width=(prog*100).toFixed(1)+"%";
+  let text,cls;const tgt=(st.paused||st.state!=="RUN")?0:st.target;
+  if(st.state==="CHANGE"){text="コイル交換中";cls="info";}else if(st.state==="DECEL"){text="コイル交換準備 ─ 減速中";cls="warn";}
+  else if(st.paused&&st.v<=0.004){text="ライン停止";cls="stop";}else if(st.v<tgt-0.01){text="加速中";cls="warn";}
+  else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
+  ui.status.textContent=text;ui.led.className="led "+cls;}
 const clock=new THREE.Clock();
-function animate(){
-  requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),0.05);
-  stepLine(dt);
-  updateSpinners(dt);
-  updateGeometry();
-  updateHUD(dt);
-  controls.update(dt);
-  renderer.render(scene,camera);
-}
-
-window.addEventListener("resize",()=>{
-  camera.aspect=window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-});
-window.addEventListener("keydown",e=>{
-  if(e.code==="Space" && document.activeElement.tagName!=="INPUT"){
-    e.preventDefault(); ui.btnRun.click();
-  }
-});
-
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
+  stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);}
+window.addEventListener("resize",()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+window.addEventListener("keydown",e=>{if(e.code==="Space"&&document.activeElement.tagName!=="INPUT"){e.preventDefault();ui.btnRun.click();}});
 animate();
 })();
 </script>
