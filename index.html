@@ -169,6 +169,10 @@
       <span><i class="fa-solid fa-hashtag"></i>ロール番号(BOM)</span>
       <label class="switch"><input type="checkbox" id="chkIds"><span class="knob"></span></label>
     </div>
+    <div class="toggle-row">
+      <span><i class="fa-solid fa-building"></i>建屋(柱・梁)</span>
+      <label class="switch"><input type="checkbox" id="chkBuilding" checked><span class="knob"></span></label>
+    </div>
   </div>
 </div>
 
@@ -325,6 +329,7 @@ const M={
   paint:new THREE.MeshStandardMaterial({color:0x33688f,metalness:0.35,roughness:0.55}),
   paintDark:new THREE.MeshStandardMaterial({color:0x24465f,metalness:0.35,roughness:0.6}),
   frame:new THREE.MeshStandardMaterial({color:0x39424c,metalness:0.55,roughness:0.5}),
+  frameGlass:new THREE.MeshStandardMaterial({color:0x5a6470,metalness:0.4,roughness:0.5,transparent:true,opacity:0.28,depthWrite:false}),
   steel:new THREE.MeshStandardMaterial({color:0xb6bcc3,metalness:0.9,roughness:0.3}),
   knife:new THREE.MeshStandardMaterial({color:0xd5dade,metalness:0.95,roughness:0.18}),
   spacer:new THREE.MeshStandardMaterial({color:0x6f7780,metalness:0.8,roughness:0.45}),
@@ -347,7 +352,7 @@ const coilMats=()=>[M.coilSide,M.coilCap,M.coilCap];
 const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
 
 const spinners=[];
-function spin(obj,r,dir){spinners.push({obj,r,dir});return obj;}
+function spin(obj,r,dir,axis){spinners.push({obj,r,dir,axis:axis||'z'});return obj;}
 
 /* 回転体(ロール)レジストリ — BOM準拠 */
 const R={};                       // id -> {x,y,r}
@@ -441,6 +446,7 @@ idLabelGroup.visible=false;
  * 工場床・ピット・建屋
  * =======================================================*/
 const PIT1={x0:-15.2,x1:-8.4}, PIT2={x0:5.6,x1:11.6};
+const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱・梁(トグル対象)
 (function buildFactory(){
   const floorY=-0.06,T=0.12;
   // 床(ピット開口を避けて分割)
@@ -465,10 +471,10 @@ const PIT1={x0:-15.2,x1:-8.4}, PIT2={x0:5.6,x1:11.6};
   // 通路区画線
   addBox(70,0.012,0.12,M.yellow,-3,0.011,6.4,scene,false);
   addBox(70,0.012,0.12,M.yellow,-3,0.011,-6.4,scene,false);
-  // 建屋柱・梁・天井灯
-  for(let x=-34;x<=28;x+=8){addBox(0.5,9,0.5,M.frame,x,4.5,-8.6);addBox(0.5,9,0.5,M.frame,x,4.5,8.6);}
-  addBox(70,0.5,0.4,M.frame,-3,9.1,-8.6);addBox(70,0.5,0.4,M.frame,-3,9.1,8.6);
-  for(let x=-32;x<=28;x+=6) for(const z of [-4,4]){addBox(2.4,0.16,0.9,M.frame,x,8.7,z);
+  // 建屋柱・梁(半透明・トグルで消去可) — 照明本体は残す
+  for(let x=-34;x<=28;x+=8){addBox(0.5,9,0.5,M.frameGlass,x,4.5,-8.6,buildingGroup,false);addBox(0.5,9,0.5,M.frameGlass,x,4.5,8.6,buildingGroup,false);}
+  addBox(70,0.5,0.4,M.frameGlass,-3,9.1,-8.6,buildingGroup,false);addBox(70,0.5,0.4,M.frameGlass,-3,9.1,8.6,buildingGroup,false);
+  for(let x=-32;x<=28;x+=6) for(const z of [-4,4]){addBox(2.4,0.16,0.9,M.frameGlass,x,8.7,z,buildingGroup,false);
     addBox(2.1,0.05,0.66,M.lampLit,x,8.6,z,scene,false).castShadow=false;
     const pl=new THREE.PointLight(0xfff2dc,0.22,20,2.0);pl.position.set(x,8.3,z);scene.add(pl);}
 })();
@@ -514,16 +520,33 @@ let recCoils=[];
   addBox(1.7,1.9,1.4,M.paint,REC_X,0.95,-1.5);
   addBox(2.2,0.26,1.9,M.paintDark,REC_X,0.13,-1.45);
   addCylZ(0.42,0.62,M.paintDark,REC_X,REC_Y,-1.1,scene);
-  addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,recGroup);
-  addBox(0.28,1.95,0.28,M.paint,REC_X,0.97,1.25);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.06,12,28),M.paintDark);ring.position.set(REC_X,REC_Y,1.08);ring.castShadow=true;scene.add(ring);})();
+  addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,recGroup);})();
+// リールサポート(開閉式・操作側) — コイル交換時に外側へ開いてコイルを軸方向に抜く
+const recSupport=(function(){
+  const piv=new THREE.Group(); piv.position.set(REC_X,0,1.62); scene.add(piv);
+  addBox(0.3,2.05,0.3,M.paint,0,1.02,0,piv);                 // 縦アーム
+  addBox(0.5,0.55,0.24,M.paintDark,0,REC_Y,-0.42,piv);       // 軸受箱(マンドレル端を受ける)
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.07,12,28),M.paintDark);
+  ring.position.set(0,REC_Y,-0.54);ring.castShadow=true;piv.add(ring);
+  addBox(1.2,0.2,1.0,M.frame,0,0.1,0,piv);                   // ベース
+  return piv;})();
 function buildRecCoils(N){for(const c of recCoils){c.geometry.dispose();recGroup.remove(c);}recCoils=[];
   const sw=EFF_W/N;for(let i=0;i<N;i++){const zc=-EFF_W/2+(i+0.5)*sw;
     recCoils.push(addCylZ(1,sw-0.014,coilMats(),0,0,zc,recGroup,40));}}
-const coilCar=(function(){addBox(3.6,0.06,0.12,M.frame,REC_X+3.6,0.03,0.42,scene,false);addBox(3.6,0.06,0.12,M.frame,REC_X+3.6,0.03,-0.42,scene,false);
-  const g=new THREE.Group();g.position.set(REC_X+4.2,0,0);scene.add(g);addBox(1.7,0.3,1.1,M.yellow,0,0.34,0,g);
-  const s1=addBox(1.4,0.07,0.55,M.paintDark,0,0.6,-0.26,g);s1.rotation.x=0.5;const s2=addBox(1.4,0.07,0.55,M.paintDark,0,0.6,0.26,g);s2.rotation.x=-0.5;
-  for(const [wx,wz] of [[-0.65,0.45],[0.65,0.45],[-0.65,-0.45],[0.65,-0.45]])addCylZ(0.12,0.1,M.frame,wx,0.12,wz,g);return g;})();
+// コイルカー — ラインに直角(Z方向)に侵入。レールはZ方向。操作側(+Z)に待機。
+const CAR_PARK=5.4, CAR_IN=1.7;
+const coilCar=(function(){
+  addBox(0.12,0.06,7.0,M.frame,REC_X-0.62,0.03,3.2,scene,false);   // レール(Z方向)
+  addBox(0.12,0.06,7.0,M.frame,REC_X+0.62,0.03,3.2,scene,false);
+  const g=new THREE.Group();g.position.set(REC_X,0,CAR_PARK);scene.add(g);
+  addBox(1.5,0.3,1.7,M.yellow,0,0.34,0,g);
+  // V受台(コイル軸=Z に沿う)
+  const s1=addBox(0.62,0.07,1.5,M.paintDark,-0.3,0.62,0,g);s1.rotation.z= 0.5;
+  const s2=addBox(0.62,0.07,1.5,M.paintDark, 0.3,0.62,0,g);s2.rotation.z=-0.5;
+  for(const [wx,wz] of [[-0.55,0.7],[0.55,0.7],[-0.55,-0.7],[0.55,-0.7]]){
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.1,16),M.frame);
+    w.position.set(wx,0.12,wz);w.rotation.z=Math.PI/2;g.add(w);}                 // 車輪(軸X)
+  return g;})();
 
 /* =========================================================
  * 全ロール配置(BOM準拠) — 横からの概略図に沿って西→東
@@ -606,11 +629,27 @@ function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.lengt
 /* =========================================================
  * サイドワインダー(耳屑巻取機・両側)
  * =======================================================*/
-function buildScrapWinder(side){const z=2.7*side,x=1.2,y=1.0;
-  addBox(0.55,1.0,0.55,M.paintDark,x,0.5,z+0.45*side);addCylZ(0.2,0.32,M.paintDark,x,y,z+0.34*side,scene);
-  const g=new THREE.Group();g.position.set(x,y,z);scene.add(g);
-  addCylZ(0.1,0.44,M.steel,0,0,0,g);addCylZ(0.42,0.03,rollMats(),0,0,-0.21,g,32);addCylZ(0.42,0.03,rollMats(),0,0,0.21,g,32);
-  const coil=addCylZ(1,0.32,coilMats(),0,0,0,g,32);spin(g,side>0?()=>st.rsR:()=>st.rsL,-1);return{coil,x,y,z};}
+// 耳屑は両側に分かれて排出 → 各側で eye-to-sky(上方へ引上げ→ガイドロール)
+// → 最終的に縦軸ワインダーで横向きに巻き取る(屑コイルの目が上=eye to sky)
+function buildScrapWinder(side){
+  const G1={x:0.7, y:PL+0.6,  z:side*(STRIP_W/2+0.45)};   // 立上りガイド(下)
+  const G2={x:1.2, y:PL+2.1,  z:side*(STRIP_W/2+1.2)};    // 頂部ガイド(eye to sky)
+  const G3={x:1.7, y:PL+2.1,  z:side*(STRIP_W/2+2.3)};    // 振分けガイド
+  const Wx=1.7, Wz=side*(STRIP_W/2+2.75), Wy=0.55;        // 縦軸ワインダー
+  addBox(0.16,PL+2.35,0.16,M.paint,G2.x,(PL+2.35)/2,G2.z);
+  addBox(0.16,PL+2.35,0.16,M.paint,G3.x,(PL+2.35)/2,G3.z);
+  addBox(1.3,0.12,1.3,M.paintDark,Wx,Wy-0.35,Wz);
+  addCylZ(0.18,0.3,M.paintDark,Wx,Wy-0.15,Wz);            // 駆動部
+  for(const G of [G1,G2,G3]){                              // ガイドロール(軸X)
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5,18),rollMats());
+    r.rotation.z=Math.PI/2; r.position.set(G.x,G.y,G.z); r.castShadow=true; scene.add(r); spin(r,0.07,-1,'x');}
+  const spindle=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,1.5,16),M.steel);
+  spindle.position.set(Wx,Wy+0.45,Wz); spindle.castShadow=true; scene.add(spindle);
+  const g=new THREE.Group(); g.position.set(Wx,Wy,Wz); scene.add(g);
+  const coil=new THREE.Mesh(new THREE.CylinderGeometry(1,1,0.32,32),coilMats()); coil.castShadow=true; g.add(coil);
+  spin(g, side>0?()=>st.rsR:()=>st.rsL, -1, 'y');          // 縦(Y)軸回転で横向き巻取り
+  return {coil, side, G1, G2, G3, Wx, Wy, Wz};
+}
 const scrapR=buildScrapWinder(1),scrapL=buildScrapWinder(-1);
 
 /* =========================================================
@@ -653,10 +692,13 @@ function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
 
 const _tcR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
 const _tcL=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
-function updateTrim(rib,curve,side,rs){const z0=(EFF_W/2+TRIM_W/2)*side;const sw=scrapR;
-  const ap=V3(0.85,1.2,sw.z-0.5*side);const Tt=tangentPoint(sw.x,sw.y,rs,ap.x,ap.y,+1);
-  curve.points[0].set(SLIT_X,PL,z0);curve.points[1].set(0.3,PL-0.05,z0+0.3*side);
-  curve.points[2].set(0.7,1.5,sw.z*0.55);curve.points[3].set(ap.x,ap.y,sw.z-0.18*side);curve.points[4].set(Tt.x,Tt.y,sw.z);
+function updateTrim(rib,curve,sw,rs){const side=sw.side, z0=(EFF_W/2+TRIM_W/2)*side;
+  // スリッター耳 → 立上り(eye to sky)→ ガイドロール3点 → 縦軸ワインダーへ
+  curve.points[0].set(SLIT_X,PL,z0);
+  curve.points[1].set(sw.G1.x,sw.G1.y,sw.G1.z);
+  curve.points[2].set(sw.G2.x,sw.G2.y,sw.G2.z);
+  curve.points[3].set(sw.G3.x,sw.G3.y,sw.G3.z);
+  curve.points[4].set(sw.Wx, sw.Wy+0.22, sw.Wz - side*(rs+0.02)); // 屑コイル外周へ
   rib.update(curve.getPoints(TRIM_N-1));}
 
 /* =========================================================
@@ -671,7 +713,8 @@ makeLabel("No.1ルーパー",-12.0,PL+0.5,0);
 makeLabel("VCロール",-7.4,PL+1.3,0);
 makeLabel("スリッター前ピンチ",-5.1,PL+1.35,0);
 makeLabel("スリッターヘッド",SLIT_X,PL+1.55,0);
-makeLabel("サイドワインダー(耳屑)",1.2,2.1,2.7);
+makeLabel("屑巻取機(eye to sky)",1.7,PL+2.6, (STRIP_W/2+2.75));
+makeLabel("屑巻取機(eye to sky)",1.7,PL+2.6,-(STRIP_W/2+2.75));
 makeLabel("No.2ルーパー",8.6,PL+0.5,0);
 makeLabel("セパレーター",13.0,PL+1.45,0);
 makeLabel("MDロール(上下ピンチ)",16.0,PL+1.65,0);
@@ -706,6 +749,7 @@ const CAM={all:[-3,2,0,42,0.55,1.14],unc:[-30,2.3,0,9,0.72,1.10],slit:[0,2.3,0,7
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
 document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
+document.getElementById("chkBuilding").addEventListener("change",e=>{buildingGroup.visible=e.target.checked;});
 
 /* =========================================================
  * 状態機械・アニメーション
@@ -721,17 +765,20 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
   if(st.state==="RUN"&&(st.ru<=RU_MIN||st.rr>=RR_MAX))st.state="DECEL";
   if(st.state==="DECEL"&&st.v<=0.004){st.state="CHANGE";st.tChange=0;st.swapped=false;}
   if(st.state==="CHANGE"){st.tChange+=dt;const t=st.tChange;
-    if(t<1.4)coilCar.position.x=THREE.MathUtils.lerp(REC_X+4.2,REC_X,easeIO(t/1.4));
-    else if(t<2.4){coilCar.position.x=REC_X;if(!st.swapped&&t>1.9){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}}
-    else if(t<3.8)coilCar.position.x=THREE.MathUtils.lerp(REC_X,REC_X+4.2,easeIO((t-2.4)/1.4));
-    else{coilCar.position.x=REC_X+4.2;st.state="RUN";}}}
+    const OPEN=1.0;    // リールサポート開き角(外側+Zへ退避)
+    if(t<0.8){recSupport.rotation.x=OPEN*easeIO(t/0.8);}                                   // サポート開
+    else if(t<2.0){recSupport.rotation.x=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_PARK,CAR_IN,easeIO((t-0.8)/1.2));} // カー直角侵入
+    else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}} // 抜取り・新コイル
+    else if(t<4.0){recSupport.rotation.x=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
+    else if(t<4.8){recSupport.rotation.x=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート閉
+    else{recSupport.rotation.x=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
-  scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1);
+  scrapR.coil.scale.set(st.rsR,1,st.rsR);scrapL.coil.scale.set(st.rsL,1,st.rsL); // 縦軸=Y
   updateEntryRibbon();
   for(let i=0;i<strandRibbons.length;i++)updateStrandRibbon(strandRibbons[i],strandZ[i]);
-  updateTrim(trimRibbonR,_tcR,1,st.rsR);updateTrim(trimRibbonL,_tcL,-1,st.rsL);}
-function updateSpinners(dt){if(st.v<=0)return;for(const s of spinners){const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation.z+=s.dir*(st.v/r)*dt;}}
+  updateTrim(trimRibbonR,_tcR,scrapR,st.rsR);updateTrim(trimRibbonL,_tcL,scrapL,st.rsL);}
+function updateSpinners(dt){if(st.v<=0)return;for(const s of spinners){const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation[s.axis]+=s.dir*(st.v/r)*dt;}}
 let uiT=0;
 function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   ui.roSpeed.textContent=Math.round(st.v*60);ui.roUnc.textContent=Math.round(st.ru*2000);ui.roRec.textContent=Math.round(st.rr*2000);
