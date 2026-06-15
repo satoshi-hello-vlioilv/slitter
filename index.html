@@ -521,20 +521,24 @@ let recCoils=[];
   addBox(2.2,0.26,1.9,M.paintDark,REC_X,0.13,-1.45);
   addCylZ(0.42,0.62,M.paintDark,REC_X,REC_Y,-1.1,scene);
   addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,recGroup);})();
-// リールサポート(開閉式・操作側) — コイル交換時に外側へ開いてコイルを軸方向に抜く
+// リールサポート(スイング開閉式) — リコイラはZ軸巻取りのまま。コイルカーが
+// ラインに直角(+Z)から侵入できるよう、縦軸まわりに横へ振り出して経路から退避する。
+// 支柱はカー走行帯(x=REC_X±0.8)の外側(+X)に置く。
+const REC_SUP_X=REC_X+1.5, REC_SUP_Z=1.0;
 const recSupport=(function(){
-  const piv=new THREE.Group(); piv.position.set(REC_X,0,1.62); scene.add(piv);
-  addBox(0.3,2.05,0.3,M.paint,0,1.02,0,piv);                 // 縦アーム
-  addBox(0.5,0.55,0.24,M.paintDark,0,REC_Y,-0.42,piv);       // 軸受箱(マンドレル端を受ける)
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.07,12,28),M.paintDark);
-  ring.position.set(0,REC_Y,-0.54);ring.castShadow=true;piv.add(ring);
-  addBox(1.2,0.2,1.0,M.frame,0,0.1,0,piv);                   // ベース
+  addBox(0.36,2.7,0.36,M.paint,REC_SUP_X,1.35,REC_SUP_Z);    // 固定支柱(経路外)
+  addBox(0.9,0.22,0.9,M.frame,REC_SUP_X,0.11,REC_SUP_Z);
+  const piv=new THREE.Group(); piv.position.set(REC_SUP_X,0,REC_SUP_Z); scene.add(piv); // 縦軸ピボット
+  addBox(1.5,0.3,0.32,M.paint,-0.75,REC_Y,0,piv);            // 水平アーム(-Xへ伸びマンドレル端へ)
+  addBox(0.52,0.62,0.36,M.paintDark,-1.5,REC_Y,0,piv);       // 軸受箱
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.07,12,28),M.paintDark);  // マンドレル端を受ける(軸Z)
+  ring.position.set(-1.5,REC_Y,0);ring.castShadow=true;piv.add(ring);
   return piv;})();
 function buildRecCoils(N){for(const c of recCoils){c.geometry.dispose();recGroup.remove(c);}recCoils=[];
   const sw=EFF_W/N;for(let i=0;i<N;i++){const zc=-EFF_W/2+(i+0.5)*sw;
     recCoils.push(addCylZ(1,sw-0.014,coilMats(),0,0,zc,recGroup,40));}}
 // コイルカー — ラインに直角(Z方向)に侵入。レールはZ方向。操作側(+Z)に待機。
-const CAR_PARK=5.4, CAR_IN=1.7;
+const CAR_PARK=5.4, CAR_IN=0.3;   // 侵入後はコイル直下(z≈0)へ
 const coilCar=(function(){
   addBox(0.12,0.06,7.0,M.frame,REC_X-0.62,0.03,3.2,scene,false);   // レール(Z方向)
   addBox(0.12,0.06,7.0,M.frame,REC_X+0.62,0.03,3.2,scene,false);
@@ -770,13 +774,13 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
   if(st.state==="RUN"&&(st.ru<=RU_MIN||st.rr>=RR_MAX))st.state="DECEL";
   if(st.state==="DECEL"&&st.v<=0.004){st.state="CHANGE";st.tChange=0;st.swapped=false;}
   if(st.state==="CHANGE"){st.tChange+=dt;const t=st.tChange;
-    const OPEN=1.0;    // リールサポート開き角(外側+Zへ退避)
-    if(t<0.8){recSupport.rotation.x=OPEN*easeIO(t/0.8);}                                   // サポート開
-    else if(t<2.0){recSupport.rotation.x=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_PARK,CAR_IN,easeIO((t-0.8)/1.2));} // カー直角侵入
-    else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}} // 抜取り・新コイル
-    else if(t<4.0){recSupport.rotation.x=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
-    else if(t<4.8){recSupport.rotation.x=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート閉
-    else{recSupport.rotation.x=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}}
+    const OPEN=Math.PI/2;  // リールサポート振出し角(縦軸まわり・経路外へ退避)
+    if(t<0.8){recSupport.rotation.y=OPEN*easeIO(t/0.8);}                                   // サポート振出し
+    else if(t<2.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_PARK,CAR_IN,easeIO((t-0.8)/1.2));} // カー直角侵入(コイル下へ)
+    else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}} // コイル受渡し・新コイル
+    else if(t<4.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
+    else if(t<4.8){recSupport.rotation.y=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート復帰
+    else{recSupport.rotation.y=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
   scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1); // 軸=Z
