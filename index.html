@@ -25,7 +25,11 @@
   .panel-title{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;
     letter-spacing:.04em;padding-bottom:10px;border-bottom:1px solid var(--panel-line);}
   .panel-title i{color:var(--acc);font-size:15px;}
+  .panel-title .ptitle-main{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
   .panel-title small{display:block;font-size:10px;font-weight:400;color:var(--sub);letter-spacing:.12em;}
+  .ver-badge{font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--acc);
+    background:rgba(79,198,255,.12);border:1px solid rgba(79,198,255,.4);
+    border-radius:9px;padding:1px 7px;white-space:nowrap;}
   .sec{margin-top:13px;}
   .sec-h{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--sub);
     letter-spacing:.18em;margin-bottom:8px;}
@@ -106,7 +110,10 @@
 <div id="panel">
   <div class="panel-title">
     <i class="fa-solid fa-industry"></i>
-    <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
+    <div class="ptitle-main">
+      <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
+      <span class="ver-badge" id="appVersion">v1.1.0</span>
+    </div>
   </div>
   <div class="sec">
     <div class="status-card">
@@ -186,6 +193,17 @@
 <script>
 "use strict";
 (function(){
+
+/* =========================================================
+ * アプリバージョン
+ * =======================================================*/
+const APP_VERSION = "1.1.0";
+document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
+{
+  const el = document.getElementById("appVersion");
+  if (el) el.textContent = "v" + APP_VERSION;
+}
+console.log("[Slitter Simulator] version " + APP_VERSION);
 
 /* =========================================================
  * ライン緒元 / レイアウト(横からの概略図に準拠・1単位=1m)
