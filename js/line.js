@@ -103,27 +103,39 @@ function buildKnives(N){
   clearGroup(knifeUp);clearGroup(knifeLo);
   addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
   const sw=EFF_W/N;
+  // 丸刃半径は条幅に応じて縮小する — φ360mmの刃は22mm程度の狭条ピッチでは物理的に
+  // 過大で、隣接刃が視覚上完全に融合し帯板を飲み込む巨大な円柱に見えてしまうため。
+  // アーバー(スペーサ半径118mm)より必ず大きい範囲でクランプする。
+  const knifeR=Math.min(0.18,Math.max(0.13,sw*0.9));
   for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
-    addCylZ(0.18,0.016,M.knife,0,0,zc-0.010,knifeUp,36);addCylZ(0.18,0.016,M.knife,0,0,zc+0.010,knifeLo,36);}
+    addCylZ(knifeR,0.016,M.knife,0,0,zc-0.010,knifeUp,36);addCylZ(knifeR,0.016,M.knife,0,0,zc+0.010,knifeLo,36);}
   // 板押さえゴムリング(ストリッパーリング): 丸刃間のスペーサ上に装着し、
   // 帯板を押さえて刃への巻付きを防ぐ。刃径よりやや小径のウレタン輪。アーバーと共回転。
+  // リング半径・軸長・本数は条幅に比例させる — 実機でも極端に狭い条では刃径に
+  // 迫る大径リングは物理的に成立しないため、狭条(多条数)ではリングを小径・単数化し、
+  // 帯板よりロールの見かけが支配的になって「巻き付いて見える」誤描写を防ぐ。
+  const ringR=Math.min(0.172,Math.max(0.05,sw*0.85));
+  const nr=sw<0.05?1:Math.max(2,Math.floor(sw/0.075));
   for(let k=0;k<N;k++){const z0=-EFF_W/2+k*sw;
-    const nr=Math.max(2,Math.floor(sw/0.075));
-    for(let i=0;i<nr;i++){const z=z0+sw*(i+0.5)/nr;
-      addCylZ(0.172,0.034,(i%2?M.urethaneA:M.urethaneB),0,0,z,knifeUp,24);
-      addCylZ(0.172,0.034,(i%2?M.urethaneB:M.urethaneA),0,0,z,knifeLo,24);}}}
+    const seg=sw/nr, ringLen=Math.min(0.034,seg*0.7);
+    for(let i=0;i<nr;i++){const z=z0+seg*(i+0.5);
+      addCylZ(ringR,ringLen,(i%2?M.urethaneA:M.urethaneB),0,0,z,knifeUp,24);
+      addCylZ(ringR,ringLen,(i%2?M.urethaneB:M.urethaneA),0,0,z,knifeLo,24);}}}
 // 薄板切断用フィンガー(板押さえ爪): 出側のフィンガーバーから丸刃間へ差し込み、
 // 切断後の薄板を刃から剥がして通板を安定させる。上下1組。
 const fingerGroup=new THREE.Group();scene.add(fingerGroup);
 function buildFingers(N){
   clearGroup(fingerGroup);
   const sw=EFF_W/N, BX=SLIT_X+0.36;
+  // 爪幅は条幅に比例させ(隣条との隙間を確保しつつ)上限0.10m・下限4mmでクランプ。
+  // 狭条(多条数)では爪が細くなり、極端に狭い条では省略も可能な設計。
+  const fw=Math.max(0.004,Math.min(sw*0.62,0.10));
   for(const s of [1,-1]){
     addCylZ(0.026,STRIP_W+1.0,M.steel,BX,PL+s*0.30,0,fingerGroup,14);   // フィンガーバー(ハウジング間)
     for(const zs of [-1,1])                                             // バー支持アーム → ハウジング柱
       addBox(0.44,0.06,0.10,M.paintDark,SLIT_X+0.17,PL+s*0.30,zs*(STRIP_W/2+0.42),fingerGroup);
     for(let k=0;k<N;k++){const zc=-EFF_W/2+(k+0.5)*sw;
-      const f=addBox(0.38,0.014,Math.min(sw-0.06,0.10),M.yellow,SLIT_X+0.225,PL+s*0.168,zc,fingerGroup);
+      const f=addBox(0.38,0.014,fw,M.yellow,SLIT_X+0.225,PL+s*0.168,zc,fingerGroup);
       f.rotation.z=s*0.78;}                                             // 爪先端は刃間ニップ直後の板面へ
   }}
 const sepGroups=[];

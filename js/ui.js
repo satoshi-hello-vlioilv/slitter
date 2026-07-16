@@ -18,8 +18,14 @@ ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
   ui.btnRun.classList.toggle("running",st.paused);});
 const rng=document.getElementById("rngSpeed");
 rng.addEventListener("input",()=>{document.getElementById("speedVal").textContent=rng.value;st.target=rng.value/60;});
+const rngStrand=document.getElementById("rngStrand");
+function setStrandN(N){
+  document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.toggle("active",parseInt(x.dataset.n,10)===N));
+  rngStrand.value=N;document.getElementById("strandVal").textContent=N;
+  rebuildStrandDependent(N);}
 document.getElementById("strandGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
-  document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.remove("active"));b.classList.add("active");rebuildStrandDependent(parseInt(b.dataset.n,10));});
+  setStrandN(parseInt(b.dataset.n,10));});
+rngStrand.addEventListener("input",()=>setStrandN(parseInt(rngStrand.value,10)));
 const CAM={all:[-3,2,0,42,0.55,1.14],unc:[-30,2.3,0,9,0.72,1.10],slit:[0,2.25,0,4.5,0.62,1.0],
   loop1:[-12,1.2,0,9,0.5,0.98],loop2:[8.6,1.1,0,9,0.5,0.98],md:[16.2,2.2,0,6,0.66,1.02],rec:[24,2.3,0,9,0.62,1.08]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
