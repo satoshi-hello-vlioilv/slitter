@@ -1,6 +1,17 @@
 "use strict";
 /* =========================================================
  * ストリップ(リボン)
+ *
+ * 構築原理(張力下の帯板の物理):
+ *  1. 帯板は「直線(接線)区間」と「ロール外周への巻付き弧」だけで構成される。
+ *  2. 各接触点で経路の曲がる向きは巻付き側と一致する:
+ *     上面接触 = 下向きに曲がる / 下面接触 = 上向きに曲がる。
+ *     唯一の例外はルーパーピット内で、自重により帯板がテーブルロール上面に
+ *     載って垂れる(凹上)区間。
+ *  3. 方向転換の大きい接触(コイル・スナバーA・ベンドB・デフY)は必ず
+ *     接線点+巻付き弧で結ぶ。単一点で結ぶと弦がロール内部を切り「貫通」する。
+ *  4. 弧・接線はロール半径+数mmのオフセット面で統一的に計算し、
+ *     リサンプリングの弦近似がロール面に沈まないようにする。
  * =======================================================*/
 const entryRibbon=new Ribbon(STRIP_W-0.01,ENTRY_N,M.strip);
 let strandRibbons=[],strandZ=[];
@@ -13,33 +24,45 @@ const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
 
 const _e=[];
 function updateEntryRibbon(){const raw=_e;raw.length=0;
-  // アンコイラ外周からの接線で払い出し
-  const A=R.A,Tt=tangentPoint(UNC_X,UNC_Y,st.ru,A.x,A.y+A.r,+1);
-  for(let i=0;i<6;i++){const a=THREE.MathUtils.lerp(Tt.a+0.8,Tt.a,i/5);raw.push(V3(UNC_X+(st.ru+0.004)*Math.cos(a),UNC_Y+(st.ru+0.004)*Math.sin(a),0));}
-  raw.push(TOP('A'));raw.push(TOP('B'));raw.push(NIP('C1'));
-  // ラフレベラー(D1-E2-1-E1-1-E2-2-E1-2-E2-3-D2 ジグザグ) — 上ロールは下面、下ロールは上面で接触
+  const A=R.A,B=R.B;
+  // コイル→スナバーA上面→ベンドB下面(S掛け)→入側ピンチニップ。
+  // すべて接線+巻付き弧: Aでは約20°方向転換するため、単一点接触では弦が
+  // ロール右肩を10mm以上切り取ってしまう(旧実装の貫通の正体)。
+  const cCoil={x:UNC_X,y:UNC_Y,r:st.ru+0.004};
+  const cA={x:A.x,y:A.y,r:A.r+0.006}, cB={x:B.x,y:B.y,r:B.r+0.006};
+  const tCA=tangentBetween(cCoil,'top',cA,'top');            // コイル上面→A上面(外接線)
+  const tAB=tangentBetween(cA,'top',cB,'bottom');            // A上面→B下面(内接線)
+  const tBC=tangentToSide(cB.x,cB.y,cB.r,'bottom',R.C1.x,PL);// B下面→C1ニップ
+  for(const p of arcPoints(cCoil.x,cCoil.y,cCoil.r,tCA.t1.a+0.8,tCA.t1.a,8))raw.push(p); // コイル巻出し弧
+  for(const p of arcPoints(cA.x,cA.y,cA.r,tCA.t2.a,tAB.t1.a,7))raw.push(p);              // A巻付き弧
+  for(const p of arcPoints(cB.x,cB.y,cB.r,tAB.t2.a,tBC.a,7))raw.push(p);                 // B巻付き弧
+  raw.push(NIP('C1'));
+  // ラフレベラー: 上下ロールが30mm食い違って(インターリーブ)いるためジグザグ通板
   raw.push(TOP('D1'));raw.push(TOP('E2-1'));raw.push(BOTTOM('E1-1'));raw.push(TOP('E2-2'));
   raw.push(BOTTOM('E1-2'));raw.push(TOP('E2-3'));raw.push(TOP('D2'));
+  // ループ前ピンチJ群はニップ面=パスラインなので直線通板(面一接触・曲げ無し)
   raw.push(V3(R['H1-1'].x,PL,0));raw.push(V3(R['H1-3'].x,PL,0));
-  // ループ前ピンチ(J1-J4-J2-J5-J3 ジグザグ)
-  raw.push(BOTTOM('J1'));raw.push(TOP('J4'));raw.push(BOTTOM('J2'));raw.push(TOP('J5'));raw.push(BOTTOM('J3'));
   raw.push(V3(R['K1-2'].x,PL,0));
-  for(const p of H2pts)raw.push(p.clone());                 // No.1ルーパー垂み
-  raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(V3(R.M.x,PL,0));raw.push(NIP('N1'));raw.push(TOP('Q'));
-  raw.push(V3(SLIT_X,PL,0));
+  for(const p of H2pts)raw.push(p.clone());                  // No.1ルーパー(自重垂み・ロール上面支持)
+  raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(V3(R.M.x,PL,0));raw.push(NIP('N1'));
+  raw.push(V3(SLIT_X,PL,0));                                 // ガイドP上面/板押えQ下面は面一で接触(曲げ無し)
   const out=[];samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);}
 
-/* デフロールS字反転(Y2上面→Y1下面) — 単純な直線ではロール内部を貫通するため、
- * 前後(X1ニップ→Z上面)を外部点とした正しい接線・巻付き弧で経路を組む。 */
-function deflectorPoints(zc){
-  const cY2={x:R.Y2.x,y:R.Y2.y,r:R.Y2.r}, cY1={x:R.Y1.x,y:R.Y1.y,r:R.Y1.r};
-  const inPt={x:R.X1.x,y:PL}, outPt={x:R.Z.x,y:R.Z.y+R.Z.r};
-  const tin=tangentToSide(cY2.x,cY2.y,cY2.r,'top',inPt.x,inPt.y);
-  const mid=tangentBetween(cY2,'top',cY1,'bottom');
-  const tout=tangentToSide(cY1.x,cY1.y,cY1.r,'bottom',outPt.x,outPt.y);
+/* 出側テール: X1ニップ→デフY2上面→Y1下面→テールキャッチャーZ上面→リコイラ外周。
+ * 全区間を接線+巻付き弧で構成する。Zは約25°の方向転換があり、極点1点で結ぶと
+ * 弦がロール肩を~10mm切り取るため、Y1→Z→リコイラも共通接線で結ぶ。 */
+function tailPoints(zc){
+  const cY2={x:R.Y2.x,y:R.Y2.y,r:R.Y2.r+0.006}, cY1={x:R.Y1.x,y:R.Y1.y,r:R.Y1.r+0.006};
+  const cZ={x:R.Z.x,y:R.Z.y,r:R.Z.r+0.006}, cRec={x:REC_X,y:REC_Y,r:st.rr+0.004};
+  const tin=tangentToSide(cY2.x,cY2.y,cY2.r,'top',R.X1.x,PL);
+  const m1=tangentBetween(cY2,'top',cY1,'bottom');
+  const m2=tangentBetween(cY1,'bottom',cZ,'top');
+  const m3=tangentBetween(cZ,'top',cRec,'top');
   const pts=[];
-  for(const p of arcPoints(cY2.x,cY2.y,cY2.r,tin.a,mid.t1.a,8))pts.push(p);
-  for(const p of arcPoints(cY1.x,cY1.y,cY1.r,mid.t2.a,tout.a,8))pts.push(p);
+  for(const p of arcPoints(cY2.x,cY2.y,cY2.r,tin.a,m1.t1.a,8))pts.push(p);
+  for(const p of arcPoints(cY1.x,cY1.y,cY1.r,m1.t2.a,m2.t1.a,8))pts.push(p);
+  for(const p of arcPoints(cZ.x,cZ.y,cZ.r,m2.t2.a,m3.t1.a,6))pts.push(p);
+  for(const p of arcPoints(cRec.x,cRec.y,cRec.r,m3.t2.a,m3.t2.a-0.7,7))pts.push(p); // リコイラ巻付き
   for(const p of pts)p.z=zc;
   return pts;}
 
@@ -50,22 +73,20 @@ function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
   for(const p of R2pts)raw.push(V3(p.x,p.y,zc));            // No.2ルーパー垂み
   raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
   raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
-  for(const p of deflectorPoints(zc))raw.push(p);            // デフS字(接線・巻付き弧)
-  raw.push(V3(R.Z.x,R.Z.y+R.Z.r,zc));
-  const Tt=tangentPoint(REC_X,REC_Y,st.rr,R.Z.x,R.Z.y,-1);  // リコイラ外周へ接線巻取り
-  raw.push(V3(Tt.x,Tt.y,zc));
-  for(let j=1;j<=4;j++){const a=THREE.MathUtils.lerp(Tt.a,Tt.a-0.7,j/4);raw.push(V3(REC_X+(st.rr+0.004)*Math.cos(a),REC_Y+(st.rr+0.004)*Math.sin(a),zc));}
+  for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)
   _sout.length=0;samplePolyline(raw,STRAND_N,_sout);rib.update(_sout);}
 
-const _tcR=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
-const _tcL=new THREE.CatmullRomCurve3([V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)]);
-function updateTrim(rib,curve,sw,rs){const side=sw.side, z0=(EFF_W/2+TRIM_W/2)*side;
-  // スリッター耳 → 側方へドリフト → 屑コイル外周へ接線で自然に横向き巻取り
-  const ax=sw.Wx-rs-0.2, ay=PL;
-  const Tt=tangentPoint(sw.Wx,sw.Wy,rs, ax,ay, +1);
-  curve.points[0].set(SLIT_X,PL,z0);
-  curve.points[1].set(0.7,PL,(z0+sw.Wz)/2);
-  curve.points[2].set(ax,ay,sw.Wz);
-  curve.points[3].set(Tt.x,Tt.y,sw.Wz);
-  const a=Tt.a-0.7; curve.points[4].set(sw.Wx+(rs+0.004)*Math.cos(a),sw.Wy+(rs+0.004)*Math.sin(a),sw.Wz);
-  rib.update(curve.getPoints(TRIM_N-1));}
+const _traw=[];
+function updateTrim(rib,sw,rs){const side=sw.side, z0=(EFF_W/2+TRIM_W/2)*side;
+  // スリッター出側で分離した耳は、自由区間の「直線」で横ドリフトしながら
+  // 屑コイル外周への接線点まで進み、そこから巻付き弧で巻き取られる。
+  // (旧実装のCatmullRomスプラインは制御点でx方向が反転しループ状に自己交差
+  //  していた — スプラインを廃し、接線直線+弧のみで構成する)
+  const rw=rs+0.004;
+  const Tt=tangentPoint(sw.Wx,sw.Wy,rw,SLIT_X,PL,-1);        // 分離点→屑コイル上面接点
+  const raw=_traw;raw.length=0;
+  for(let j=0;j<=8;j++){const t=j/8;                          // 自由区間: 3D直線(z0→Wzへ単調ドリフト)
+    raw.push(V3(THREE.MathUtils.lerp(SLIT_X,Tt.x,t),THREE.MathUtils.lerp(PL,Tt.y,t),THREE.MathUtils.lerp(z0,sw.Wz,t)));}
+  for(let j=1;j<=10;j++){const a=Tt.a-0.9*j/10;               // 巻付き弧(コイル幅面 z=Wz)
+    raw.push(V3(sw.Wx+rw*Math.cos(a),sw.Wy+rw*Math.sin(a),sw.Wz));}
+  const out=[];samplePolyline(raw,TRIM_N,out);rib.update(out);}

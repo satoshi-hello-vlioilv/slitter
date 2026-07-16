@@ -2,7 +2,7 @@
 /* =========================================================
  * アプリバージョン
  * =======================================================*/
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
 {
   const el = document.getElementById("appVersion");
@@ -24,7 +24,9 @@ const RU_MAX = 1.05, RU_MIN = 0.40;
 const RR_MIN = 0.30, RR_MAX = 1.00;
 const H_VIS  = 0.020, UV_SCALE = 2.0;
 const ACCEL = 0.40, DECEL = 0.55;
-const ENTRY_N = 150, STRAND_N = 180, TRIM_N = 26;
+// リボン頂点数: 巻付き弧(コイル/スナバー/ベンド/デフ)が等間隔リサンプリングで
+// 弦近似に潰れてロールへ食い込まない密度を確保する
+const ENTRY_N = 520, STRAND_N = 340, TRIM_N = 60;
 const PIT1={x0:-15.2,x1:-8.4}, PIT2={x0:5.6,x1:11.6};   // ルーパーピット
 const d2r = (mm)=> mm/2000;       // 直径[mm] → 半径[m]
 

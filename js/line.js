@@ -4,8 +4,10 @@
  * 全ロールは両端チョック(軸受)+スタンド/サイドフレームで支持し宙に浮かせない
  * =======================================================*/
 // 入側
-roll('A',-29.0,PL+0.55,280,-1);                       // スナバーロール
-roll('B',-28.0,PL+0.16,100,-1);                       // ベンドロール
+// 回転方向の規約: 接触面の周速が帯板と同方向になる向き。
+// 上面接触ロール=dir-1 / 下面接触ロール=dir+1 (帯板は+X方向へ走行)
+roll('A',-29.0,PL+0.55,280,-1);                       // スナバーロール(上面接触)
+roll('B',-28.0,PL+0.16,100,1);                        // ベンドロール(下面S掛け → dir+1)
 housing(-26.9,PL+0.9); roll('C1',-26.9,PL+0.25,500,1);roll('C2',-26.9,PL-0.25,500,-1); // 入側ピンチ
 // ラフレベラー — 小径ワークロール群は側板フレームに収める
 roll('D1',-25.95,PL,60,-1,{frame:false,chock:false});
@@ -26,9 +28,11 @@ addBox(0.04,0.4,STRIP_W+0.4,M.steel,-22.45,PL-0.35,0); // 下刃
 roll('H1-1',-21.2,PL-d2r(98),98,-1,{frame:false});roll('H1-2',-20.6,PL-d2r(98),98,-1,{frame:false});roll('H1-3',-20.0,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['H1-1','H1-2','H1-3'],STRIP_W/2+0.27,2);   // 入側テーブル サイドフレーム
 housing(-18.0,PL+0.95);                               // 板押え/検査/ループ前ピンチ
-roll('J4',-18.4,PL-0.085,150,-1,{frame:false,chock:false});roll('J1',-18.8,PL+0.085,150,1,{frame:false,chock:false});
-roll('J5',-17.6,PL-0.085,150,-1,{frame:false,chock:false});roll('J2',-18.0,PL+0.085,150,1,{frame:false,chock:false});
-roll('J3',-17.2,PL+0.085,150,1,{frame:false,chock:false});
+// ピンチはニップ面がパスラインに一致(上ロール下面=PL/下ロール上面=PL)。
+// 旧配置(±0.085)はロール面がPLから10mm浮きニップ不成立だった。
+roll('J4',-18.4,PL-0.075,150,-1,{frame:false,chock:false});roll('J1',-18.8,PL+0.075,150,1,{frame:false,chock:false});
+roll('J5',-17.6,PL-0.075,150,-1,{frame:false,chock:false});roll('J2',-18.0,PL+0.075,150,1,{frame:false,chock:false});
+roll('J3',-17.2,PL+0.075,150,1,{frame:false,chock:false});
 (function(){ // ピンチ群 側板+支脚
   const zs=STRIP_W/2+0.20;
   for(const s of [-1,1]){addBox(2.2,0.8,0.06,M.paint,-18.0,PL,s*zs);
@@ -36,64 +40,76 @@ roll('J3',-17.2,PL+0.085,150,1,{frame:false,chock:false});
 })();
 // No.1ルーパー(入側カテナリー K1 / テーブル H2 / 出側カテナリー K2)
 roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-15.0,PL-d2r(98),98,-1,{frame:false});
-// たわみ形状(放物線 4t(1-t))は区間全体で凸(常に弦が曲線より上側)となり、
-// たわみ内部のロール群を弦(帯板)が決して貫通しない。端(水平区間との接続部)は
-// 経路を高密度サンプルすることでキンクによる食い込みを最小化する。
-const sagShape=(t)=>4*t*(1-t);
-const H2pts=[]; (function(){const x0=-14.5,x1=-9.6,depth=1.5,r=d2r(98),NR=9,NP=28;
-  for(let i=0;i<NR;i++){const x=THREE.MathUtils.lerp(x0,x1,i/(NR-1));const t=(x-x0)/(x1-x0);const py=PL-depth*sagShape(t);
-    roll('H2-'+(i+1),x,py-r,98,-1,{frame:false});}
-  for(let i=0;i<NP;i++){const t=i/(NP-1);H2pts.push(V3(THREE.MathUtils.lerp(x0,x1,t),PL-depth*sagShape(t),0));} // 経路は密にサンプル(小径ロールへの食い込み防止)
-})();
+// ルーパーテーブルの物理モデル:
+//  - 帯板は端ロール上面を「巻付き弧」で回り込んでピットへ垂れる(端で経路が
+//    キンクすると弦がロール肩を切り取る=貫通のため、弧で回す)。
+//  - 内部ロールは垂みカーブ(放物線・自重支持)に対し法線方向へ半径分オフセット
+//    して配置する。頂点直下に置くと、傾いた経路がロール極点を通過して肩へ
+//    食い込むため、必ず「接点でカーブと円が接する」配置にする。
+function pitTable(prefix,x0,x1,depth,NR,NP,pts){
+  const r=d2r(98), rr=r+0.006;
+  const m=4*depth/(x1-x0), phi=Math.atan(m);
+  const dxo=rr*Math.sin(phi), dyo=rr*Math.cos(phi);
+  const yEdge=PL-r;                              // 端ロール中心(上面=PL)
+  const L2=(x1-x0)-2*dxo, y0=yEdge+dyo, depth2=m*L2/4;
+  const sag=(u)=>y0-depth2*4*u*(1-u);
+  const slope=(u)=>-4*depth2*(1-2*u)/L2;
+  roll(prefix+'-1',x0,yEdge,98,-1,{frame:false});
+  roll(prefix+'-'+NR,x1,yEdge,98,-1,{frame:false});
+  for(let i=1;i<NR-1;i++){const u=i/(NR-1);      // 内部ロール: カーブへ法線オフセット
+    const px=x0+dxo+u*L2, py=sag(u), mm=slope(u), s=Math.hypot(1,mm);
+    roll(prefix+'-'+(i+1),px+r*mm/s,py-r/s,98,-1,{frame:false});}
+  for(let k=0;k<=6;k++){const a=Math.PI/2-phi*k/6;pts.push(V3(x0+rr*Math.cos(a),yEdge+rr*Math.sin(a),0));} // 入側巻付き弧
+  for(let i=1;i<NP-1;i++){const u=i/(NP-1);pts.push(V3(x0+dxo+u*L2,sag(u),0));}                            // 自重垂み
+  for(let k=6;k>=0;k--){const a=Math.PI/2-phi*k/6;pts.push(V3(x1-rr*Math.cos(a),yEdge+rr*Math.sin(a),0));} // 出側巻付き弧
+}
+const H2pts=[]; pitTable('H2',-14.5,-9.6,1.5,9,40,H2pts);
 roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
 (function(){ // No.1ルーパー全域のサイドフレーム(ピット底まで支柱)
   const ids=['K1-1','K1-2','K1-3'];for(let i=1;i<=9;i++)ids.push('H2-'+i);ids.push('K2-1','K2-2','K2-3');
   chainFrame(ids,STRIP_W/2+0.27,3);
 })();
-// VCロール / パスロール / スリッター前ピンチ
-housing(-7.4,PL+0.9); roll('L1',-7.4,PL+0.16,80,1);roll('L2',-7.4,PL-0.16,80,-1);
+// VCロール / パスロール / スリッター前ピンチ — 全てニップ面=PL に整合
+housing(-7.4,PL+0.9); roll('L1',-7.4,PL+d2r(80),80,1);roll('L2',-7.4,PL-d2r(80),80,-1);
 roll('M',-6.4,PL-d2r(60),60,-1);
-housing(-5.1,PL+0.9); roll('N1',-5.1,PL+0.11,200,1);roll('N2',-5.1,PL-d2r(98),98,-1);
-// サイドガイドロール(5) — 小テーブルフレームで支持
-for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL+0.0,60,-1,{frame:false,len:0.5});
+housing(-5.1,PL+0.9); roll('N1',-5.1,PL+d2r(200),200,1);roll('N2',-5.1,PL-d2r(98),98,-1);
+// サイドガイドロール(5) — 上面=PL(帯板を下から支持)。小テーブルフレームで支持
+for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL-d2r(60),60,-1,{frame:false,len:0.5});
 chainFrame(['P1','P2','P3','P4','P5'],0.36,2);
-roll('Q',-1.0,PL+0.13,120,1);                          // 板押えロール
+roll('Q',-1.0,PL+d2r(120),120,1);                      // 板押えロール(下面=PLで帯板に接触)
 // スリッター(I=スチールシャフトφ98 アーバー + 上下丸刃群)
+// アーバー高さは丸刃径に連動し buildKnives で設定(刃先ラップが板を剪断する位置)
 const knifeUp=new THREE.Group(),knifeLo=new THREE.Group();
-knifeUp.position.set(SLIT_X,PL+0.20,0);knifeLo.position.set(SLIT_X,PL-0.20,0);scene.add(knifeUp,knifeLo);
-spin(knifeUp,0.18,1);spin(knifeLo,0.18,-1);
+let knifeRcur=0.18;
+knifeUp.position.set(SLIT_X,PL+0.18,0);knifeLo.position.set(SLIT_X,PL-0.18,0);scene.add(knifeUp,knifeLo);
+spin(knifeUp,()=>knifeRcur,1);spin(knifeLo,()=>knifeRcur,-1);
 (function(){housing(SLIT_X,PL+1.1,M.paintDark);
-  for(const y of [PL+0.20,PL-0.20]){addCylZ(d2r(98),STRIP_W+1.0,M.steel,SLIT_X,y,0,scene);
-    addCylZ(0.16,0.5,M.paintDark,SLIT_X,y,-(STRIP_W/2+0.85),scene);}
-  regRoll('I',SLIT_X,PL+0.20,d2r(98));})();
+  regRoll('I',SLIT_X,PL+0.18,0.18);})();
 // 出側テーブル
 for(let i=0;i<5;i++)roll('R1-'+(i+1),1.4+i*0.6,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['R1-1','R1-2','R1-3','R1-4','R1-5'],STRIP_W/2+0.27,2);
 // No.2ルーパー(入側カテナリー S1 / テーブル R2 / 出側カテナリー S2)
 roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1,{frame:false});roll('S1-3',5.6,PL-d2r(94),94,-1,{frame:false});
-const R2pts=[]; (function(){const x0=6.1,x1=11.1,depth=1.6,r=d2r(98),NR=11,NP=32;
-  for(let i=0;i<NR;i++){const x=THREE.MathUtils.lerp(x0,x1,i/(NR-1));const t=(x-x0)/(x1-x0);const py=PL-depth*sagShape(t);
-    roll('R2-'+(i+1),x,py-r,98,-1,{frame:false});}
-  for(let i=0;i<NP;i++){const t=i/(NP-1);R2pts.push(V3(THREE.MathUtils.lerp(x0,x1,t),PL-depth*sagShape(t),0));} // 経路は密にサンプル
-})();
+const R2pts=[]; pitTable('R2',6.1,11.1,1.6,11,44,R2pts);
 roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
 (function(){ // No.2ルーパー全域のサイドフレーム
   const ids=['S1-1','S1-2','S1-3'];for(let i=1;i<=11;i++)ids.push('R2-'+i);ids.push('S2-1','S2-2','S2-3');
   chainFrame(ids,STRIP_W/2+0.27,3);
 })();
-// セパ押え / MDミニ前
-roll('T1',13.6,PL+0.16,80,1);roll('T2',14.3,PL-d2r(80),80,-1);
-// MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク) — 帯は上下間を通板
-housing(15.2,PL+1.1); discRoll('V1',15.2,PL+0.16,250,1);discRoll('V2',15.2,PL-0.16,250,-1);
-housing(16.8,PL+1.2,M.paintDark); discRoll('W1',16.8,PL+0.22,400,1);discRoll('W2',16.8,PL-0.22,400,-1);
-addCylZ(0.18,0.5,M.paintDark,16.8,PL+0.22,-(STRIP_W/2+0.95),scene); // MD駆動モーター
-addCylZ(0.18,0.5,M.paintDark,16.8,PL-0.22,-(STRIP_W/2+0.95),scene);
-// 出側ピンチ
-housing(18.4,PL+0.9); roll('X1',18.4,PL+0.11,200,1);roll('X2',18.4,PL-0.11,200,-1);
-// デフロール(上下φ500)
-roll('Y2',19.9,PL+0.27,500,1);roll('Y1',20.6,PL-0.27,500,-1);
-// テールキャッチャー
-roll('Z',22.0,PL+0.10,190,1);
+// セパ押え(下面=PLで接触) / MDミニ前
+roll('T1',13.6,PL+d2r(80),80,1);roll('T2',14.3,PL-d2r(80),80,-1);
+// MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク)
+// 帯は上下間を通板 — ロール面がPLに接するニップ位置(旧配置は面が浮きピンチ不成立)
+housing(15.2,PL+1.1); discRoll('V1',15.2,PL+d2r(250),250,1);discRoll('V2',15.2,PL-d2r(250),250,-1);
+housing(16.8,PL+1.2,M.paintDark); discRoll('W1',16.8,PL+d2r(400),400,1);discRoll('W2',16.8,PL-d2r(400),400,-1);
+addCylZ(0.18,0.5,M.paintDark,16.8,PL+d2r(400),-(STRIP_W/2+0.95),scene); // MD駆動モーター
+addCylZ(0.18,0.5,M.paintDark,16.8,PL-d2r(400),-(STRIP_W/2+0.95),scene);
+// 出側ピンチ(ニップ面=PL)
+housing(18.4,PL+0.9); roll('X1',18.4,PL+d2r(200),200,1);roll('X2',18.4,PL-d2r(200),200,-1);
+// デフロール(上下φ500): Y2上面巻き(dir-1)→Y1下面巻き(dir+1)のS掛け
+roll('Y2',19.9,PL+0.27,500,-1);roll('Y1',20.6,PL-0.27,500,1);
+// テールキャッチャー(上面接触 → dir-1)
+roll('Z',22.0,PL+0.10,190,-1);
 
 /* =========================================================
  * スリッター丸刃 / 板押さえ / セパレーター(条数依存)
@@ -101,20 +117,25 @@ roll('Z',22.0,PL+0.10,190,1);
 function clearGroup(grp){grp.traverse(o=>{if(o.geometry)o.geometry.dispose();});grp.clear();}
 function buildKnives(N){
   clearGroup(knifeUp);clearGroup(knifeLo);
-  addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
   const sw=EFF_W/N;
-  // 丸刃半径は条幅に応じて縮小する — φ360mmの刃は22mm程度の狭条ピッチでは物理的に
-  // 過大で、隣接刃が視覚上完全に融合し帯板を飲み込む巨大な円柱に見えてしまうため。
-  // アーバー(スペーサ半径118mm)より必ず大きい範囲でクランプする。
-  const knifeR=Math.min(0.18,Math.max(0.13,sw*0.9));
+  // 丸刃半径は条ピッチに応じて縮小(狭条で隣接刃が視覚融合するのを防ぐ)。
+  // アーバー高さは刃径に連動: 上下刃の刃先がパスラインをLAPだけ越えて重なる
+  // (=実機のナイフラップ)。これで「刃が板に届かない」「刃が板を飲み込む」の
+  // どちらの誤描写も起きない。スペーサ(r=118mm)より必ず大径にクランプ。
+  const knifeR=Math.min(0.18,Math.max(0.13,sw*0.9)), LAP=0.004;
+  knifeRcur=knifeR;
+  knifeUp.position.y=PL+knifeR-LAP; knifeLo.position.y=PL-knifeR+LAP;
+  addCylZ(d2r(98),STRIP_W+1.6,M.steel,0,0,0,knifeUp);                  // アーバーシャフト
+  addCylZ(d2r(98),STRIP_W+1.6,M.steel,0,0,0,knifeLo);
+  addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeUp);         // 駆動継手
+  addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeLo);
+  addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
   for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
     addCylZ(knifeR,0.016,M.knife,0,0,zc-0.010,knifeUp,36);addCylZ(knifeR,0.016,M.knife,0,0,zc+0.010,knifeLo,36);}
   // 板押さえゴムリング(ストリッパーリング): 丸刃間のスペーサ上に装着し、
-  // 帯板を押さえて刃への巻付きを防ぐ。刃径よりやや小径のウレタン輪。アーバーと共回転。
-  // リング半径・軸長・本数は条幅に比例させる — 実機でも極端に狭い条では刃径に
-  // 迫る大径リングは物理的に成立しないため、狭条(多条数)ではリングを小径・単数化し、
-  // 帯板よりロールの見かけが支配的になって「巻き付いて見える」誤描写を防ぐ。
-  const ringR=Math.min(0.172,Math.max(0.05,sw*0.85));
+  // 帯板を押さえて刃への巻付きを防ぐ。半径=刃-6mm → リング面は板面すれすれ
+  // (LAP+2mmのクリアランス)で「押さえているが食い込まない」実機の見え方になる。
+  const ringR=knifeR-0.006;
   const nr=sw<0.05?1:Math.max(2,Math.floor(sw/0.075));
   for(let k=0;k<N;k++){const z0=-EFF_W/2+k*sw;
     const seg=sw/nr, ringLen=Math.min(0.034,seg*0.7);
@@ -139,13 +160,16 @@ function buildFingers(N){
       f.rotation.z=s*0.78;}                                             // 爪先端は刃間ニップ直後の板面へ
   }}
 const sepGroups=[];
+// セパレーターディスクは条境界(=丸刃と同じz)で条間の隙間に垂れ込み、隣り合う条の
+// 重なり/絡みを防ぐ。ディスク下端はPLより10mm下(条の間なので帯板とは干渉しない)。
+const SEP_Y=PL+0.21;
 function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.length){const c=sg.g.children.pop();c.geometry.dispose();sg.g.remove(c);}}
   const sw=EFF_W/N;
-  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;addCylZ(0.22,0.012,M.knife,sg.x,PL+0.32,zc,sg.g,28);}}}
+  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;addCylZ(0.22,0.012,M.knife,sg.x,SEP_Y,zc,sg.g,28);}}}
 (function(){for(const x of [13.0,21.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
   addBox(0.16,3.0,0.16,M.frame,x,1.5,-1.3);addBox(0.16,3.0,0.16,M.frame,x,1.5,1.3);addBox(0.2,0.16,2.76,M.yellow,x,3.0,0);
-  addCylZ(0.04,STRIP_W+0.8,M.steel,x,PL+0.32,0,scene);
-  for(const s of [-1,1])addBox(0.12,0.12,0.42,M.frame,x,PL+0.32,s*1.12);   // 軸受アーム(シャフト端→支柱)
+  addCylZ(0.04,STRIP_W+0.8,M.steel,x,SEP_Y,0,scene);
+  for(const s of [-1,1])addBox(0.12,0.12,0.42,M.frame,x,SEP_Y,s*1.12);   // 軸受アーム(シャフト端→支柱)
 }})();
 
 /* =========================================================

@@ -25,7 +25,7 @@ function updateGeometry(){
   scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1); // 軸=Z
   updateEntryRibbon();
   for(let i=0;i<strandRibbons.length;i++)updateStrandRibbon(strandRibbons[i],strandZ[i]);
-  updateTrim(trimRibbonR,_tcR,scrapR,st.rsR);updateTrim(trimRibbonL,_tcL,scrapL,st.rsL);}
+  updateTrim(trimRibbonR,scrapR,st.rsR);updateTrim(trimRibbonL,scrapL,st.rsL);}
 function updateSpinners(dt){if(st.v<=0)return;for(const s of spinners){const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation[s.axis]+=s.dir*(st.v/r)*dt;}}
 let uiT=0;
 function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
