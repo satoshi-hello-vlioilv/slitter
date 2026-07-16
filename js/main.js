@@ -19,7 +19,14 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
     else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.swapped=true;}} // コイル受渡し・新コイル
     else if(t<4.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
     else if(t<4.8){recSupport.rotation.y=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート復帰
-    else{recSupport.rotation.y=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}}
+    else{recSupport.rotation.y=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}
+  // ルーパーテーブル開閉: 開度0-0.35でテーブルが先に退避し、その後ループが成長する
+  // (閉じる際は逆順: ループが縮んでからテーブルが戻る) — 帯板とテーブルの干渉を防ぐ
+  const dl=dt*0.45;
+  st.loop1+=THREE.MathUtils.clamp(st.loop1Tgt-st.loop1,-dl,dl);
+  st.loop2+=THREE.MathUtils.clamp(st.loop2Tgt-st.loop2,-dl,dl);
+  looperTable1.setOpen(st.loop1/0.35);
+  looperTable2.setOpen(st.loop2/0.35);}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
   scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1); // 軸=Z

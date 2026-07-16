@@ -2,7 +2,7 @@
 /* =========================================================
  * アプリバージョン
  * =======================================================*/
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
 {
   const el = document.getElementById("appVersion");
@@ -33,4 +33,5 @@ const d2r = (mm)=> mm/2000;       // 直径[mm] → 半径[m]
 const st = {
   v:0, target:80/60, paused:false, state:"RUN", tChange:0, swapped:false,
   ru:RU_MAX, rr:RR_MIN, rsL:0.13, rsR:0.13, len:0, N:4, texOfs:0,
+  loop1:1, loop2:1, loop1Tgt:1, loop2Tgt:1,   // ルーパーテーブル開度(0=閉/ループ無し, 1=開/フリーループ)
 };

@@ -38,44 +38,46 @@ roll('J3',-17.2,PL+0.075,150,1,{frame:false,chock:false});
   for(const s of [-1,1]){addBox(2.2,0.8,0.06,M.paint,-18.0,PL,s*zs);
     for(const lx of [-18.95,-17.05])addBox(0.12,PL-0.4,0.12,M.paint,lx,(PL-0.4)/2,s*zs);}
 })();
-// No.1ルーパー(入側カテナリー K1 / テーブル H2 / 出側カテナリー K2)
+// No.1ルーパー(入側カテナリー K1 / 開閉式ループテーブル / 出側カテナリー K2)
 roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-15.0,PL-d2r(98),98,-1,{frame:false});
-// ルーパーテーブルの物理モデル:
-//  - 帯板は端ロール上面を「巻付き弧」で回り込んでピットへ垂れる(端で経路が
-//    キンクすると弦がロール肩を切り取る=貫通のため、弧で回す)。
-//  - 内部ロールは垂みカーブ(放物線・自重支持)に対し法線方向へ半径分オフセット
-//    して配置する。頂点直下に置くと、傾いた経路がロール極点を通過して肩へ
-//    食い込むため、必ず「接点でカーブと円が接する」配置にする。
-function pitTable(prefix,x0,x1,depth,NR,NP,pts){
-  const r=d2r(98), rr=r+0.006;
-  const m=4*depth/(x1-x0), phi=Math.atan(m);
-  const dxo=rr*Math.sin(phi), dyo=rr*Math.cos(phi);
-  const yEdge=PL-r;                              // 端ロール中心(上面=PL)
-  const L2=(x1-x0)-2*dxo, y0=yEdge+dyo, depth2=m*L2/4;
-  const sag=(u)=>y0-depth2*4*u*(1-u);
-  const slope=(u)=>-4*depth2*(1-2*u)/L2;
-  roll(prefix+'-1',x0,yEdge,98,-1,{frame:false});
-  roll(prefix+'-'+NR,x1,yEdge,98,-1,{frame:false});
-  for(let i=1;i<NR-1;i++){const u=i/(NR-1);      // 内部ロール: カーブへ法線オフセット
-    const px=x0+dxo+u*L2, py=sag(u), mm=slope(u), s=Math.hypot(1,mm);
-    roll(prefix+'-'+(i+1),px+r*mm/s,py-r/s,98,-1,{frame:false});}
-  for(let k=0;k<=6;k++){const a=Math.PI/2-phi*k/6;pts.push(V3(x0+rr*Math.cos(a),yEdge+rr*Math.sin(a),0));} // 入側巻付き弧
-  for(let i=1;i<NP-1;i++){const u=i/(NP-1);pts.push(V3(x0+dxo+u*L2,sag(u),0));}                            // 自重垂み
-  for(let k=6;k>=0;k--){const a=Math.PI/2-phi*k/6;pts.push(V3(x1-rr*Math.cos(a),yEdge+rr*Math.sin(a),0));} // 出側巻付き弧
-}
-const H2pts=[]; pitTable('H2',-14.5,-9.6,1.5,9,40,H2pts);
 roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
-(function(){ // No.1ルーパー全域のサイドフレーム(ピット底まで支柱)
-  const ids=['K1-1','K1-2','K1-3'];for(let i=1;i<=9;i++)ids.push('H2-'+i);ids.push('K2-1','K2-2','K2-3');
-  chainFrame(ids,STRIP_W/2+0.27,3);
-})();
+chainFrame(['K1-1','K1-2','K1-3'],STRIP_W/2+0.27,2);
+chainFrame(['K2-1','K2-2','K2-3'],STRIP_W/2+0.27,2);
+// 開閉式ループテーブル:
+//  閉(通板時) = 両半テーブルが水平に閉じ、ロール上面=PLの平坦通板路を形成(ループ無し)
+//  開(運転時) = 両半テーブルがピット端のヒンジで下方へ振り下がって退避し、
+//               帯板は固定端ロール(K1-3/K2-1等)間で何にも触れない完全フリーの自重ループになる
+function buildLooperTable(x0,x1,nRolls){
+  const r=d2r(98), L=(x1-x0)/2, halves=[];
+  for(const side of [0,1]){
+    const hx=side?x1:x0, dir=side?-1:1;
+    const piv=new THREE.Group();piv.position.set(hx,PL-r,0);scene.add(piv);
+    for(const s of [-1,1])addBox(L,0.08,0.10,M.frame,dir*L/2,-0.11,s*(STRIP_W/2+0.27),piv); // 側部チャンネル
+    const n=Math.ceil(nRolls/2);
+    for(let i=0;i<n;i++){const lx=dir*((i+0.5)*L/n);
+      const m=addCylZ(r,STRIP_W+0.34,rollMats(),lx,0,0,piv,22);spin(m,r,-1);
+      for(const s of [-1,1])addBox(0.09,0.10,0.09,M.frame,lx,-0.02,s*(STRIP_W/2+0.22),piv);} // 軸受
+    // ヒンジ軸(幅方向Z)と支持ブラケット
+    addCylZ(0.05,STRIP_W+0.7,M.steel,0,0,0,piv);
+    addBox(0.22,0.3,0.16,M.paintDark,hx,PL-r-0.25,-(STRIP_W/2+0.42));
+    addBox(0.22,0.3,0.16,M.paintDark,hx,PL-r-0.25, (STRIP_W/2+0.42));
+    halves.push(piv);
+  }
+  return{setOpen(k){const ang=THREE.MathUtils.clamp(k,0,1)*1.35; // 開放角 ~77°
+    halves[0].rotation.z=-ang;halves[1].rotation.z=ang;}};
+}
+// ループ緒元(帯板経路はstrip.jsがこのメタ情報から動的に構築)
+const LOOP1={inR:'K1-3',outR:'K2-1',depth:1.5};
+const LOOP2={inR:'S1-3',outR:'S2-1',depth:1.6};
+const looperTable1=buildLooperTable(-14.6,-9.6,8);
 // VCロール / パスロール / スリッター前ピンチ — 全てニップ面=PL に整合
 housing(-7.4,PL+0.9); roll('L1',-7.4,PL+d2r(80),80,1);roll('L2',-7.4,PL-d2r(80),80,-1);
 roll('M',-6.4,PL-d2r(60),60,-1);
 housing(-5.1,PL+0.9); roll('N1',-5.1,PL+d2r(200),200,1);roll('N2',-5.1,PL-d2r(98),98,-1);
-// サイドガイドロール(5) — 上面=PL(帯板を下から支持)。小テーブルフレームで支持
-for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL-d2r(60),60,-1,{frame:false,len:0.5});
-chainFrame(['P1','P2','P3','P4','P5'],0.36,2);
+// ガイドテーブルロール(5) — 上面=PL(帯板を下から支持)。
+// バレル面長は必ず板幅より広く取る(狭いとチョックが板を貫通する物理違反になる)
+for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL-d2r(60),60,-1,{frame:false});
+chainFrame(['P1','P2','P3','P4','P5'],STRIP_W/2+0.27,2);
 roll('Q',-1.0,PL+d2r(120),120,1);                      // 板押えロール(下面=PLで帯板に接触)
 // スリッター(I=スチールシャフトφ98 アーバー + 上下丸刃群)
 // アーバー高さは丸刃径に連動し buildKnives で設定(刃先ラップが板を剪断する位置)
@@ -88,14 +90,12 @@ spin(knifeUp,()=>knifeRcur,1);spin(knifeLo,()=>knifeRcur,-1);
 // 出側テーブル
 for(let i=0;i<5;i++)roll('R1-'+(i+1),1.4+i*0.6,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['R1-1','R1-2','R1-3','R1-4','R1-5'],STRIP_W/2+0.27,2);
-// No.2ルーパー(入側カテナリー S1 / テーブル R2 / 出側カテナリー S2)
+// No.2ルーパー(入側カテナリー S1 / 開閉式ループテーブル / 出側カテナリー S2)
 roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1,{frame:false});roll('S1-3',5.6,PL-d2r(94),94,-1,{frame:false});
-const R2pts=[]; pitTable('R2',6.1,11.1,1.6,11,44,R2pts);
 roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
-(function(){ // No.2ルーパー全域のサイドフレーム
-  const ids=['S1-1','S1-2','S1-3'];for(let i=1;i<=11;i++)ids.push('R2-'+i);ids.push('S2-1','S2-2','S2-3');
-  chainFrame(ids,STRIP_W/2+0.27,3);
-})();
+chainFrame(['S1-1','S1-2','S1-3'],STRIP_W/2+0.27,2);
+chainFrame(['S2-1','S2-2','S2-3'],STRIP_W/2+0.27,2);
+const looperTable2=buildLooperTable(6.2,11.2,10);
 // セパ押え(下面=PLで接触) / MDミニ前
 roll('T1',13.6,PL+d2r(80),80,1);roll('T2',14.3,PL-d2r(80),80,-1);
 // MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク)

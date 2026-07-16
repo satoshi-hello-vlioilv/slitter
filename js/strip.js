@@ -22,6 +22,22 @@ const TOP=(id)=>{const o=R[id];return V3(o.x,o.y+o.r,0);};
 const BOTTOM=(id)=>{const o=R[id];return V3(o.x,o.y-o.r,0);};
 const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
 
+/* ルーパー区間の経路(開閉式テーブル対応):
+ *  開度k→ループ深さd。d≈0(テーブル閉)は端ロール間をロール上面=PLの平坦通板。
+ *  d>0はテーブル退避後の完全フリー自重ループ: 固定端ロールへの巻付き弧+放物線垂み
+ *  のみで構成し、途中のロールには一切触れない。 */
+function looperPath(lp,k,raw,zc){
+  const A=R[lp.inR],Bv=R[lp.outR];
+  const d=lp.depth*THREE.MathUtils.clamp((k-0.3)/0.7,0,1);   // テーブル退避(k<0.35)後に垂み成長
+  if(d<0.02){raw.push(V3(A.x,PL,zc));raw.push(V3(Bv.x,PL,zc));return;}
+  const rr=A.r+0.006, L=Bv.x-A.x;
+  const m=4*d/L, phi=Math.atan(m);
+  const dxo=rr*Math.sin(phi), L2=L-2*dxo, y0=A.y+rr*Math.cos(phi), depth2=m*L2/4;
+  for(let j=0;j<=6;j++){const a=Math.PI/2-phi*j/6;raw.push(V3(A.x+rr*Math.cos(a),A.y+rr*Math.sin(a),zc));}   // 入側端ロール巻付き弧
+  for(let i=1;i<26;i++){const u=i/26;raw.push(V3(A.x+dxo+u*L2,y0-depth2*4*u*(1-u),zc));}                     // フリーループ(自重垂み)
+  for(let j=6;j>=0;j--){const a=Math.PI/2-phi*j/6;raw.push(V3(Bv.x-rr*Math.cos(a),Bv.y+rr*Math.sin(a),zc));} // 出側端ロール巻付き弧
+}
+
 const _e=[];
 function updateEntryRibbon(){const raw=_e;raw.length=0;
   const A=R.A,B=R.B;
@@ -43,7 +59,7 @@ function updateEntryRibbon(){const raw=_e;raw.length=0;
   // ループ前ピンチJ群はニップ面=パスラインなので直線通板(面一接触・曲げ無し)
   raw.push(V3(R['H1-1'].x,PL,0));raw.push(V3(R['H1-3'].x,PL,0));
   raw.push(V3(R['K1-2'].x,PL,0));
-  for(const p of H2pts)raw.push(p.clone());                  // No.1ルーパー(自重垂み・ロール上面支持)
+  looperPath(LOOP1,st.loop1,raw,0);                          // No.1ルーパー(開閉式・フリーループ/平坦)
   raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(V3(R.M.x,PL,0));raw.push(NIP('N1'));
   raw.push(V3(SLIT_X,PL,0));                                 // ガイドP上面/板押えQ下面は面一で接触(曲げ無し)
   const out=[];samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);}
@@ -70,7 +86,7 @@ const _sraw=[],_sout=[];
 function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
   raw.push(V3(SLIT_X,PL,zc));
   raw.push(V3(R['R1-1'].x,PL,zc));raw.push(V3(R['R1-5'].x,PL,zc));raw.push(V3(R['S1-2'].x,PL,zc));
-  for(const p of R2pts)raw.push(V3(p.x,p.y,zc));            // No.2ルーパー垂み
+  looperPath(LOOP2,st.loop2,raw,zc);                         // No.2ルーパー(開閉式・フリーループ/平坦)
   raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
   raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
   for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)

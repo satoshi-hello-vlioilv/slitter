@@ -32,3 +32,5 @@ document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
 document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
 document.getElementById("chkBuilding").addEventListener("change",e=>{buildingGroup.visible=e.target.checked;});
+document.getElementById("chkLoop1").addEventListener("change",e=>{st.loop1Tgt=e.target.checked?1:0;});
+document.getElementById("chkLoop2").addEventListener("change",e=>{st.loop2Tgt=e.target.checked?1:0;});
