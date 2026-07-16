@@ -83,6 +83,34 @@ function tangentPoint(cx,cy,Rr,px,py,sign){const dx=px-cx,dy=py-cy,d=Math.hypot(
   const base=Math.atan2(dy,dx),off=Math.acos(THREE.MathUtils.clamp(Rr/d,-1,1)),a=base+sign*off;
   return {x:cx+Rr*Math.cos(a),y:cy+Rr*Math.sin(a),a};}
 
+/* 外部点→円への接線のうち、指定側(top:円の上側/bottom:下側)で帯板が触れる方の接点を選ぶ。
+ * 張力下の帯板は「触れない側」のロール面には決して回り込まないため、経路構築は必ずこれを使う。 */
+function tangentToSide(cx,cy,r,side,px,py){
+  for(const sign of [1,-1]){const t=tangentPoint(cx,cy,r,px,py,sign);
+    if(side==='top'?t.y>=cy-1e-6:t.y<=cy+1e-6)return t;}
+  return tangentPoint(cx,cy,r,px,py,1);}
+
+/* 2円間の共通接線(帯板が両ロールに同時に接する側を指定)。
+ * side1===side2 なら外接線(同じ側を通過する平行掛け)、side1!==side2 なら内接線(上→下のS字反転)。
+ * 符号付き半径(top:+r/bottom:-r)で統一的に解く: n方向を共有し T=C+Rsigned*n, (T2-T1)⊥n から
+ * d*cos(θ-φ)=R1-R2 を満たすθを求める。 */
+function tangentBetween(c1,side1,c2,side2){
+  const R1=side1==='top'?c1.r:-c1.r, R2=side2==='top'?c2.r:-c2.r;
+  const dx=c2.x-c1.x,dy=c2.y-c1.y,d=Math.hypot(dx,dy)||1e-4;
+  const phi=Math.atan2(dy,dx),val=THREE.MathUtils.clamp((R1-R2)/d,-1,1),off=Math.acos(val);
+  for(const sign of [1,-1]){const th=phi+sign*off,nx=Math.cos(th),ny=Math.sin(th);
+    const t1={x:c1.x+R1*nx,y:c1.y+R1*ny},t2={x:c2.x+R2*nx,y:c2.y+R2*ny};
+    const ok1=side1==='top'?t1.y>=c1.y-1e-6:t1.y<=c1.y+1e-6;
+    const ok2=side2==='top'?t2.y>=c2.y-1e-6:t2.y<=c2.y+1e-6;
+    if(ok1&&ok2)return{t1:{x:t1.x,y:t1.y,a:Math.atan2(t1.y-c1.y,t1.x-c1.x)},t2:{x:t2.x,y:t2.y,a:Math.atan2(t2.y-c2.y,t2.x-c2.x)}};}
+  return null;}
+
+/* 円弧サンプル(a0→a1、短い方の回り) */
+function arcPoints(cx,cy,r,a0,a1,n){let d=a1-a0;
+  while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+  const pts=[];for(let k=0;k<n;k++){const a=a0+d*k/(n-1);pts.push(V3(cx+r*Math.cos(a),cy+r*Math.sin(a),0));}
+  return pts;}
+
 /* =========================================================
  * リボンストリップ(動的)
  * =======================================================*/

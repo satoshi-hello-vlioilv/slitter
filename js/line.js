@@ -36,9 +36,15 @@ roll('J3',-17.2,PL+0.085,150,1,{frame:false,chock:false});
 })();
 // No.1ルーパー(入側カテナリー K1 / テーブル H2 / 出側カテナリー K2)
 roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-15.0,PL-d2r(98),98,-1,{frame:false});
-const H2pts=[]; (function(){const x0=-14.5,x1=-9.6,depth=1.5,r=d2r(98);
-  for(let i=0;i<9;i++){const x=THREE.MathUtils.lerp(x0,x1,i/8);const t=(x-x0)/(x1-x0);const py=PL-depth*4*t*(1-t);
-    roll('H2-'+(i+1),x,py-r,98,-1,{frame:false});H2pts.push(V3(x,py,0));}})();
+// たわみ形状(放物線 4t(1-t))は区間全体で凸(常に弦が曲線より上側)となり、
+// たわみ内部のロール群を弦(帯板)が決して貫通しない。端(水平区間との接続部)は
+// 経路を高密度サンプルすることでキンクによる食い込みを最小化する。
+const sagShape=(t)=>4*t*(1-t);
+const H2pts=[]; (function(){const x0=-14.5,x1=-9.6,depth=1.5,r=d2r(98),NR=9,NP=28;
+  for(let i=0;i<NR;i++){const x=THREE.MathUtils.lerp(x0,x1,i/(NR-1));const t=(x-x0)/(x1-x0);const py=PL-depth*sagShape(t);
+    roll('H2-'+(i+1),x,py-r,98,-1,{frame:false});}
+  for(let i=0;i<NP;i++){const t=i/(NP-1);H2pts.push(V3(THREE.MathUtils.lerp(x0,x1,t),PL-depth*sagShape(t),0));} // 経路は密にサンプル(小径ロールへの食い込み防止)
+})();
 roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
 (function(){ // No.1ルーパー全域のサイドフレーム(ピット底まで支柱)
   const ids=['K1-1','K1-2','K1-3'];for(let i=1;i<=9;i++)ids.push('H2-'+i);ids.push('K2-1','K2-2','K2-3');
@@ -65,9 +71,11 @@ for(let i=0;i<5;i++)roll('R1-'+(i+1),1.4+i*0.6,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['R1-1','R1-2','R1-3','R1-4','R1-5'],STRIP_W/2+0.27,2);
 // No.2ルーパー(入側カテナリー S1 / テーブル R2 / 出側カテナリー S2)
 roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1,{frame:false});roll('S1-3',5.6,PL-d2r(94),94,-1,{frame:false});
-const R2pts=[]; (function(){const x0=6.1,x1=11.1,depth=1.6,r=d2r(98);
-  for(let i=0;i<11;i++){const x=THREE.MathUtils.lerp(x0,x1,i/10);const t=(x-x0)/(x1-x0);const py=PL-depth*4*t*(1-t);
-    roll('R2-'+(i+1),x,py-r,98,-1,{frame:false});R2pts.push(V3(x,py,0));}})();
+const R2pts=[]; (function(){const x0=6.1,x1=11.1,depth=1.6,r=d2r(98),NR=11,NP=32;
+  for(let i=0;i<NR;i++){const x=THREE.MathUtils.lerp(x0,x1,i/(NR-1));const t=(x-x0)/(x1-x0);const py=PL-depth*sagShape(t);
+    roll('R2-'+(i+1),x,py-r,98,-1,{frame:false});}
+  for(let i=0;i<NP;i++){const t=i/(NP-1);R2pts.push(V3(THREE.MathUtils.lerp(x0,x1,t),PL-depth*sagShape(t),0));} // 経路は密にサンプル
+})();
 roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
 (function(){ // No.2ルーパー全域のサイドフレーム
   const ids=['S1-1','S1-2','S1-3'];for(let i=1;i<=11;i++)ids.push('R2-'+i);ids.push('S2-1','S2-2','S2-3');
