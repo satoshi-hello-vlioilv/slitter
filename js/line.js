@@ -43,53 +43,56 @@ roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),9
 roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['K1-1','K1-2','K1-3'],STRIP_W/2+0.27,2);
 chainFrame(['K2-1','K2-2','K2-3'],STRIP_W/2+0.27,2);
-// 開閉式ループテーブル(側方折り畳み式):
-//  閉(通板時) = 左右2枚のリーフが水平に閉じ、ロール上面=PLの平坦通板路を作る(ループ無し)
-//  開(運転時) = 各リーフがピット側壁際の縦通しヒンジ軸まわりに90°倒れ、側壁に沿って
-//               垂直に退避する。ピット中央(帯板幅の範囲)が完全に空くので、帯板は
-//               固定端ロール間で何にも触れない自重ループになる。
-// 旧実装はピット内側の横方向ヒンジで振り下ろす方式だったため、(a)ヒンジ受けが
-// 宙に浮き、(b)倒したテーブルがループ経路そのものを塞ぐ、という2つの破綻があった。
-// 側方折り畳みなら退避位置が帯板の外(|z|≧0.79)に出るので干渉が原理的に起きず、
-// ヒンジ軸もピット床から立てた軸受柱で素直に支持できる。
-const LT_HZ=0.84;                       // ヒンジ軸のz(帯板端0.6とピット壁内面1.0の間)
-function buildLooperTable(x0,x1,nRolls){
-  const r=d2r(98), L=x1-x0, pitch=L/nRolls, HY=PL-r, xc=(x0+x1)/2;
+// 開閉式ループテーブル(長手2分割・下方折り畳み式):
+//  閉(通板時) = 2枚のリーフが水平に閉じ、ロール上面=PLの平坦通板路を作る(ループ無し)
+//  開(運転時) = 各リーフがループ両端(端部カテナリーロールのすぐ内側)のヒンジ軸まわりに
+//               90°下方へ倒れ、ピット内へ垂直に退避する。帯板は端ロール間で何にも
+//               触れない自重ループになる。
+// 倒したリーフがループ経路を塞がないための要点:
+//  ・ヒンジをループの始点/終点の直近に置く。そこは帯板がまだパスライン高さにある
+//    位置なので、真下へ倒したリーフは垂れ下がる帯板と交差しない。
+//  ・ヒンジ〜最初のロールの間はロールを置かない(clear)。倒した時にこの区間が帯板の
+//    降下線より上に来るため、必要長さは端部勾配 4d/L(最大ループ深さ)から算出する。
+//  ・ヒンジ軸はZ方向なので、軸受を板幅の外(|z|=0.95)へ出せる。ピット床から立てた
+//    柱で支持し、リーフの回転範囲(|z|≦0.88)とは干渉しない。
+//  ・軸は板幅を跨がない短いトラニオン。全幅の通し管にすると、降下する帯板が
+//    パスライン直下の管を切ってしまう。
+//  ・リーフの枠はロール軸と同じ高さ(バレル端の外側)に置く。デッキより下に出す枠は
+//    倒す途中でヒンジより外へ張り出し、端部カテナリーの側枠を叩いてしまう。
+const LT_FZ=0.84, LT_BZ=0.955;          // リーフ側枠のz / ヒンジ軸受のz
+function buildLooperTable(lp,inset,nRolls){
+  const r=d2r(98), HY=PL-r;
+  const xa=R[lp.inR].x+inset, xb=R[lp.outR].x-inset;      // ヒンジ位置(ループ始点/終点の直近)
+  const L=R[lp.outR].x-R[lp.inR].x, Lh=(xb-xa)/2;         // ループ全長 / 各リーフ長(中央で突き合わせ)
+  const clear=4*lp.dmax/L*inset+r+0.08;                   // ヒンジ側のロール無し区間
+  const n=Math.max(1,Math.round(nRolls/2)), pitch=(Lh-clear)/n;
   const leaves=[];
-  for(const s of [1,-1]){
-    // --- 固定部: ヒンジ管とそれを支える軸受柱(ピット床から立ち上げる) ---
-    addCylX(0.045,L+0.30,M.steel,xc,HY,s*LT_HZ,scene,14);                 // ヒンジ管(頂点はロール径内=PL下)
-    const step=Math.max(1,Math.round(nRolls/3)), cols=[];
-    for(let i=0;i<=nRolls;i+=step)cols.push(x0+i*pitch);
-    if(cols[cols.length-1]<x1-1e-6)cols.push(x1);
-    for(const px of cols){                                                // 柱はロールとロールの隙間に立てる
-      const gy=groundY(px), hh=HY-0.09-gy;
-      addBox(0.10,hh,0.10,M.frame,px,gy+hh/2,s*LT_HZ);                    // 軸受柱
-      addBox(0.16,0.13,0.16,M.paintDark,px,HY-0.025,s*LT_HZ);             // 軸受
-      addBox(0.30,0.05,0.30,M.frame,px,gy+0.025,s*LT_HZ,scene,false);}    // ベースプレート
-    // --- 可動部: 折り畳みリーフ(ヒンジ軸=X方向。ローカルzはヒンジからの内向き) ---
-    const leaf=new THREE.Group(); leaf.position.set(0,HY,s*LT_HZ); scene.add(leaf);
-    const lz=(w)=>s*(w-LT_HZ);                                            // 世界z → リーフ内ローカルz
-    // 縦通し材は軸受柱ごとに分割する(倒れ込む途中で柱を通り抜けてしまうため。
-    // 実機のヒンジテーブルも軸受間のベイ単位で枠を組む)
-    for(let b=0;b<cols.length-1;b++){const a=cols[b]+0.11,c=cols[b+1]-0.11;
-      addBox(c-a,0.07,0.07,M.frame,(a+c)/2,-0.10,lz(0.74),leaf);          // 外側縦通し材
-      addBox(c-a,0.07,0.05,M.frame,(a+c)/2,-0.10,lz(0.03),leaf);}         // 内側縦通し材
-    for(let i=0;i<nRolls;i++){const rx=x0+(i+0.5)*pitch;
-      spin(addCylZ(r,0.68,rollMats(),rx,0,lz(0.40),leaf,20),r,-1);        // テーブルロール(半幅)
-      addBox(0.09,0.09,0.06,M.frame,rx,-0.01,lz(0.74),leaf);              // 軸受(外側)
-      addBox(0.07,0.07,0.05,M.frame,rx,-0.01,lz(0.03),leaf);              // 軸受(内側)
-      addBox(0.09,0.09,0.09,M.paintDark,rx,-0.045,lz(0.80),leaf);}        // ヒンジ金具(管を抱く)
-    leaves.push({leaf,s});
+  for(const h of [{x:xa,dir:1},{x:xb,dir:-1}]){
+    // --- 固定部: ヒンジ軸受(板幅の外)+ ピット床から立てた軸受柱 ---
+    for(const sz of [-1,1]){const z=sz*LT_BZ, gy=groundY(h.x), hh=HY-0.10-gy;
+      addBox(0.09,hh,0.09,M.frame,h.x,gy+hh/2,z);                        // 軸受柱
+      addBox(0.16,0.14,0.08,M.paintDark,h.x,HY-0.02,z);                  // 軸受
+      addBox(0.28,0.05,0.28,M.frame,h.x,gy+0.025,z,scene,false);}        // ベースプレート
+    // --- 可動部: 折り畳みリーフ(ヒンジ軸=幅方向Z) ---
+    const leaf=new THREE.Group(); leaf.position.set(h.x,HY,0); scene.add(leaf);
+    for(const sz of [-1,1]){
+      addCylZ(0.045,0.24,M.steel,0,0,sz*0.87,leaf,14);                   // トラニオン(板幅の外だけ)
+      addBox(Lh,0.09,0.10,M.frame,h.dir*Lh/2,0,sz*LT_FZ,leaf);           // 側部チャンネル(ロール軸高さ)
+      addBox(0.13,0.12,0.11,M.paintDark,h.dir*0.07,0,sz*LT_FZ,leaf);}    // ヒンジ金具(枠→トラニオン)
+    for(let i=0;i<n;i++){const u=h.dir*(clear+(i+0.5)*pitch);
+      spin(addCylZ(r,STRIP_W+0.34,rollMats(),u,0,0,leaf,20),r,-1);       // テーブルロール(全幅)
+      for(const sz of [-1,1])addBox(0.10,0.10,0.11,M.frame,u,0,sz*LT_FZ,leaf);}     // 軸受
+    leaves.push({leaf,dir:h.dir});
   }
-  //  k=0:閉(水平) → k=1:開(垂直・側壁沿い)
+  //  k=0:閉(水平) → k=1:開(ピット内へ垂直に退避)
   return{setOpen(k){const ang=THREE.MathUtils.clamp(k,0,1)*Math.PI/2;
-    for(const h of leaves)h.leaf.rotation.x=-h.s*ang;}};
+    for(const v of leaves)v.leaf.rotation.z=-v.dir*ang;}};
 }
 // ループ緒元(帯板経路はstrip.jsがこのメタ情報から動的に構築)
-const LOOP1={inR:'K1-3',outR:'K2-1',depth:1.5};
-const LOOP2={inR:'S1-3',outR:'S2-1',depth:1.6};
-const looperTable1=buildLooperTable(-14.6,-9.6,8);
+// dmax = 想定される最大ループ深さ(No.2は条毎の余長でLOOP_DMAXまで深くなる)
+const LOOP1={inR:'K1-3',outR:'K2-1',depth:1.5,dmax:1.5};
+const LOOP2={inR:'S1-3',outR:'S2-1',depth:1.6,dmax:LOOP_DMAX};
+const looperTable1=buildLooperTable(LOOP1,0.20,8);
 // VCロール / パスロール / スリッター前ピンチ — 全てニップ面=PL に整合
 housing(-7.4,PL+0.9); roll('L1',-7.4,PL+d2r(80),80,1);roll('L2',-7.4,PL-d2r(80),80,-1);
 roll('M',-6.4,PL-d2r(60),60,-1);
@@ -115,7 +118,7 @@ roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1
 roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
 chainFrame(['S1-1','S1-2','S1-3'],STRIP_W/2+0.27,2);
 chainFrame(['S2-1','S2-2','S2-3'],STRIP_W/2+0.27,2);
-const looperTable2=buildLooperTable(6.2,11.2,10);
+const looperTable2=buildLooperTable(LOOP2,0.20,10);
 // セパ押え(下面=PLで接触) / MDミニ前
 roll('T1',13.6,PL+d2r(80),80,1);roll('T2',14.3,PL-d2r(80),80,-1);
 // MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク)
