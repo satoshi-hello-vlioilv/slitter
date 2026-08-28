@@ -16,104 +16,138 @@
     <i class="fa-solid fa-industry"></i>
     <div class="ptitle-main">
       <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
-      <span class="ver-badge" id="appVersion">v1.9.0</span>
+      <span class="ver-badge" id="appVersion">v1.10.0</span>
     </div>
   </div>
-  <div class="sec">
-    <div class="status-card">
-      <div class="led" id="statusLed"></div>
-      <div class="status-main">
-        <div id="statusText">起動中</div>
-        <div class="speed-big"><span id="roSpeed">0</span><small>m/min</small></div>
+  <div class="status-card">
+    <div class="led" id="statusLed"></div>
+    <div class="status-main">
+      <div id="statusText">起動中</div>
+      <div class="speed-big"><span id="roSpeed">0</span><small>m/min</small></div>
+    </div>
+  </div>
+
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-sliders"></i>運転操作<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <button class="btn" id="btnRun"><i class="fa-solid fa-stop"></i><span>ライン停止</span></button>
+      <div style="margin-top:11px;">
+        <div class="slider-row"><span>ライン速度設定</span><b><span id="speedVal">80</span> m/min</b></div>
+        <input type="range" id="rngSpeed" min="10" max="180" step="5" value="80">
       </div>
     </div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-sliders"></i>操業操作</div>
-    <button class="btn" id="btnRun"><i class="fa-solid fa-stop"></i><span>ライン停止</span></button>
-    <div style="margin-top:11px;">
-      <div class="slider-row"><span>ライン速度設定</span><b><span id="speedVal">80</span> m/min</b></div>
-      <input type="range" id="rngSpeed" min="10" max="180" step="5" value="80">
+  </details>
+
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-table-columns"></i>スリット条件<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="seg" id="strandGroup">
+        <button data-n="2">2</button><button data-n="3">3</button>
+        <button data-n="4" class="active">4</button><button data-n="5">5</button><button data-n="6">6</button>
+      </div>
+      <div class="slider-row" style="margin-top:9px;"><span>条数設定(最大50条)</span><b><span id="strandVal">4</span> 条</b></div>
+      <input type="range" id="rngStrand" min="2" max="50" step="1" value="4">
+      <div class="ro" style="margin-top:7px;">
+        <i class="fa-solid fa-ruler-horizontal"></i><span>母材幅 / 条幅</span>
+        <b>1200<small>mm</small> / <span id="roStrandW">272</span><small>mm</small></b>
+      </div>
     </div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-table-columns"></i>スリット条数</div>
-    <div class="seg" id="strandGroup">
-      <button data-n="2">2</button><button data-n="3">3</button>
-      <button data-n="4" class="active">4</button><button data-n="5">5</button><button data-n="6">6</button>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-wave-square"></i>板形状(歪)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="seg seg-sm" id="shapeGroup">
+        <button data-s="flat">平坦</button><button data-s="center" class="active">中伸び</button>
+        <button data-s="quarter">骨</button><button data-s="edge">耳伸び</button>
+      </div>
+      <div class="slider-row" style="margin-top:9px;"><span>歪量(平坦度)</span><b><span id="shapeVal">20</span> I-unit</b></div>
+      <input type="range" id="rngShape" min="0" max="40" step="1" value="20">
+      <div class="ro" style="margin-top:7px;"><i class="fa-solid fa-arrows-up-down"></i>
+        <span>条間ループ深さ差</span><b><span id="roLoopDiff">0</span><small>mm</small></b></div>
+      <div class="note">長い条ほどNo.2ルーパーに余長が溜まり、巻くほど深く垂れる</div>
     </div>
-    <div class="slider-row" style="margin-top:9px;"><span>条数設定(最大50条)</span><b><span id="strandVal">4</span> 条</b></div>
-    <input type="range" id="rngStrand" min="2" max="50" step="1" value="4">
-    <div class="ro" style="margin-top:7px;">
-      <i class="fa-solid fa-ruler-horizontal"></i><span>母材幅 / 条幅</span>
-      <b>1200<small>mm</small> / <span id="roStrandW">272</span><small>mm</small></b>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-palette"></i>アルミ材の外観<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="sub-h">仕上げパターン</div>
+      <div class="seg seg-sm seg-2" id="aluGroup">
+        <button data-a="mill" class="active">ミル</button><button data-a="hairline">ヘアライン</button>
+        <button data-a="mirror">鏡面</button><button data-a="matte">つや消し</button>
+      </div>
+      <div class="sub-h" style="margin-top:11px;">詳細カスタム</div>
+      <div class="color-row"><span>地色</span>
+        <input type="color" id="inpAluColor" value="#eef2f5"><b id="aluColorVal">#EEF2F5</b></div>
+      <div class="slider-row"><span>金属感</span><b><span id="aluMetalVal">45</span> %</b></div>
+      <input type="range" id="rngAluMetal" min="0" max="100" step="1" value="45">
+      <div class="slider-row" style="margin-top:8px;"><span>表面粗さ</span><b><span id="aluRoughVal">50</span> %</b></div>
+      <input type="range" id="rngAluRough" min="2" max="100" step="1" value="50">
+      <button class="btn btn-sm" id="btnAluReset" style="margin-top:10px;">
+        <i class="fa-solid fa-rotate-left"></i><span>パターン既定値に戻す</span></button>
     </div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-wave-square"></i>板形状(歪)</div>
-    <div class="seg" id="shapeGroup">
-      <button data-s="flat">平坦</button><button data-s="center" class="active">中伸び</button>
-      <button data-s="quarter">骨</button><button data-s="edge">耳伸び</button>
+  </details>
+
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-gauge-high"></i>計測値<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="ro"><i class="fa-solid fa-arrow-rotate-left"></i><span>アンコイラ残径</span>
+        <b><span id="roUnc">2100</span><small>mm</small></b></div>
+      <div class="ro"><i class="fa-solid fa-arrow-rotate-right"></i><span>リコイラ巻径</span>
+        <b><span id="roRec">560</span><small>mm</small></b></div>
+      <div class="ro"><i class="fa-solid fa-gauge"></i><span>ライン張力</span>
+        <b><span id="roTen">0</span><small>kN</small></b></div>
+      <div class="ro"><i class="fa-solid fa-up-right-and-down-left-from-center"></i><span>通板長(累計)</span>
+        <b><span id="roLen">0</span><small>m</small></b></div>
+      <div class="ro" style="margin-top:3px;"><i class="fa-solid fa-circle-half-stroke"></i>
+        <span>コイル消化率</span><b><span id="roProg">0</span><small>%</small></b></div>
+      <div class="prog"><div id="coilProg"></div></div>
     </div>
-    <div class="slider-row" style="margin-top:9px;"><span>歪量(平坦度)</span><b><span id="shapeVal">20</span> I-unit</b></div>
-    <input type="range" id="rngShape" min="0" max="40" step="1" value="20">
-    <div class="ro" style="margin-top:7px;"><i class="fa-solid fa-arrows-up-down"></i>
-      <span>条間ループ深さ差</span><b><span id="roLoopDiff">0</span><small>mm</small></b></div>
-    <div class="ro"><i class="fa-solid fa-circle-info"></i>
-      <span style="font-size:10.5px;">長い条ほどNo.2ルーパーに余長が溜まり、巻くほど深く垂れる</span></div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-gauge-high"></i>計測値</div>
-    <div class="ro"><i class="fa-solid fa-arrow-rotate-left"></i><span>アンコイラ残径</span>
-      <b><span id="roUnc">2100</span><small>mm</small></b></div>
-    <div class="ro"><i class="fa-solid fa-arrow-rotate-right"></i><span>リコイラ巻径</span>
-      <b><span id="roRec">560</span><small>mm</small></b></div>
-    <div class="ro"><i class="fa-solid fa-gauge"></i><span>ライン張力</span>
-      <b><span id="roTen">0</span><small>kN</small></b></div>
-    <div class="ro"><i class="fa-solid fa-up-right-and-down-left-from-center"></i><span>通板長(累計)</span>
-      <b><span id="roLen">0</span><small>m</small></b></div>
-    <div class="ro" style="margin-top:3px;"><i class="fa-solid fa-circle-half-stroke"></i>
-      <span>コイル消化率</span><b><span id="roProg">0</span><small>%</small></b></div>
-    <div class="prog"><div id="coilProg"></div></div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-video"></i>カメラ・表示</div>
-    <div class="cam-grid">
-      <button class="wide" data-cam="all"><i class="fa-solid fa-expand"></i>ライン全景</button>
-      <button data-cam="unc"><i class="fa-solid fa-arrow-rotate-left"></i>アンコイラ</button>
-      <button data-cam="slit"><i class="fa-solid fa-scissors"></i>スリッター</button>
-      <button data-cam="loop1"><i class="fa-solid fa-arrows-down-to-line"></i>No.1ルーパー</button>
-      <button data-cam="loop2"><i class="fa-solid fa-arrows-down-to-line"></i>No.2ルーパー</button>
-      <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
-      <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
-      <button data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-video"></i>カメラ<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="cam-grid">
+        <button class="wide" data-cam="all"><i class="fa-solid fa-expand"></i>ライン全景</button>
+        <button data-cam="unc"><i class="fa-solid fa-arrow-rotate-left"></i>アンコイラ</button>
+        <button data-cam="slit"><i class="fa-solid fa-scissors"></i>スリッター</button>
+        <button data-cam="loop1"><i class="fa-solid fa-arrows-down-to-line"></i>No.1ルーパー</button>
+        <button data-cam="loop2"><i class="fa-solid fa-arrows-down-to-line"></i>No.2ルーパー</button>
+        <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
+        <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
+        <button class="wide" data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
+      </div>
     </div>
-    <div class="toggle-row" style="margin-top:10px;">
-      <span><i class="fa-solid fa-tags"></i>設備名ラベル</span>
-      <label class="switch"><input type="checkbox" id="chkLabels" checked><span class="knob"></span></label>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-eye"></i>表示切替<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="toggle-row"><span><i class="fa-solid fa-tags"></i>設備名ラベル</span>
+        <label class="switch"><input type="checkbox" id="chkLabels" checked><span class="knob"></span></label></div>
+      <div class="toggle-row"><span><i class="fa-solid fa-hashtag"></i>ロール番号(BOM)</span>
+        <label class="switch"><input type="checkbox" id="chkIds"><span class="knob"></span></label></div>
+      <div class="toggle-row"><span><i class="fa-solid fa-building"></i>建屋(柱・梁)</span>
+        <label class="switch"><input type="checkbox" id="chkBuilding" checked><span class="knob"></span></label></div>
+      <div class="toggle-row"><span><i class="fa-solid fa-grip-lines-vertical"></i>安全柵(ピット)</span>
+        <label class="switch"><input type="checkbox" id="chkFence" checked><span class="knob"></span></label></div>
+      <div class="toggle-row"><span><i class="fa-solid fa-table-cells"></i>ループテーブル</span>
+        <label class="switch"><input type="checkbox" id="chkLoopTable" checked><span class="knob"></span></label></div>
     </div>
-    <div class="toggle-row">
-      <span><i class="fa-solid fa-hashtag"></i>ロール番号(BOM)</span>
-      <label class="switch"><input type="checkbox" id="chkIds"><span class="knob"></span></label>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-arrows-down-to-line"></i>ルーパー操作<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="toggle-row"><span><i class="fa-solid fa-water"></i>No.1ルーパー フリーループ</span>
+        <label class="switch"><input type="checkbox" id="chkLoop1" checked><span class="knob"></span></label></div>
+      <div class="toggle-row"><span><i class="fa-solid fa-water"></i>No.2ルーパー フリーループ</span>
+        <label class="switch"><input type="checkbox" id="chkLoop2" checked><span class="knob"></span></label></div>
+      <div class="note">OFF=テーブル閉(通板・ループ無し) / ON=テーブル退避(自重ループ)</div>
     </div>
-    <div class="toggle-row">
-      <span><i class="fa-solid fa-building"></i>建屋(柱・梁)</span>
-      <label class="switch"><input type="checkbox" id="chkBuilding" checked><span class="knob"></span></label>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><i class="fa-solid fa-arrows-down-to-line"></i>ルーパーテーブル開閉</div>
-    <div class="toggle-row">
-      <span><i class="fa-solid fa-water"></i>No.1ルーパー フリーループ</span>
-      <label class="switch"><input type="checkbox" id="chkLoop1" checked><span class="knob"></span></label>
-    </div>
-    <div class="toggle-row">
-      <span><i class="fa-solid fa-water"></i>No.2ルーパー フリーループ</span>
-      <label class="switch"><input type="checkbox" id="chkLoop2" checked><span class="knob"></span></label>
-    </div>
-    <div class="ro" style="margin-top:5px;"><i class="fa-solid fa-circle-info"></i>
-      <span style="font-size:10.5px;">OFF=テーブル閉(通板・ループ無し) / ON=テーブル退避(自重ループ)</span></div>
-  </div>
+  </details>
 </div>
 
 <div id="help">

@@ -39,6 +39,27 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
 })();
 
 /* =========================================================
+ * ピット安全柵(開口部の転落防止)
+ * =========================================================
+ * ループピットは床に開いた深さ4.5mの開口なので、通路側の長辺2面に手すりを立てる。
+ * 短辺はカテナリーテーブルの機械側で通行しないため設けない(実機と同じ考え方)。
+ * 柵は開口縁(注意帯)の外側 |z|=1.26 に立て、ピット内の軸受柱や側枠には触れない。
+ * =======================================================*/
+const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
+(function buildPitFence(){
+  const FZ=1.26, H=1.08;                                   // 柵のz / 手すり高さ
+  for(const p of [PIT1,PIT2]){
+    const w=p.x1-p.x0, cx=(p.x0+p.x1)/2, n=Math.max(2,Math.round(w/1.5));
+    for(const sgn of [-1,1]){const z=sgn*FZ;
+      for(let i=0;i<=n;i++)                                // 支柱
+        addBox(0.06,H,0.06,M.frame,p.x0+w*i/n,H/2,z,fenceGroup);
+      for(const ry of [H-0.04,H*0.52])                     // 手すり(上段・中段)
+        addBox(w+0.06,0.045,0.045,M.yellow,cx,ry,z,fenceGroup);
+      addBox(w+0.06,0.15,0.028,M.yellow,cx,0.075,z,fenceGroup);   // 幅木(巾木)
+    }}
+})();
+
+/* =========================================================
  * 操作盤(オペレータコンソール)
  * =======================================================*/
 (function buildConsole(){

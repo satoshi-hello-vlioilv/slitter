@@ -43,3 +43,27 @@ document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.vis
 document.getElementById("chkBuilding").addEventListener("change",e=>{buildingGroup.visible=e.target.checked;});
 document.getElementById("chkLoop1").addEventListener("change",e=>{st.loop1Tgt=e.target.checked?1:0;});
 document.getElementById("chkLoop2").addEventListener("change",e=>{st.loop2Tgt=e.target.checked?1:0;});
+document.getElementById("chkFence").addEventListener("change",e=>{fenceGroup.visible=e.target.checked;});
+document.getElementById("chkLoopTable").addEventListener("change",e=>{looperGroup.visible=e.target.checked;});
+
+/* =========================================================
+ * アルミ材の外観(仕上げパターン / 詳細カスタム)
+ * =======================================================*/
+const aluUI={color:document.getElementById("inpAluColor"),colorVal:document.getElementById("aluColorVal"),
+  metal:document.getElementById("rngAluMetal"),metalVal:document.getElementById("aluMetalVal"),
+  rough:document.getElementById("rngAluRough"),roughVal:document.getElementById("aluRoughVal")};
+function syncAluUI(){
+  aluUI.color.value=alu.color;aluUI.colorVal.textContent=alu.color.toUpperCase();
+  aluUI.metal.value=Math.round(alu.metal*100);aluUI.metalVal.textContent=Math.round(alu.metal*100);
+  aluUI.rough.value=Math.round(alu.rough*100);aluUI.roughVal.textContent=Math.round(alu.rough*100);}
+syncAluUI();
+document.getElementById("aluGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#aluGroup button").forEach(x=>x.classList.toggle("active",x===b));
+  setAluPattern(b.dataset.a);syncAluUI();});
+aluUI.color.addEventListener("input",()=>{alu.color=aluUI.color.value;
+  aluUI.colorVal.textContent=alu.color.toUpperCase();applyAlu();});
+aluUI.metal.addEventListener("input",()=>{alu.metal=aluUI.metal.value/100;
+  aluUI.metalVal.textContent=aluUI.metal.value;applyAlu();});
+aluUI.rough.addEventListener("input",()=>{alu.rough=aluUI.rough.value/100;
+  aluUI.roughVal.textContent=aluUI.rough.value;applyAlu();});
+document.getElementById("btnAluReset").addEventListener("click",()=>{setAluPattern(alu.pattern);syncAluUI();});

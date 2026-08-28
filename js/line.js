@@ -60,6 +60,7 @@ chainFrame(['K2-1','K2-2','K2-3'],STRIP_W/2+0.27,2);
 //  ・リーフの枠はロール軸と同じ高さ(バレル端の外側)に置く。デッキより下に出す枠は
 //    倒す途中でヒンジより外へ張り出し、端部カテナリーの側枠を叩いてしまう。
 const LT_FZ=0.84, LT_BZ=0.955;          // リーフ側枠のz / ヒンジ軸受のz
+const looperGroup=new THREE.Group(); scene.add(looperGroup);   // テーブル一式(表示ON/OFF対象)
 function buildLooperTable(lp,inset,nRolls){
   const r=d2r(98), HY=PL-r;
   const xa=R[lp.inR].x+inset, xb=R[lp.outR].x-inset;      // ヒンジ位置(ループ始点/終点の直近)
@@ -70,11 +71,11 @@ function buildLooperTable(lp,inset,nRolls){
   for(const h of [{x:xa,dir:1},{x:xb,dir:-1}]){
     // --- 固定部: ヒンジ軸受(板幅の外)+ ピット床から立てた軸受柱 ---
     for(const sz of [-1,1]){const z=sz*LT_BZ, gy=groundY(h.x), hh=HY-0.10-gy;
-      addBox(0.09,hh,0.09,M.frame,h.x,gy+hh/2,z);                        // 軸受柱
-      addBox(0.16,0.14,0.08,M.paintDark,h.x,HY-0.02,z);                  // 軸受
-      addBox(0.28,0.05,0.28,M.frame,h.x,gy+0.025,z,scene,false);}        // ベースプレート
+      addBox(0.09,hh,0.09,M.frame,h.x,gy+hh/2,z,looperGroup);            // 軸受柱
+      addBox(0.16,0.14,0.08,M.paintDark,h.x,HY-0.02,z,looperGroup);      // 軸受
+      addBox(0.28,0.05,0.28,M.frame,h.x,gy+0.025,z,looperGroup,false);}  // ベースプレート
     // --- 可動部: 折り畳みリーフ(ヒンジ軸=幅方向Z) ---
-    const leaf=new THREE.Group(); leaf.position.set(h.x,HY,0); scene.add(leaf);
+    const leaf=new THREE.Group(); leaf.position.set(h.x,HY,0); looperGroup.add(leaf);
     for(const sz of [-1,1]){
       addCylZ(0.045,0.24,M.steel,0,0,sz*0.87,leaf,14);                   // トラニオン(板幅の外だけ)
       addBox(Lh,0.09,0.10,M.frame,h.dir*Lh/2,0,sz*LT_FZ,leaf);           // 側部チャンネル(ロール軸高さ)
