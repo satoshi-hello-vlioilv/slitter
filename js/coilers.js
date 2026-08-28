@@ -36,7 +36,7 @@ const recSupport=(function(){
   return piv;})();
 function buildRecCoils(N){for(const c of recCoils){c.geometry.dispose();recGroup.remove(c);}recCoils=[];
   const sw=EFF_W/N;for(let i=0;i<N;i++){const zc=-EFF_W/2+(i+0.5)*sw;
-    recCoils.push(addCylZ(1,sw-0.014,coilMats(),0,0,zc,recGroup,40));}}
+    recCoils.push(addCylZ(1,sw-STRAND_GAP,coilMats(),0,0,zc,recGroup,40));}}
 // コイルカー — ラインに直角(Z方向)に侵入。レールはZ方向。操作側(+Z)に待機。
 const CAR_PARK=5.4, CAR_IN=0.3;   // 侵入後はコイル直下(z≈0)へ
 const coilCar=(function(){

@@ -16,8 +16,11 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
   // ピット北/南床
   for(const p of [PIT1,PIT2]){
     const w=p.x1-p.x0,cx=(p.x0+p.x1)/2;
-    for(const z of [-5.6,5.6]){const mat=new THREE.MeshStandardMaterial({map:concreteTex(w/2.2,3),metalness:0.05,roughness:0.92});
-      addBox(w,T,7,mat,cx,floorY,z,scene,false).receiveShadow=true;}
+    // ピット開口は「ピット壁(|z|=1.05)まで」— 床板をそこまで伸ばす。
+    // (従来は|z|=2.1までが穴になっており、ピット幅と床の開口が食い違っていた)
+    const fd=9.1-1.05;
+    for(const sgn of [-1,1]){const mat=new THREE.MeshStandardMaterial({map:concreteTex(w/2.2,3.5),metalness:0.05,roughness:0.92});
+      addBox(w,T,fd,mat,cx,floorY,sgn*(1.05+fd/2),scene,false).receiveShadow=true;}
     // ピット壁・底
     addBox(w,2.4,0.1,M.pit,cx,-1.2,-1.05);addBox(w,2.4,0.1,M.pit,cx,-1.2,1.05);
     addBox(0.1,2.4,2.1,M.pit,p.x0-0.05,-1.2,0);addBox(0.1,2.4,2.1,M.pit,p.x1+0.05,-1.2,0);

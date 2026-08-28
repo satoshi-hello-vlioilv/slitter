@@ -43,28 +43,48 @@ roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),9
 roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['K1-1','K1-2','K1-3'],STRIP_W/2+0.27,2);
 chainFrame(['K2-1','K2-2','K2-3'],STRIP_W/2+0.27,2);
-// 開閉式ループテーブル:
-//  閉(通板時) = 両半テーブルが水平に閉じ、ロール上面=PLの平坦通板路を形成(ループ無し)
-//  開(運転時) = 両半テーブルがピット端のヒンジで下方へ振り下がって退避し、
-//               帯板は固定端ロール(K1-3/K2-1等)間で何にも触れない完全フリーの自重ループになる
+// 開閉式ループテーブル(側方折り畳み式):
+//  閉(通板時) = 左右2枚のリーフが水平に閉じ、ロール上面=PLの平坦通板路を作る(ループ無し)
+//  開(運転時) = 各リーフがピット側壁際の縦通しヒンジ軸まわりに90°倒れ、側壁に沿って
+//               垂直に退避する。ピット中央(帯板幅の範囲)が完全に空くので、帯板は
+//               固定端ロール間で何にも触れない自重ループになる。
+// 旧実装はピット内側の横方向ヒンジで振り下ろす方式だったため、(a)ヒンジ受けが
+// 宙に浮き、(b)倒したテーブルがループ経路そのものを塞ぐ、という2つの破綻があった。
+// 側方折り畳みなら退避位置が帯板の外(|z|≧0.79)に出るので干渉が原理的に起きず、
+// ヒンジ軸もピット床から立てた軸受柱で素直に支持できる。
+const LT_HZ=0.84;                       // ヒンジ軸のz(帯板端0.6とピット壁内面1.0の間)
 function buildLooperTable(x0,x1,nRolls){
-  const r=d2r(98), L=(x1-x0)/2, halves=[];
-  for(const side of [0,1]){
-    const hx=side?x1:x0, dir=side?-1:1;
-    const piv=new THREE.Group();piv.position.set(hx,PL-r,0);scene.add(piv);
-    for(const s of [-1,1])addBox(L,0.08,0.10,M.frame,dir*L/2,-0.11,s*(STRIP_W/2+0.27),piv); // 側部チャンネル
-    const n=Math.ceil(nRolls/2);
-    for(let i=0;i<n;i++){const lx=dir*((i+0.5)*L/n);
-      const m=addCylZ(r,STRIP_W+0.34,rollMats(),lx,0,0,piv,22);spin(m,r,-1);
-      for(const s of [-1,1])addBox(0.09,0.10,0.09,M.frame,lx,-0.02,s*(STRIP_W/2+0.22),piv);} // 軸受
-    // ヒンジ軸(幅方向Z)と支持ブラケット
-    addCylZ(0.05,STRIP_W+0.7,M.steel,0,0,0,piv);
-    addBox(0.22,0.3,0.16,M.paintDark,hx,PL-r-0.25,-(STRIP_W/2+0.42));
-    addBox(0.22,0.3,0.16,M.paintDark,hx,PL-r-0.25, (STRIP_W/2+0.42));
-    halves.push(piv);
+  const r=d2r(98), L=x1-x0, pitch=L/nRolls, HY=PL-r, xc=(x0+x1)/2;
+  const leaves=[];
+  for(const s of [1,-1]){
+    // --- 固定部: ヒンジ管とそれを支える軸受柱(ピット床から立ち上げる) ---
+    addCylX(0.045,L+0.30,M.steel,xc,HY,s*LT_HZ,scene,14);                 // ヒンジ管(頂点はロール径内=PL下)
+    const step=Math.max(1,Math.round(nRolls/3)), cols=[];
+    for(let i=0;i<=nRolls;i+=step)cols.push(x0+i*pitch);
+    if(cols[cols.length-1]<x1-1e-6)cols.push(x1);
+    for(const px of cols){                                                // 柱はロールとロールの隙間に立てる
+      const gy=groundY(px), hh=HY-0.09-gy;
+      addBox(0.10,hh,0.10,M.frame,px,gy+hh/2,s*LT_HZ);                    // 軸受柱
+      addBox(0.16,0.13,0.16,M.paintDark,px,HY-0.025,s*LT_HZ);             // 軸受
+      addBox(0.30,0.05,0.30,M.frame,px,gy+0.025,s*LT_HZ,scene,false);}    // ベースプレート
+    // --- 可動部: 折り畳みリーフ(ヒンジ軸=X方向。ローカルzはヒンジからの内向き) ---
+    const leaf=new THREE.Group(); leaf.position.set(0,HY,s*LT_HZ); scene.add(leaf);
+    const lz=(w)=>s*(w-LT_HZ);                                            // 世界z → リーフ内ローカルz
+    // 縦通し材は軸受柱ごとに分割する(倒れ込む途中で柱を通り抜けてしまうため。
+    // 実機のヒンジテーブルも軸受間のベイ単位で枠を組む)
+    for(let b=0;b<cols.length-1;b++){const a=cols[b]+0.11,c=cols[b+1]-0.11;
+      addBox(c-a,0.07,0.07,M.frame,(a+c)/2,-0.10,lz(0.74),leaf);          // 外側縦通し材
+      addBox(c-a,0.07,0.05,M.frame,(a+c)/2,-0.10,lz(0.03),leaf);}         // 内側縦通し材
+    for(let i=0;i<nRolls;i++){const rx=x0+(i+0.5)*pitch;
+      spin(addCylZ(r,0.68,rollMats(),rx,0,lz(0.40),leaf,20),r,-1);        // テーブルロール(半幅)
+      addBox(0.09,0.09,0.06,M.frame,rx,-0.01,lz(0.74),leaf);              // 軸受(外側)
+      addBox(0.07,0.07,0.05,M.frame,rx,-0.01,lz(0.03),leaf);              // 軸受(内側)
+      addBox(0.09,0.09,0.09,M.paintDark,rx,-0.045,lz(0.80),leaf);}        // ヒンジ金具(管を抱く)
+    leaves.push({leaf,s});
   }
-  return{setOpen(k){const ang=THREE.MathUtils.clamp(k,0,1)*1.35; // 開放角 ~77°
-    halves[0].rotation.z=-ang;halves[1].rotation.z=ang;}};
+  //  k=0:閉(水平) → k=1:開(垂直・側壁沿い)
+  return{setOpen(k){const ang=THREE.MathUtils.clamp(k,0,1)*Math.PI/2;
+    for(const h of leaves)h.leaf.rotation.x=-h.s*ang;}};
 }
 // ループ緒元(帯板経路はstrip.jsがこのメタ情報から動的に構築)
 const LOOP1={inR:'K1-3',outR:'K2-1',depth:1.5};
@@ -130,12 +150,14 @@ function buildKnives(N){
   addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeUp);         // 駆動継手
   addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeLo);
   addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
-  // 刃の上下並び: 各切断位置で上刃が-Z側/下刃が+Z側。ただし最外(k=0)だけは
-  // 反転させ、両端の耳屑側に必ず「下刃」が来るようにする。こうすると左右どちらの
-  // 耳屑も下刃の頂点(PL+LAP)に乗って上へ振り上げられ、屑ガイドロール列へ
-  // 左右対称に導ける(片側だけ上刃の下をくぐる=刃を突き抜ける、が起きない)。
-  for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw, o=(k===0)?-0.010:0.010;
-    addCylZ(knifeR,0.016,M.knife,0,0,zc-o,knifeUp,36);addCylZ(knifeR,0.016,M.knife,0,0,zc+o,knifeLo,36);}
+  // 刃厚は条ピッチに追従(多条では実機同様に薄刃)。刃は切断線を挟んで条の「外側」に
+  // 接して並び、条そのものには被らない — 上下刃はサイドクリアランス分だけずれる。
+  // 上下の並びは各切断位置で上刃が-Z側/下刃が+Z側。ただし最外(k=0)だけは反転させ、
+  // 両端の耳屑側に必ず「下刃」が来るようにする。こうすると左右どちらの耳屑も下刃の
+  // 頂点(PL+LAP)に乗って上へ振り上げられ、屑ガイドロール列へ左右対称に導ける。
+  const kt=Math.min(0.016,Math.max(0.004,sw*0.4)), ko=kt/2+STRAND_GAP/2;
+  for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw, sgn=(k===0)?-1:1;
+    addCylZ(knifeR,kt,M.knife,0,0,zc-sgn*ko,knifeUp,36);addCylZ(knifeR,kt,M.knife,0,0,zc+sgn*ko,knifeLo,36);}
   // 板押さえゴムリング(ストリッパーリング): 丸刃間のスペーサ上に装着し、
   // 帯板を押さえて刃への巻付きを防ぐ。半径=刃-6mm → リング面は板面すれすれ
   // (LAP+2mmのクリアランス)で「押さえているが食い込まない」実機の見え方になる。
@@ -169,7 +191,9 @@ const sepGroups=[];
 const SEP_Y=PL+0.21;
 function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.length){const c=sg.g.children.pop();c.geometry.dispose();sg.g.remove(c);}}
   const sw=EFF_W/N;
-  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;addCylZ(0.22,0.012,M.knife,sg.x,SEP_Y,zc,sg.g,28);}}}
+  // ディスク厚は条間隙間(STRAND_GAP)より薄く — 隙間に垂れ込んで条を仕切る
+  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
+    addCylZ(0.22,STRAND_GAP*0.8,M.knife,sg.x,SEP_Y,zc,sg.g,28);}}}
 (function(){for(const x of [13.0,21.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
   addBox(0.16,3.0,0.16,M.frame,x,1.5,-1.3);addBox(0.16,3.0,0.16,M.frame,x,1.5,1.3);addBox(0.2,0.16,2.76,M.yellow,x,3.0,0);
   addCylZ(0.04,STRIP_W+0.8,M.steel,x,SEP_Y,0,scene);

@@ -17,7 +17,38 @@ const entryRibbon=new Ribbon(STRIP_W-0.01,ENTRY_N,M.strip);
 let strandRibbons=[],strandZ=[];
 const trimRibbonR=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip),trimRibbonL=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip);
 function buildStrands(N){for(const r of strandRibbons)r.dispose();strandRibbons=[];strandZ=[];
-  const sw=EFF_W/N;for(let i=0;i<N;i++){strandZ.push(-EFF_W/2+(i+0.5)*sw);strandRibbons.push(new Ribbon(sw-0.014,STRAND_N,M.strip));}}
+  const sw=EFF_W/N;for(let i=0;i<N;i++){strandZ.push(-EFF_W/2+(i+0.5)*sw);
+    strandRibbons.push(new Ribbon(sw-STRAND_GAP,STRAND_N,M.strip));}   // 隙間=スリット代のみ
+  updateShapeProfile();}
+
+/* =========================================================
+ * 板形状(歪)による条毎の伸び差
+ * =========================================================
+ * 圧延材の平坦度不良は幅方向の「長さの差」そのもの。スリット前は1枚なので
+ * 内部応力として釣り合っているが、条に切り離した瞬間に各条は自分の固有長さで
+ * 走り出す。全条は同じMDロールで送られ同じマンドレルに巻かれる(=線速度は共通)
+ * ため、長い条ほど余った長さがNo.2ルーパーに溜まり続け、巻くほどループ深さの
+ * 幅方向差が開いていく。中伸び(中出)材ならセンター条ほど深く垂れる。
+ *   平坦度 1 I-unit = 相対伸び 1e-5
+ * 基準は「最も短い条」= その条だけがピンと張った状態でループ深さは設定値のまま、
+ * 他の条はその差だけ余長を持つ、という実機の見え方に合わせている。 */
+function shapeProfile(u){          // u: 幅方向の正規化位置 (-1=耳 … 0=センター … +1=耳)
+  switch(st.shape){
+    case "center":  return 1-u*u;                       // 中伸び(中出) — センターが長い
+    // 骨ひずみ(1/4伸び) — 中間が長い。|u|=0.55付近を頂点とする山(左右対称だが
+    // センターと耳の中間に寄る)。sin²のような0.5対称の山だと4条時に全条が同値に
+    // なって差が消えるため、頂点を0.55へずらした釣鐘形にしてある。
+    case "quarter": return Math.exp(-Math.pow((Math.abs(u)-0.55)/0.22,2));
+    case "edge":    return u*u;                         // 耳伸び — 両耳が長い
+    default:        return 0;                           // 平坦
+  }}
+let strandEps=[];                  // 条毎の相対伸び(最短条を0とした差分)
+function updateShapeProfile(){
+  const A=st.shapeI*1e-5;
+  strandEps=strandZ.map(z=>shapeProfile(2*z/EFF_W)*A);
+  const mn=strandEps.length?Math.min.apply(null,strandEps):0;
+  strandEps=strandEps.map(e=>e-mn);}
+const strandSlack=(i)=>(strandEps[i]||0)*st.lenCoil*LEN_SCALE;   // 条iの余長[m](実長換算)
 const TOP=(id)=>{const o=R[id];return V3(o.x,o.y+o.r,0);};
 const BOTTOM=(id)=>{const o=R[id];return V3(o.x,o.y-o.r,0);};
 const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
@@ -25,10 +56,23 @@ const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
 /* ルーパー区間の経路(開閉式テーブル対応):
  *  開度k→ループ深さd。d≈0(テーブル閉)は端ロール間をロール上面=PLの平坦通板。
  *  d>0はテーブル退避後の完全フリー自重ループ: 固定端ロールへの巻付き弧+放物線垂み
- *  のみで構成し、途中のロールには一切触れない。 */
-function looperPath(lp,k,raw,zc){
+ *  のみで構成し、途中のロールには一切触れない。
+ *  extra は条毎の余長[m]。垂み d の放物線ループの弧長は
+ *      s(d) = (L/2)·√(1+a²) + (L/2a)·asinh(a)      a = 4d/L
+ *  なので、s(d) = s(d0)+extra を満たす d を二分法で解けば「溜まった余長がそのまま
+ *  深さになる」。浅いうちは d∝√extra、深くなると d→(L+extra)/2 の直線的な伸びに移る。 */
+function loopArc(L,d){const a=4*d/L;return 0.5*L*Math.sqrt(1+a*a)+L/(2*a)*Math.asinh(a);}
+function loopDepth(lp,k,extra){
+  const d0=lp.depth*THREE.MathUtils.clamp((k-0.3)/0.7,0,1);  // テーブル退避(k<0.35)後に垂み成長
+  if(d0<0.02||!extra)return d0;
+  const L=R[lp.outR].x-R[lp.inR].x, tgt=loopArc(L,d0)+extra;
+  if(loopArc(L,LOOP_DMAX)<=tgt)return LOOP_DMAX;             // ピット深さで頭打ち
+  let lo=d0,hi=LOOP_DMAX;
+  for(let i=0;i<26;i++){const mid=(lo+hi)/2;if(loopArc(L,mid)<tgt)lo=mid;else hi=mid;}
+  return (lo+hi)/2;}
+function looperPath(lp,k,raw,zc,extra){
   const A=R[lp.inR],Bv=R[lp.outR];
-  const d=lp.depth*THREE.MathUtils.clamp((k-0.3)/0.7,0,1);   // テーブル退避(k<0.35)後に垂み成長
+  const d=loopDepth(lp,k,extra);
   if(d<0.02){raw.push(V3(A.x,PL,zc));raw.push(V3(Bv.x,PL,zc));return;}
   const rr=A.r+0.006, L=Bv.x-A.x;
   const m=4*d/L, phi=Math.atan(m);
@@ -66,16 +110,20 @@ function updateEntryRibbon(){const raw=_e;raw.length=0;
 
 /* 出側テール: X1ニップ→デフY2上面→Y1下面→テールキャッチャーZ上面→リコイラ外周。
  * 全区間を接線+巻付き弧で構成する。Zは約25°の方向転換があり、極点1点で結ぶと
- * 弦がロール肩を~10mm切り取るため、Y1→Z→リコイラも共通接線で結ぶ。 */
+ * 弦がロール肩を~10mm切り取るため、Y1→Z→リコイラも共通接線で結ぶ。
+ * X1も同様: ニップを出た帯はデフへ約20°立ち上がるので、上ロールX1の下面へ
+ * 巻き付いてから接線に移る(ニップ点から直に接線を引くとX1の肩を削ってしまう)。 */
 function tailPoints(zc){
+  const cX1={x:R.X1.x,y:R.X1.y,r:R.X1.r+0.002};
   const cY2={x:R.Y2.x,y:R.Y2.y,r:R.Y2.r+0.006}, cY1={x:R.Y1.x,y:R.Y1.y,r:R.Y1.r+0.006};
   const cZ={x:R.Z.x,y:R.Z.y,r:R.Z.r+0.006}, cRec={x:REC_X,y:REC_Y,r:st.rr+0.004};
-  const tin=tangentToSide(cY2.x,cY2.y,cY2.r,'top',R.X1.x,PL);
+  const t0=tangentBetween(cX1,'bottom',cY2,'top');           // X1下面 → Y2上面
   const m1=tangentBetween(cY2,'top',cY1,'bottom');
   const m2=tangentBetween(cY1,'bottom',cZ,'top');
   const m3=tangentBetween(cZ,'top',cRec,'top');
   const pts=[];
-  for(const p of arcPoints(cY2.x,cY2.y,cY2.r,tin.a,m1.t1.a,8))pts.push(p);
+  for(const p of arcPoints(cX1.x,cX1.y,cX1.r,-Math.PI/2,t0.t1.a,5))pts.push(p);   // X1巻付き(ニップ→接線)
+  for(const p of arcPoints(cY2.x,cY2.y,cY2.r,t0.t2.a,m1.t1.a,8))pts.push(p);
   for(const p of arcPoints(cY1.x,cY1.y,cY1.r,m1.t2.a,m2.t1.a,8))pts.push(p);
   for(const p of arcPoints(cZ.x,cZ.y,cZ.r,m2.t2.a,m3.t1.a,6))pts.push(p);
   for(const p of arcPoints(cRec.x,cRec.y,cRec.r,m3.t2.a,m3.t2.a-0.7,7))pts.push(p); // リコイラ巻付き
@@ -83,10 +131,11 @@ function tailPoints(zc){
   return pts;}
 
 const _sraw=[],_sout=[];
-function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
+function updateStrandRibbon(rib,zc,idx){const raw=_sraw;raw.length=0;
   raw.push(V3(SLIT_X,PL,zc));
   raw.push(V3(R['R1-1'].x,PL,zc));raw.push(V3(R['R1-5'].x,PL,zc));raw.push(V3(R['S1-2'].x,PL,zc));
-  looperPath(LOOP2,st.loop2,raw,zc);                         // No.2ルーパー(開閉式・フリーループ/平坦)
+  // No.2ルーパーは条毎に深さが違う(形状不良による伸び差が余長として溜まるため)
+  looperPath(LOOP2,st.loop2,raw,zc,strandSlack(idx));
   raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
   raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
   for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)
