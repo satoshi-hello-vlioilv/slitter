@@ -29,7 +29,7 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
   looperTable2.setOpen(st.loop2/0.35);}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
-  scrapR.coil.scale.set(st.rsR,st.rsR,1);scrapL.coil.scale.set(st.rsL,st.rsL,1); // 軸=Z
+  scrapR.coil.scale.set(st.rsR,1,st.rsR);scrapL.coil.scale.set(st.rsL,1,st.rsL); // 屑コイルは軸=Y(立軸)
   updateEntryRibbon();
   for(let i=0;i<strandRibbons.length;i++)updateStrandRibbon(strandRibbons[i],strandZ[i]);
   updateTrim(trimRibbonR,scrapR,st.rsR);updateTrim(trimRibbonL,scrapL,st.rsL);}

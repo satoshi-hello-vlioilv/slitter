@@ -92,17 +92,43 @@ function updateStrandRibbon(rib,zc){const raw=_sraw;raw.length=0;
   for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)
   _sout.length=0;samplePolyline(raw,STRAND_N,_sout);rib.update(_sout);}
 
-const _traw=[];
-function updateTrim(rib,sw,rs){const side=sw.side, z0=(EFF_W/2+TRIM_W/2)*side;
-  // スリッター出側で分離した耳は、自由区間の「直線」で横ドリフトしながら
-  // 屑コイル外周への接線点まで進み、そこから巻付き弧で巻き取られる。
-  // (旧実装のCatmullRomスプラインは制御点でx方向が反転しループ状に自己交差
-  //  していた — スプラインを廃し、接線直線+弧のみで構成する)
-  const rw=rs+0.004;
-  const Tt=tangentPoint(sw.Wx,sw.Wy,rw,SLIT_X,PL,-1);        // 分離点→屑コイル上面接点
-  const raw=_traw;raw.length=0;
-  for(let j=0;j<=8;j++){const t=j/8;                          // 自由区間: 3D直線(z0→Wzへ単調ドリフト)
-    raw.push(V3(THREE.MathUtils.lerp(SLIT_X,Tt.x,t),THREE.MathUtils.lerp(PL,Tt.y,t),THREE.MathUtils.lerp(z0,sw.Wz,t)));}
-  for(let j=1;j<=10;j++){const a=Tt.a-0.9*j/10;               // 巻付き弧(コイル幅面 z=Wz)
-    raw.push(V3(sw.Wx+rw*Math.cos(a),sw.Wy+rw*Math.sin(a),sw.Wz));}
-  const out=[];samplePolyline(raw,TRIM_N,out);rib.update(out);}
+const _traw=[],_twv=[],_toutP=[],_toutW=[];
+/* 耳屑の経路(立軸ワインダー方式) — 3区間で構成する。
+ *  ① 立面(XY面)   : 分離点 → SG1(下面接触)で振り上げ → SG2(上面接触)の頂点で水平化。
+ *                    起点はPL+6mm。耳屑側には必ず下刃が来る(buildKnives)ので、屑は
+ *                    下刃の頂点(PL+LAP=+4mm)に乗って持ち上がる = 丸刃を突き抜けない。
+ *  ② ねじり区間   : 高さHTWの水平直線を進みながら、幅方向を Z(水平)→ Y(垂直)へ90°ひねる。
+ *                    長さ1.25m ≒ 屑幅の25倍で、実機の目安(幅の8~10倍以上)を満たす。
+ *  ③ 水平面(XZ面) : VG1 → VG2 → 屑コイル。全ての円の中心が進行方向の左側に来る
+ *                    「同一回転方向のチェーン」。共通接線は
+ *                       θ = φ - asin((r_next - r_cur)/ρ)          (φ:中心間方位, ρ:中心間距離)
+ *                    接点は中心から θ-90° の方向 → 接線と巻付き弧だけで経路が閉じ、
+ *                    巻径が0.13→0.42mに育っても接線側・巻付き方向は変わらない。
+ * 幅方向ベクトルも点ごとに持たせてリボンへ渡すので、ひねりが実際の面として描かれる。 */
+function updateTrim(rib,sw,rs){
+  const s=sw.side, zt=s*ZTRIM, raw=_traw, wv=_twv;
+  raw.length=0;wv.length=0;
+  const put=(p,w)=>{raw.push(p);wv.push(w);};
+  // ---- ① 立面(XY面): 分離点 → SG1下面 → SG2上面 ----
+  const c1={x:SG1.x,y:SG1.y,r:SGR+0.006}, c2={x:SG2.x,y:SG2.y,r:SGR+0.006};
+  const tIn=tangentToSide(c1.x,c1.y,c1.r,'bottom',SLIT_X,PL+0.006);   // 分離点→SG1下面の接点
+  const t12=tangentBetween(c1,'bottom',c2,'top');                     // SG1下面→SG2上面(内接線)
+  put(V3(SLIT_X,PL+0.006,zt),Z_AXIS);
+  for(const p of arcPoints(c1.x,c1.y,c1.r,tIn.a,t12.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
+  for(const p of arcPoints(c2.x,c2.y,c2.r,t12.t2.a,Math.PI/2,7)){p.z=zt;put(p,Z_AXIS);} // 頂点=水平で離れる
+  // ---- ② ねじり区間(水平直線・幅方向 Z→Y) ----
+  for(let j=1;j<TWIST_N;j++){const t=j/TWIST_N,a=t*Math.PI/2;
+    put(V3(THREE.MathUtils.lerp(c2.x,VG1.x,t),HTW,zt),V3(0,Math.sin(a),Math.cos(a)));}
+  // ---- ③ 水平面(XZ面): VG1 → VG2 → 屑コイル(左巻きチェーン) ----
+  const ch=[{x:VG1.x,u:VG1.u,r:VGR+0.006},{x:VG2.x,u:VG2.u,r:VGR+0.006},{x:WND.x,u:WND.u,r:rs+0.004}];
+  let th=0;                                                           // ねじり区間の進行方向(+X)
+  for(let i=0;i<ch.length;i++){const c=ch[i],a0=th-Math.PI/2;let a1;
+    if(i<ch.length-1){const d=ch[i+1],dx=d.x-c.x,du=d.u-c.u,rho=Math.hypot(dx,du);
+      th=Math.atan2(du,dx)-Math.asin(THREE.MathUtils.clamp((d.r-c.r)/rho,-1,1));a1=th-Math.PI/2;}
+    else a1=a0+1.15;                                                  // ドラム巻付き弧(約66°)
+    const n=(i<ch.length-1)?8:14;
+    for(let k=0;k<n;k++){const a=a0+(a1-a0)*k/(n-1);
+      put(V3(c.x+c.r*Math.cos(a),HTW,s*(c.u+c.r*Math.sin(a))),Y_AXIS);}}
+  _toutP.length=0;_toutW.length=0;
+  samplePathFrames(raw,wv,TRIM_N,_toutP,_toutW);
+  rib.update(_toutP,_toutW);}

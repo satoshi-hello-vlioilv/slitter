@@ -6,9 +6,13 @@ function addBox(w,h,d,mat,x,y,z,parent,shadow){const m=new THREE.Mesh(new THREE.
   m.position.set(x,y,z);m.castShadow=shadow!==false;m.receiveShadow=true;(parent||scene).add(m);return m;}
 function addCylZ(r,len,mats,x,y,z,parent,seg){const g=new THREE.CylinderGeometry(r,r,len,seg||28);g.rotateX(Math.PI/2);
   const m=new THREE.Mesh(g,mats);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(parent||scene).add(m);return m;}
+/* 縦軸(Y)円筒 — 立軸ワインダーのドラム/縦ガイドロール用 */
+function addCylY(r,len,mats,x,y,z,parent,seg){const g=new THREE.CylinderGeometry(r,r,len,seg||28);
+  const m=new THREE.Mesh(g,mats);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(parent||scene).add(m);return m;}
 const rollMats=()=>[M.roll,M.rollCap,M.rollCap];
 const coilMats=()=>[M.coilSide,M.coilCap,M.coilCap];
 const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const Z_AXIS=V3(0,0,1), Y_AXIS=V3(0,1,0);   // 帯の幅方向(水平帯=Z / 立軸巻取り帯=Y)
 
 const spinners=[];
 function spin(obj,r,dir,axis){spinners.push({obj,r,dir,axis:axis||'z'});return obj;}
@@ -124,13 +128,21 @@ class Ribbon{
     g.setAttribute("normal",new THREE.BufferAttribute(this.nor,3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("uv",new THREE.BufferAttribute(this.uv,2).setUsage(THREE.DynamicDrawUsage));
     this.geo=g;this.mesh=new THREE.Mesh(g,material);this.mesh.castShadow=true;this.mesh.frustumCulled=false;scene.add(this.mesh);}
-  update(pts){const h=this.w/2;let s=0;const n=Math.min(pts.length,this.n);let pnx=0,pny=1;
+  /* pts:中心線 / wv:各点の幅方向単位ベクトル(省略時は+Z=水平に寝た帯)。
+     幅方向を点ごとに与えられるので、90°ひねり(ねじり)を含む帯も表現できる。
+     法線は n = w × t で求める(w=+Z・平面経路なら従来と完全に同一)。 */
+  update(pts,wv){const h=this.w/2;let s=0;const n=Math.min(pts.length,this.n);let pnx=0,pny=1,pnz=0;
     for(let i=0;i<n;i++){const p=pts[i];const pp=pts[Math.max(i-1,0)],pn=pts[Math.min(i+1,n-1)];
-      let tx=pn.x-pp.x,ty=pn.y-pp.y;const tl=Math.hypot(tx,ty);let nx,ny;
-      if(tl<1e-5){nx=pnx;ny=pny;}else{tx/=tl;ty/=tl;nx=-ty;ny=tx;pnx=nx;pny=ny;}
+      const w=wv?wv[i]:Z_AXIS;
+      let tx=pn.x-pp.x,ty=pn.y-pp.y,tz=pn.z-pp.z;const tl=Math.hypot(tx,ty,tz);
+      let nx=pnx,ny=pny,nz=pnz;
+      if(tl>1e-6){tx/=tl;ty/=tl;tz/=tl;
+        const cx=w.y*tz-w.z*ty,cy=w.z*tx-w.x*tz,cz=w.x*ty-w.y*tx,cl=Math.hypot(cx,cy,cz);
+        if(cl>1e-6){nx=cx/cl;ny=cy/cl;nz=cz/cl;pnx=nx;pny=ny;pnz=nz;}}
       if(i>0)s+=p.distanceTo(pts[i-1]);const o=i*6;
-      this.pos[o]=p.x;this.pos[o+1]=p.y;this.pos[o+2]=p.z-h;this.pos[o+3]=p.x;this.pos[o+4]=p.y;this.pos[o+5]=p.z+h;
-      this.nor[o]=nx;this.nor[o+1]=ny;this.nor[o+2]=0;this.nor[o+3]=nx;this.nor[o+4]=ny;this.nor[o+5]=0;
+      this.pos[o]=p.x-w.x*h;this.pos[o+1]=p.y-w.y*h;this.pos[o+2]=p.z-w.z*h;
+      this.pos[o+3]=p.x+w.x*h;this.pos[o+4]=p.y+w.y*h;this.pos[o+5]=p.z+w.z*h;
+      this.nor[o]=nx;this.nor[o+1]=ny;this.nor[o+2]=nz;this.nor[o+3]=nx;this.nor[o+4]=ny;this.nor[o+5]=nz;
       const u=s/UV_SCALE,q=i*4;this.uv[q]=u;this.uv[q+1]=0;this.uv[q+2]=u;this.uv[q+3]=1;}
     this.geo.attributes.position.needsUpdate=true;this.geo.attributes.normal.needsUpdate=true;this.geo.attributes.uv.needsUpdate=true;}
   dispose(){scene.remove(this.mesh);this.geo.dispose();}
@@ -143,6 +155,17 @@ function samplePolyline(pts,n,out){out=out||[];const lens=[];let total=0;
     const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
     out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));}
   return out;}
+
+/* 中心線と幅方向を同時にリサンプル(ねじり区間を持つ帯用)。
+ * 幅方向は線形補間+正規化 — 隣接点の角度差は数度なので球面補間と実質一致する。 */
+function samplePathFrames(pts,wv,n,outP,outW){const lens=[];let total=0;
+  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]);lens.push(l);total+=l;}
+  let seg=0,segStart=0;
+  for(let i=0;i<n;i++){const d=total*i/(n-1);
+    while(seg<lens.length-1&&d>segStart+lens[seg]){segStart+=lens[seg];seg++;}
+    const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
+    outP.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));
+    outW.push(new THREE.Vector3().lerpVectors(wv[seg],wv[seg+1],t).normalize());}}
 
 /* =========================================================
  * ラベル(スプライト)

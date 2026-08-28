@@ -27,7 +27,8 @@ document.getElementById("strandGroup").addEventListener("click",e=>{const b=e.ta
   setStrandN(parseInt(b.dataset.n,10));});
 rngStrand.addEventListener("input",()=>setStrandN(parseInt(rngStrand.value,10)));
 const CAM={all:[-3,2,0,42,0.55,1.14],unc:[-30,2.3,0,9,0.72,1.10],slit:[0,2.25,0,4.5,0.62,1.0],
-  loop1:[-12,1.2,0,9,0.5,0.98],loop2:[8.6,1.1,0,9,0.5,0.98],md:[16.2,2.2,0,6,0.66,1.02],rec:[24,2.3,0,9,0.62,1.08]};
+  loop1:[-12,1.2,0,9,0.5,0.98],loop2:[8.6,1.1,0,9,0.5,0.98],md:[16.2,2.2,0,6,0.66,1.02],rec:[24,2.3,0,9,0.62,1.08],
+  scrap:[2.0,2.5,1.4,9,1.05,1.02]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
 document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
