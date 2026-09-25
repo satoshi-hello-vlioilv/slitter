@@ -14,12 +14,34 @@
  *     リサンプリングの弦近似がロール面に沈まないようにする。
  * =======================================================*/
 const entryRibbon=new Ribbon(STRIP_W-0.01,ENTRY_N,M.strip);
-let strandRibbons=[],strandZ=[];
+const entryTail=new Ribbon(STRIP_W-0.01,ENTRY_N,M.strip);    // 抜取り中: 入側シャーで切った後端側の帯
+entryTail.mesh.visible=false;
+let strandRibbons=[],strandZ=[],strandW=[],strandCuts=[];
 const trimRibbonR=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip),trimRibbonL=new Ribbon(TRIM_W-0.006,TRIM_N,M.strip);
-function buildStrands(N){for(const r of strandRibbons)r.dispose();strandRibbons=[];strandZ=[];
-  const sw=EFF_W/N;for(let i=0;i<N;i++){strandZ.push(-EFF_W/2+(i+0.5)*sw);
-    strandRibbons.push(new Ribbon(sw-STRAND_GAP,STRAND_N,M.strip));}   // 隙間=スリット代のみ
+/* 条は刃組の計算(カッター台車と同じ割付 res)の材料の並びから置く — 刃と条がぴたりと合う。
+ * 計算の座標は OS端(操作側 +Z)が 0 なので z = (有効長/2 − x)/1000。 */
+function buildStrands(){for(const r of strandRibbons)r.dispose();strandRibbons=[];strandZ=[];strandW=[];strandCuts=[];
+  const c=KC.D3.ctx, A=c.res.A, zOf=x=>(A.arborLen/2-x)/1000;
+  for(const r of WL.bladeSet.materialRun(A,c.res.segs)){if(r.sg.type!=="strip")continue;
+    if(!strandCuts.length)strandCuts.push(zOf(r.from));
+    strandCuts.push(zOf(r.to));strandZ.push(zOf((r.from+r.to)/2));strandW.push((r.to-r.from)/1000);
+    strandRibbons.push(new Ribbon(strandW[strandW.length-1]-STRAND_GAP,STRAND_N,M.strip));}   // 隙間=スリット代のみ
   updateShapeProfile();}
+
+/* =========================================================
+ * 通板状態(刃替え段取り)
+ * =========================================================
+ * カッター台車を出し入れするには帯板を抜かなければならない(ギヤボックスが
+ * パスラインを横切る)。抜取り = 入側シャーで切り、後端をリコイラ/屑巻取機へ
+ * 巻き切る。通板 = 入側シャーから先端をリコイラまで通す(ループテーブルは閉)。
+ * 帯の見え方は「入側シャーから測った後端/先端の距離 s」で切り出す。 */
+const SHEAR_X=-8.26;                          // 入側シャーの刃(切断位置)
+const THREAD_V=4.0;                           // 先端/後端の走行速度(可視) [m/s]
+const thread={mode:null,s:0,tail:0,need:0};   // mode: null / "out"(抜取り中) / "in"(通板中)
+function clipRange(len,off){                  // 入側シャーより下流の帯の見える区間 [a,b](区間の頭からの距離)
+  if(thread.mode==="out"){const a=thread.s-off;return a<len?[Math.max(0,a),len]:null;}
+  if(thread.mode==="in"){const b=thread.s-off;return b>0?[0,Math.min(len,b)]:null;}
+  return st.thread?[0,len]:null;}
 
 /* =========================================================
  * 板形状(歪)による条毎の伸び差
@@ -48,7 +70,7 @@ function updateShapeProfile(){
   strandEps=strandZ.map(z=>shapeProfile(2*z/EFF_W)*A);
   const mn=strandEps.length?Math.min.apply(null,strandEps):0;
   strandEps=strandEps.map(e=>e-mn);}
-const strandSlack=(i)=>(strandEps[i]||0)*st.lenCoil*LEN_SCALE;   // 条iの余長[m](実長換算)
+const strandSlack=(i)=>(strandEps[i]||0)*st.lenCoil*lenScale();   // 条iの余長[m](実長換算)
 const TOP=(id)=>{const o=R[id];return V3(o.x,o.y+o.r,0);};
 const BOTTOM=(id)=>{const o=R[id];return V3(o.x,o.y-o.r,0);};
 const NIP=(id,zc)=>V3(R[id].x,PL,zc||0);
@@ -106,7 +128,19 @@ function updateEntryRibbon(){const raw=_e;raw.length=0;
   looperPath(LOOP1,st.loop1,raw,0);                          // No.1ルーパー(開閉式・フリーループ/平坦)
   raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(NIP('N1'));
   raw.push(V3(SLIT_X,PL,0));                                 // ガイドP上面/板押えQ下面は面一で接触(曲げ無し)
-  const out=[];samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);}
+  // 入側シャー位置までの長さ(シャーより下流は単調にx増加)
+  let sShear=0;
+  for(let i=0;i<raw.length-1;i++){const a=raw[i],b=raw[i+1],l=a.distanceTo(b);
+    if(a.x<=SHEAR_X&&b.x>SHEAR_X){sShear+=l*(SHEAR_X-a.x)/(b.x-a.x);break;}sShear+=l;}
+  const sEnd=polyLength(raw);thread.tail=sEnd-sShear;
+  const cut=[],out=[];
+  if(!thread.mode&&st.thread){samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);entryTail.mesh.visible=false;return;}
+  const head=thread.mode==="in"?Math.min(sEnd,sShear+thread.s):sShear;   // 上流側の帯(コイル → シャー/先端)
+  clipPolyline(raw,0,head,cut);samplePolyline(cut,ENTRY_N,out);entryRibbon.update(out);
+  const r=thread.mode==="out"?clipRange(thread.tail,0):null;            // 抜取り中の後端側
+  entryTail.mesh.visible=!!r&&r[1]-r[0]>0.01;
+  if(entryTail.mesh.visible){clipPolyline(raw,sShear+r[0],sShear+r[1],cut);out.length=0;
+    samplePolyline(cut,ENTRY_N,out);entryTail.update(out);}}
 
 /* 出側テール: X1ニップ→デフY2上面→Y1下面→テールキャッチャーZ上面→リコイラ外周。
  * 全区間を接線+巻付き弧で構成する。Zは約25°の方向転換があり、極点1点で結ぶと
@@ -119,18 +153,24 @@ function tailPoints(zc){
   const cZ={x:R.Z.x,y:R.Z.y,r:R.Z.r+0.006}, cRec={x:REC_X,y:REC_Y,r:st.rr+0.004};
   const t0=tangentBetween(cX1,'bottom',cY2,'top');           // X1下面 → Y2上面
   const m1=tangentBetween(cY2,'top',cY1,'bottom');
-  const m2=tangentBetween(cY1,'bottom',cZ,'top');
+  let m2=tangentBetween(cY1,'bottom',cZ,'top');
   const m3=tangentBetween(cZ,'top',cRec,'top');
+  // Zに触れるのは、Y1からの入りの接点から出の接点まで上面を時計回りに巻くときだけ。
+  // マンドレルがパスラインより高いので、巻径が大きいうちは帯はZの上を素通りする。
+  let dz=m2.t2.a-m3.t1.a;while(dz>Math.PI)dz-=2*Math.PI;while(dz<-Math.PI)dz+=2*Math.PI;
+  const touchZ=dz>0;
+  if(!touchZ)m2=tangentBetween(cY1,'bottom',cRec,'top');     // Y1下面 → リコイラ上面(Z非接触)
   const pts=[];
   for(const p of arcPoints(cX1.x,cX1.y,cX1.r,-Math.PI/2,t0.t1.a,5))pts.push(p);   // X1巻付き(ニップ→接線)
   for(const p of arcPoints(cY2.x,cY2.y,cY2.r,t0.t2.a,m1.t1.a,8))pts.push(p);
   for(const p of arcPoints(cY1.x,cY1.y,cY1.r,m1.t2.a,m2.t1.a,8))pts.push(p);
-  for(const p of arcPoints(cZ.x,cZ.y,cZ.r,m2.t2.a,m3.t1.a,6))pts.push(p);
-  for(const p of arcPoints(cRec.x,cRec.y,cRec.r,m3.t2.a,m3.t2.a-0.7,7))pts.push(p); // リコイラ巻付き
+  if(touchZ)for(const p of arcPoints(cZ.x,cZ.y,cZ.r,m2.t2.a,m3.t1.a,6))pts.push(p);
+  const aRec=touchZ?m3.t2.a:m2.t2.a;
+  for(const p of arcPoints(cRec.x,cRec.y,cRec.r,aRec,aRec-0.7,7))pts.push(p); // リコイラ巻付き
   for(const p of pts)p.z=zc;
   return pts;}
 
-const _sraw=[],_sout=[];
+const _sraw=[],_sout=[],_sclip=[];
 function updateStrandRibbon(rib,zc,idx){const raw=_sraw;raw.length=0;
   raw.push(V3(SLIT_X,PL,zc));
   raw.push(V3(R['R1-1'].x,PL,zc));raw.push(V3(R['R1-5'].x,PL,zc));raw.push(V3(R['S1-2'].x,PL,zc));
@@ -139,13 +179,19 @@ function updateStrandRibbon(rib,zc,idx){const raw=_sraw;raw.length=0;
   raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
   raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
   for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)
-  _sout.length=0;samplePolyline(raw,STRAND_N,_sout);rib.update(_sout);}
+  const len=polyLength(raw), r=clipRange(len,thread.tail);
+  thread.need=Math.max(thread.need,thread.tail+len);
+  rib.mesh.visible=!!r&&r[1]-r[0]>0.01;if(!rib.mesh.visible)return;
+  const src=(r[0]>0||r[1]<len)?(clipPolyline(raw,r[0],r[1],_sclip),_sclip):raw;
+  _sout.length=0;samplePolyline(src,STRAND_N,_sout);rib.update(_sout);}
 
-const _traw=[],_twv=[],_toutP=[],_toutW=[];
+const _traw=[],_twv=[],_toutP=[],_toutW=[],_tcP=[],_tcW=[];
 /* 耳屑の経路(立軸ワインダー方式) — 3区間で構成する。
  *  ① 立面(XY面)   : 分離点 → SG1(下面接触)で振り上げ → SG2(上面接触)の頂点で水平化。
- *                    起点はPL+6mm。耳屑側には必ず下刃が来る(buildKnives)ので、屑は
- *                    下刃の頂点(PL+LAP=+4mm)に乗って持ち上がる = 丸刃を突き抜けない。
+ *                    耳屑側の最外刃が下刃なら、屑は下刃の頂点に乗って PL+6mm から上がる。
+ *                    上刃なら屑は上刃に押し下げられているので、刃の縁に沿って巻き
+ *                    (上刃とSG1の共通接線まで)から上がる = どちらでも丸刃を突き抜けない。
+ *                    どちらになるかは刃組(千鳥の最外条のバリ向き)が決める。
  *  ② ねじり区間   : 高さHTWの水平直線を進みながら、幅方向を Z(水平)→ Y(垂直)へ90°ひねる。
  *                    長さ0.81m ≒ 屑幅の16倍で、実機の目安(幅の8~10倍以上)を満たす。
  *  ③ 水平面(XZ面) : VG1 → VG2 → 屑コイル。全ての円の中心が進行方向の左側に来る
@@ -160,10 +206,18 @@ function updateTrim(rib,sw,rs){
   const put=(p,w)=>{raw.push(p);wv.push(w);};
   // ---- ① 立面(XY面): 分離点 → SG1下面 → SG2上面 ----
   const c1={x:SG1.x,y:SG1.y,r:SGR+0.006}, c2={x:SG2.x,y:SG2.y,r:SGR+0.006};
-  const tIn=tangentToSide(c1.x,c1.y,c1.r,'bottom',SLIT_X,PL+0.006);   // 分離点→SG1下面の接点
   const t12=tangentBetween(c1,'bottom',c2,'top');                     // SG1下面→SG2上面(内接線)
-  put(V3(SLIT_X,PL+0.006,zt),Z_AXIS);
-  for(const p of arcPoints(c1.x,c1.y,c1.r,tIn.a,t12.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
+  const kg=KC.geom(), upper=kg&&(s>0?kg.osUpper:kg.dsUpper);
+  let a1;
+  if(upper){                                                          // 最外刃=上刃: 刃の縁に沿ってから上がる
+    const ck={x:SLIT_X,y:PL+kg.yU,r:kg.knifeR+0.004};
+    const tk=tangentBetween(ck,'bottom',c1,'bottom');                 // 上刃の下 → SG1下面(外接線)
+    for(const p of arcPoints(ck.x,ck.y,ck.r,-Math.PI/2,tk.t1.a,5)){p.z=zt;put(p,Z_AXIS);}
+    a1=tk.t2.a;
+  }else{                                                              // 最外刃=下刃: 刃の頂点に乗って上がる
+    const tIn=tangentToSide(c1.x,c1.y,c1.r,'bottom',SLIT_X,PL+0.006); // 分離点→SG1下面の接点
+    put(V3(SLIT_X,PL+0.006,zt),Z_AXIS);a1=tIn.a;}
+  for(const p of arcPoints(c1.x,c1.y,c1.r,a1,t12.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
   for(const p of arcPoints(c2.x,c2.y,c2.r,t12.t2.a,Math.PI/2,7)){p.z=zt;put(p,Z_AXIS);} // 頂点=水平で離れる
   // ---- ② ねじり区間(水平直線・幅方向 Z→Y) ----
   for(let j=1;j<TWIST_N;j++){const t=j/TWIST_N,a=t*Math.PI/2;
@@ -178,6 +232,11 @@ function updateTrim(rib,sw,rs){
     const n=(i<ch.length-1)?8:14;
     for(let k=0;k<n;k++){const a=a0+(a1-a0)*k/(n-1);
       put(V3(c.x+c.r*Math.cos(a),HTW,s*(c.u+c.r*Math.sin(a))),Y_AXIS);}}
+  const len=polyLength(raw), r=clipRange(len,thread.tail);
+  thread.need=Math.max(thread.need,thread.tail+len);
+  rib.mesh.visible=!!r&&r[1]-r[0]>0.01;if(!rib.mesh.visible)return;
+  let P=raw,W=wv;
+  if(r[0]>0||r[1]<len){clipPolyline(raw,r[0],r[1],_tcP,wv,_tcW);P=_tcP;W=_tcW;}
   _toutP.length=0;_toutW.length=0;
-  samplePathFrames(raw,wv,TRIM_N,_toutP,_toutW);
+  samplePathFrames(P,W,TRIM_N,_toutP,_toutW);
   rib.update(_toutP,_toutW);}

@@ -3,7 +3,19 @@
  * 状態機械・アニメーション
  * =======================================================*/
 function easeIO(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
-function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
+/* コイル交換の動き(t=経過秒・終わったら true)。all=false は出側の払出しだけ(刃替えの前に
+ * 巻上りコイルを降ろす — アンコイラのコイルはそのまま次の作業に使う) */
+function coilSwap(t,all){
+  const OPEN=Math.PI/2;  // リールサポート振出し角(縦軸まわり・経路外へ退避)
+  if(t<0.8){recSupport.rotation.y=OPEN*easeIO(t/0.8);}                                   // サポート振出し
+  else if(t<2.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_PARK,CAR_IN,easeIO((t-0.8)/1.2));} // カー直角侵入(コイル下へ)
+  else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){                        // コイル受渡し・新コイル
+    if(all){st.ru=RU_MAX;st.rsL=0.13;st.rsR=0.13;}st.rr=RR_MIN;st.lenCoil=0;st.swapped=true;}}
+  else if(t<4.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
+  else if(t<4.8){recSupport.rotation.y=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート復帰
+  else{recSupport.rotation.y=0;coilCar.position.z=CAR_PARK;return true;}
+  return false;}
+function stepLine(dt){const tgt=(st.paused||st.state!=="RUN"||!st.thread)?0:st.target;
   st.v+=THREE.MathUtils.clamp(tgt-st.v,-DECEL*dt,ACCEL*dt);if(Math.abs(st.v)<0.004&&tgt===0)st.v=0;
   if(st.v>0){st.len+=st.v*dt;st.lenCoil+=st.v*dt;
     st.ru=Math.max(RU_MIN-0.01,st.ru-st.v*H_VIS/(2*Math.PI*st.ru)*dt);
@@ -12,14 +24,7 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
     st.texOfs-=st.v*dt/UV_SCALE;stripTex.offset.x=st.texOfs;}
   if(st.state==="RUN"&&(st.ru<=RU_MIN||st.rr>=RR_MAX))st.state="DECEL";
   if(st.state==="DECEL"&&st.v<=0.004){st.state="CHANGE";st.tChange=0;st.swapped=false;}
-  if(st.state==="CHANGE"){st.tChange+=dt;const t=st.tChange;
-    const OPEN=Math.PI/2;  // リールサポート振出し角(縦軸まわり・経路外へ退避)
-    if(t<0.8){recSupport.rotation.y=OPEN*easeIO(t/0.8);}                                   // サポート振出し
-    else if(t<2.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_PARK,CAR_IN,easeIO((t-0.8)/1.2));} // カー直角侵入(コイル下へ)
-    else if(t<2.8){coilCar.position.z=CAR_IN;if(!st.swapped&&t>2.3){st.ru=RU_MAX;st.rr=RR_MIN;st.rsL=0.13;st.rsR=0.13;st.lenCoil=0;st.swapped=true;}} // コイル受渡し・新コイル
-    else if(t<4.0){recSupport.rotation.y=OPEN;coilCar.position.z=THREE.MathUtils.lerp(CAR_IN,CAR_PARK,easeIO((t-2.8)/1.2));} // カー退出
-    else if(t<4.8){recSupport.rotation.y=OPEN*(1-easeIO((t-4.0)/0.8));coilCar.position.z=CAR_PARK;}                          // サポート復帰
-    else{recSupport.rotation.y=0;coilCar.position.z=CAR_PARK;st.state="RUN";}}
+  if(st.state==="CHANGE"){st.tChange+=dt;if(coilSwap(st.tChange,true))st.state="RUN";}
   // ルーパーテーブル開閉: 開度0-0.35でテーブルが先に退避し、その後ループが成長する
   // (閉じる際は逆順: ループが縮んでからテーブルが戻る) — 帯板とテーブルの干渉を防ぐ
   const dl=dt*0.45;
@@ -27,33 +32,36 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
   st.loop2+=THREE.MathUtils.clamp(st.loop2Tgt-st.loop2,-dl,dl);
   looperTable1.setOpen(st.loop1/0.35);
   looperTable2.setOpen(st.loop2/0.35);
-  // カッター台車: 旋回(0→1)してから走行(1→2)。戻りは逆順
-  const dk=dt*0.32;
-  st.kc+=THREE.MathUtils.clamp(st.kcTgt-st.kc,-dk,dk);
-  knifeCar.set(st.kc);}
+  // カッター台車の段取り(ライン停止 → 抜取り → 継手 → ①②③ / 逆順)。状態機械は knifechange.js
+  KX.step(dt);}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
   scrapR.coil.scale.set(st.rsR,1,st.rsR);scrapL.coil.scale.set(st.rsL,1,st.rsL); // 屑コイルは軸=Y(立軸)
+  thread.need=0;                                  // 通板・抜取りの終わり(最も長い帯の末端)を測り直す
   updateEntryRibbon();
   for(let i=0;i<strandRibbons.length;i++)updateStrandRibbon(strandRibbons[i],strandZ[i],i);
   updateTrim(trimRibbonR,scrapR,st.rsR);updateTrim(trimRibbonL,scrapL,st.rsL);}
-function updateSpinners(dt){if(st.v<=0)return;for(const s of spinners){const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation[s.axis]+=s.dir*(st.v/r)*dt;}}
+// 通板・抜取り中は帯板が寸動速度で走るので、ロール類もその速度で回す(抜取り中は入側が止まっている)
+function updateSpinners(dt){const vt=thread.mode?THREAD_V:0,v=Math.max(st.v,vt);if(v<=0)return;
+  for(const s of spinners){if(thread.mode==="out"&&s.obj===uncGroup.g)continue;
+    const r=(typeof s.r==="function")?s.r():s.r;s.obj.rotation[s.axis]+=s.dir*(v/r)*dt;}}
 let uiT=0;
 function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   ui.roSpeed.textContent=Math.round(st.v*60);ui.roUnc.textContent=Math.round(st.ru*2000);ui.roRec.textContent=Math.round(st.rr*2000);
   ui.roTen.textContent=(st.v>0.004?(8+st.v*9).toFixed(1):"0.0");ui.roLen.textContent=Math.round(st.len).toLocaleString();
   // 条間のループ深さ差(最長条 − 最短条) — 巻き進むほど開いていく
   const eMax=strandEps.length?Math.max.apply(null,strandEps):0;
-  const dDif=loopDepth(LOOP2,st.loop2,eMax*st.lenCoil*LEN_SCALE)-loopDepth(LOOP2,st.loop2,0);
+  const dDif=loopDepth(LOOP2,st.loop2,eMax*st.lenCoil*lenScale())-loopDepth(LOOP2,st.loop2,0);
   ui.roLoopDiff.textContent=Math.round(dDif*1000);
   const prog=THREE.MathUtils.clamp((RU_MAX*RU_MAX-st.ru*st.ru)/(RU_MAX*RU_MAX-RU_MIN*RU_MIN),0,1);
   ui.roProg.textContent=Math.round(prog*100);ui.prog.style.width=(prog*100).toFixed(1)+"%";
   let text,cls;const tgt=(st.paused||st.state!=="RUN")?0:st.target;
-  if(st.state==="CHANGE"){text="コイル交換中";cls="info";}else if(st.state==="DECEL"){text="コイル交換準備 ─ 減速中";cls="warn";}
+  if(st.state==="KNIFE"){text="刃替え段取り中 ─ "+(KX.label||KX.where());cls="info";}
+  else if(st.state==="CHANGE"){text="コイル交換中";cls="info";}else if(st.state==="DECEL"){text="コイル交換準備 ─ 減速中";cls="warn";}
   else if(st.paused&&st.v<=0.004){text="ライン停止";cls="stop";}else if(st.v<tgt-0.01){text="加速中";cls="warn";}
   else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
   ui.status.textContent=text;ui.led.className="led "+cls;
-  ui.roKnife.textContent=st.kc<0.01?"旋回台に格納":st.kc>1.99?"段取り位置(スリッター側)":st.kc<1?"旋回中":"走行中";}
+  syncKnifeUI();}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
   stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);}

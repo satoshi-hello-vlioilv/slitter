@@ -117,3 +117,52 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
   padding:6px 11px;letter-spacing:.04em;backdrop-filter:blur(6px);}
 #help i{color:var(--acc);margin:0 3px 0 9px;}
 #help i:first-child{margin-left:0;}
+/* 刃組(カッター台車)の読み出し */
+.ro.ro-kv{align-items:flex-start;}
+.ro.ro-kv span{flex:none;white-space:nowrap;}
+.ro.ro-kv b{flex:1;min-width:0;text-align:right;font-size:11.5px;letter-spacing:0;line-height:1.4;}
+.bs-rings{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 5px 22px;}
+.bs-rings[hidden]{display:none;}
+.bs-ring{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--txt);
+  background:#161e26;border:1px solid var(--panel-line);border-radius:10px;padding:2px 8px;}
+.bs-ring i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.bs-judge{margin-top:6px;font-size:11px;line-height:1.45;padding:6px 9px;border-radius:6px;border:1px solid var(--panel-line);}
+.bs-judge.ok{color:var(--ok);background:rgba(58,217,140,.08);border-color:rgba(58,217,140,.35);}
+.bs-judge.warn{color:var(--warn);background:rgba(240,180,41,.08);border-color:rgba(240,180,41,.35);}
+.bs-judge.ng{color:var(--stop);background:rgba(255,107,94,.08);border-color:rgba(255,107,94,.35);}
+.seg button:disabled,.btn:disabled,.step3 button:disabled{opacity:.45;cursor:not-allowed;}
+/* 段取りの3手順 */
+.step3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px;}
+.step3 button{padding:7px 2px;border:1px solid var(--panel-line);border-radius:6px;background:#161e26;color:var(--txt);
+  font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:-.02em;
+  font-family:"Segoe UI","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
+.step3 button:hover:not(:disabled){border-color:#3a4c5d;background:#1f2b37;}
+.step3 button.is-on{background:#11364a;border-color:var(--acc);color:var(--acc);}
+.kc-msg{margin-top:6px;font-size:11px;line-height:1.45;color:#bfe6ff;background:rgba(79,198,255,.08);
+  border:1px solid rgba(79,198,255,.35);border-radius:6px;padding:6px 9px;}
+.kc-msg[hidden]{display:none;}
+/* 刃組マスタ(一覧) */
+.modal{position:fixed;inset:0;z-index:30;background:rgba(5,8,12,.55);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal[hidden]{display:none;}
+.modal-box{width:min(760px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.55);}
+.modal-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--panel-line);
+  font-size:13px;font-weight:600;letter-spacing:.04em;}
+.modal-head i{color:var(--acc);}
+.modal-head small{color:var(--sub);font-weight:400;font-size:11px;}
+.modal-x{margin-left:auto;background:none;border:1px solid var(--panel-line);color:var(--sub);border-radius:6px;
+  width:28px;height:28px;cursor:pointer;}
+.modal-x:hover{color:var(--txt);border-color:#3a4c5d;}
+.mm-tabs{padding:10px 14px 0;flex-wrap:wrap;}
+.modal-body{overflow:auto;padding:10px 14px 14px;}
+.mm-t{width:100%;border-collapse:collapse;font-size:11.5px;}
+.mm-t th{position:sticky;top:0;background:#141b22;color:var(--sub);font-weight:600;text-align:left;
+  padding:6px 8px;border-bottom:1px solid var(--panel-line);white-space:nowrap;}
+.mm-t td{padding:5px 8px;border-bottom:1px solid #1c252e;color:var(--txt);white-space:nowrap;}
+.mm-t th.n{text-align:right;}
+.mm-t td.n{text-align:right;font-family:Consolas,"Cascadia Mono",monospace;color:var(--val);}
+.mm-t code{color:var(--sub);font-size:10.5px;}
+.mm-sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.mm-note{margin-top:8px;font-size:11px;color:var(--sub);}

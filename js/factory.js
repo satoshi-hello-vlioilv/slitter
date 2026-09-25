@@ -4,35 +4,38 @@
  * =======================================================*/
 const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱・梁(トグル対象)
 (function buildFactory(){
-  const floorY=-0.06,T=0.12;
-  // 床(ピット開口を避けて分割)
-  const segs=[
-    {w:PIT1.x0-FAC_X0, x:(FAC_X0+PIT1.x0)/2, d:18},
-    {w:PIT2.x0-PIT1.x1, x:(PIT1.x1+PIT2.x0)/2, d:18},
-    {w:FAC_X1-PIT2.x1, x:(PIT2.x1+FAC_X1)/2, d:18},
-  ];
-  for(const s of segs){const mat=new THREE.MeshStandardMaterial({map:concreteTex(Math.max(2,s.w/2.2),8),metalness:0.05,roughness:0.92});
-    const m=addBox(s.w,T,s.d,mat,s.x,floorY,0,scene,false);m.receiveShadow=true;}
-  // ピット北/南床
+  const T=0.12, FD=9;                     // 床スラブ厚 / 床の半奥行き
+  // 床は1枚のスラブに開口を抜く(ルーパーピット・コイルカーピット・回転テーブルのピット)。
+  // 形は平面(x,z)で描き、押し出してから寝かせる(形のy = −z)。
+  const rect=(x0,z0,x1,z1)=>{const p=new THREE.Path();p.moveTo(x0,-z0);p.lineTo(x1,-z0);p.lineTo(x1,-z1);p.lineTo(x0,-z1);p.closePath();return p;};
+  const outline=new THREE.Shape();
+  outline.moveTo(FAC_X0,FD);outline.lineTo(FAC_X1,FD);outline.lineTo(FAC_X1,-FD);outline.lineTo(FAC_X0,-FD);outline.closePath();
+  for(const p of [PIT1,PIT2])outline.holes.push(rect(p.x0,-PIT_HZ,p.x1,PIT_HZ));
+  for(const c of CAR_PITS)outline.holes.push(rect(c.x-CAR_PIT_HW,c.z0,c.x+CAR_PIT_HW,c.z1));
+  {const h=new THREE.Path();h.absarc(SLIT_X,-KC_TT_Z,KC_PIT_R,0,Math.PI*2,true);outline.holes.push(h);}
+  const sg=new THREE.ExtrudeGeometry(outline,{depth:T,bevelEnabled:false,curveSegments:72});
+  sg.rotateX(-Math.PI/2);sg.translate(0,-T,0);
+  const ftex=concreteTex(1/2.2,1/2.2);                 // UV=床の座標[m] → 2.2mに1枚
+  const floor=new THREE.Mesh(sg,new THREE.MeshStandardMaterial({map:ftex,metalness:0.05,roughness:0.92}));
+  floor.receiveShadow=true;scene.add(floor);
+  // ルーパーピット — 側壁の内面/端壁の内面が、そのまま床の開口端になる(RC躯体と同じ納まり)
+  const PH=-PIT_FLOOR+0.05;                           // 壁の高さ(床上面 → ピット床の下面)
   for(const p of [PIT1,PIT2]){
     const w=p.x1-p.x0,cx=(p.x0+p.x1)/2;
-    // 床の開口端は側壁の内面(|z|=PIT_HZ)にぴったり合わせる。壁はそこから外側へ
-    // 厚み分だけ伸び、床板はその上に載る(現場のRC躯体と同じ納まり)。
-    const fd=9.1-PIT_HZ;
-    for(const sgn of [-1,1]){const mat=new THREE.MeshStandardMaterial({map:concreteTex(w/2.2,3.5),metalness:0.05,roughness:0.92});
-      addBox(w,T,fd,mat,cx,floorY,sgn*(PIT_HZ+fd/2),scene,false).receiveShadow=true;}
-    // ピット壁・底 — 側壁の内面/端壁の内面が、そのまま床の開口端になる
-    for(const sgn of [-1,1])addBox(w,2.4,0.1,M.pit,cx,-1.2,sgn*(PIT_HZ+0.05));
-    addBox(0.1,2.4,2*PIT_HZ,M.pit,p.x0-0.05,-1.2,0);addBox(0.1,2.4,2*PIT_HZ,M.pit,p.x1+0.05,-1.2,0);
-    addBox(w,0.1,2*PIT_HZ,M.pit,cx,-2.4,0,scene,false).receiveShadow=true;
+    for(const sgn of [-1,1])addBox(w,PH,0.1,M.pit,cx,-PH/2,sgn*(PIT_HZ+0.05));
+    addBox(0.1,PH,2*PIT_HZ,M.pit,p.x0-0.05,-PH/2,0);addBox(0.1,PH,2*PIT_HZ,M.pit,p.x1+0.05,-PH/2,0);
+    addBox(w,0.1,2*PIT_HZ,M.pit,cx,PIT_FLOOR-0.05,0,scene,false).receiveShadow=true;
     for(const sgn of [-1,1])addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,sgn*(PIT_HZ+0.11));  // 開口縁の注意帯(床上)
   }
+  // コイルカーピット(カーはピット底のレールを走り、コイルの下へ潜り込む)
+  for(const c of CAR_PITS){const w=2*CAR_PIT_HW,L=c.z1-c.z0,cz=(c.z0+c.z1)/2,D=CAR_PIT_D;
+    for(const s of [-1,1])addBox(0.1,D,L,M.pit,c.x+s*(CAR_PIT_HW+0.05),-D/2,cz);
+    for(const z of [c.z0-0.05,c.z1+0.05])addBox(w+0.2,D,0.1,M.pit,c.x,-D/2,z);
+    addBox(w,0.1,L,M.pit,c.x,-D-0.05,cz,scene,false).receiveShadow=true;
+    for(const s of [-1,1])addBox(0.14,0.022,L+0.3,M.hazard,c.x+s*(CAR_PIT_HW+0.11),0.012,cz);}
   const FW=FAC_X1-FAC_X0, FC=(FAC_X0+FAC_X1)/2;
-  // 通路区画線
-  // 操作側(+Z)の区画線はカッター台車の引出しエリア(スリッター前 x=±2.7)で途切れさせる
-  for(const [x0,x1] of [[FAC_X0,SLIT_X-2.75],[SLIT_X+2.75,FAC_X1]])
-    addBox(x1-x0,0.012,0.12,M.yellow,(x0+x1)/2,0.011,6.4,scene,false);
-  addBox(FW,0.012,0.12,M.yellow,FC,0.011,-6.4,scene,false);
+  // 通路区画線(出側コイルカーのピットで途切れさせない — ピットは区画線の手前で止まる)
+  for(const z of [6.4,-6.4])addBox(FW,0.012,0.12,M.yellow,FC,0.011,z,scene,false);
   // 建屋柱・梁(半透明・トグルで消去可) — 照明本体は残す
   for(let x=FAC_X0+2;x<=FAC_X1-2;x+=7){addBox(0.5,9,0.5,M.frameGlass,x,4.5,-8.6,buildingGroup,false);addBox(0.5,9,0.5,M.frameGlass,x,4.5,8.6,buildingGroup,false);}
   addBox(FW,0.5,0.4,M.frameGlass,FC,9.1,-8.6,buildingGroup,false);addBox(FW,0.5,0.4,M.frameGlass,FC,9.1,8.6,buildingGroup,false);

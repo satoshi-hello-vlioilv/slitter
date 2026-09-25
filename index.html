@@ -16,7 +16,7 @@
     <i class="fa-solid fa-industry"></i>
     <div class="ptitle-main">
       <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
-      <span class="ver-badge" id="appVersion">v1.11.0</span>
+      <span class="ver-badge" id="appVersion">v1.12.0</span>
     </div>
   </div>
   <div class="status-card">
@@ -49,8 +49,48 @@
       <input type="range" id="rngStrand" min="2" max="50" step="1" value="4">
       <div class="ro" style="margin-top:7px;">
         <i class="fa-solid fa-ruler-horizontal"></i><span>母材幅 / 条幅</span>
-        <b>1200<small>mm</small> / <span id="roStrandW">272</span><small>mm</small></b>
+        <b>1200<small>mm</small> / <span id="roStrandW">275</span><small>mm</small></b>
       </div>
+      <div class="slider-row" style="margin-top:9px;"><span>板厚</span><b><span id="thickVal">0.5</span> mm</b></div>
+      <input type="range" id="rngThick" min="0.3" max="3.0" step="0.1" value="0.5">
+      <div class="note">板厚 0.6mm 未満はフィンガー(板押さえ)、以上はゴムリングで保持します(刃組基準値のフィンガー切替板厚)</div>
+    </div>
+  </details>
+
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-layer-group"></i>刃組(カッター台車)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="ro ro-kv"><i class="fa-solid fa-circle-notch"></i><span>丸刃</span><b id="bsKnife">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-arrows-left-right"></i><span>クリアランス / ラップ</span><b id="bsClr">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-hand"></i><span>板押さえ</span><b id="bsHold">—</b></div>
+      <div id="bsRings" class="bs-rings"></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-bars-staggered"></i><span>スペーサー 上/下</span><b id="bsSpacer">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-compress"></i><span>シート押さえ量</span><b id="bsFloat">—</b></div>
+      <div id="bsJudge" class="bs-judge"></div>
+      <div class="sub-h" style="margin-top:10px;">部材の表示</div>
+      <div class="seg seg-sm" id="bsShow">
+        <button data-show="knife" class="active">刃</button><button data-show="ring" class="active">板押さえ</button>
+        <button data-show="liner" class="active">スペーサー</button>
+      </div>
+      <div class="seg seg-sm" id="bsHide" style="margin-top:5px;">
+        <button data-hide="gone">消す</button><button data-hide="ghost" class="active">薄く残す</button><button data-hide="wire">線だけ</button>
+      </div>
+      <button class="btn btn-sm" id="btnMaster" style="margin-top:10px;"><i class="fa-solid fa-table-list"></i><span>刃組マスタを見る</span></button>
+    </div>
+  </details>
+
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-screwdriver-wrench"></i>段取り(刃替え)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <button class="btn btn-sm" id="btnKnife"><i class="fa-solid fa-truck-ramp-box"></i><span>カッター台車をラインから出す</span></button>
+      <div class="step3">
+        <button data-step="pull">①引き出す</button><button data-step="open">②軸端部を外す</button><button data-step="spin">③台車を回す</button>
+      </div>
+      <div class="ro ro-kv" style="margin-top:7px;"><i class="fa-solid fa-location-dot"></i>
+        <span>台車(<span id="roCarName">A台車</span>)</span><b id="roKnife">ライン内(運転位置)</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-route"></i><span>通板</span><b id="roThread">通板済</b></div>
+      <div class="kc-msg" id="kcMsg" hidden></div>
+      <div class="note">ラインから出す: 停止 → 帯板を抜取り(入側シャーで切断) → 巻上りコイル払出し → 駆動継手を外す → ①レールで回転テーブルへ → ②軸端部を着地土台へ送り出し → ③台車を180°回して刃組の姿へ。セットは逆順で、最後に通板して運転を再開します。刃組(スペーサー・ゴムリング・フィンガー)は刃組ガイダンスと同じ計算で条数・板厚から組みます</div>
     </div>
   </details>
 
@@ -119,6 +159,7 @@
         <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
         <button data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
         <button data-cam="knife"><i class="fa-solid fa-truck-ramp-box"></i>カッター台車</button>
+        <button data-cam="arbor"><i class="fa-solid fa-circle-notch"></i>刃組(アーバー)</button>
       </div>
     </div>
   </details>
@@ -139,15 +180,6 @@
     </div>
   </details>
 
-  <details class="grp">
-    <summary><i class="fa-solid fa-screwdriver-wrench"></i>段取り(刃替え)<i class="fa-solid fa-chevron-right chev"></i></summary>
-    <div class="body">
-      <button class="btn btn-sm" id="btnKnife"><i class="fa-solid fa-truck-ramp-box"></i><span>カッター台車をスリッター側へ</span></button>
-      <div class="ro" style="margin-top:7px;"><i class="fa-solid fa-location-dot"></i>
-        <span>台車位置</span><b id="roKnife" style="font-size:11.5px;">旋回台に格納</b></div>
-      <div class="note">予備アーバー(上下丸刃セット)を載せた台車が旋回台で90°回ってレールに整列し、操作側からスリッター手前の段取り位置まで走行します</div>
-    </div>
-  </details>
 
   <details class="grp">
     <summary><i class="fa-solid fa-arrows-down-to-line"></i>ルーパー操作<i class="fa-solid fa-chevron-right chev"></i></summary>
@@ -161,6 +193,15 @@
   </details>
 </div>
 
+<div id="masterModal" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><i class="fa-solid fa-table-list"></i><span>刃組マスタ</span><small id="mmEq"></small>
+      <button class="modal-x" id="mmClose" title="閉じる"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="seg seg-sm mm-tabs" id="mmTabs"></div>
+    <div class="modal-body" id="mmBody"></div>
+  </div>
+</div>
+
 <div id="help">
   <i class="fa-solid fa-arrows-up-down-left-right"></i>左ドラッグ:回転
   <i class="fa-solid fa-magnifying-glass-plus"></i>ホイール:ズーム
@@ -168,6 +209,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/bladeset-master.js"></script>
+<script src="js/blade-core.js"></script>
 <script src="js/config.js"></script>
 <script src="js/scene.js"></script>
 <script src="js/materials.js"></script>
@@ -175,7 +218,9 @@
 <script src="js/factory.js"></script>
 <script src="js/coilers.js"></script>
 <script src="js/line.js"></script>
+<script src="js/cutter.js"></script>
 <script src="js/strip.js"></script>
+<script src="js/knifechange.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

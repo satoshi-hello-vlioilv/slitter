@@ -103,15 +103,15 @@ housing(-1.70,PL+0.9); roll('N1',-1.70,PL+d2r(200),200,1,{frame:false});roll('N2
 // バレル面長は必ず板幅より広く取る(狭いとチョックが板を貫通する物理違反になる)
 for(let i=0;i<5;i++)roll('P'+(i+1),-1.45+i*0.2,PL-d2r(60),60,-1,{frame:false});
 chainFrame(['P1','P2','P3','P4','P5'],STRIP_W/2+0.27,2);
-roll('Q',-0.40,PL+d2r(120),120,1);                     // 板押えロール(下面=PLで帯板に接触)
-// スリッター(I=スチールシャフトφ98 アーバー + 上下丸刃群)
-// アーバー高さは丸刃径に連動し buildKnives で設定(刃先ラップが板を剪断する位置)
-const knifeUp=new THREE.Group(),knifeLo=new THREE.Group();
-let knifeRcur=0.18;
-knifeUp.position.set(SLIT_X,PL+0.18,0);knifeLo.position.set(SLIT_X,PL-0.18,0);scene.add(knifeUp,knifeLo);
-spin(knifeUp,()=>knifeRcur,1);spin(knifeLo,()=>knifeRcur,-1);
-(function(){housing(SLIT_X,PL+1.1,M.paintDark);
-  regRoll('I',SLIT_X,PL+0.18,0.18);})();
+// 板押えロール(下面=PLで帯板に接触)。足元はカッター台車の走行レール(x=±0.33)と台座(x=±0.38)が
+// 通るので床から柱を立てない — チョックはガイドテーブルの側枠を延ばした腕で受ける。
+roll('Q',-0.40,PL+d2r(120),120,1,{frame:false});
+for(const s of [-1,1]){const z=s*(STRIP_W/2+0.27);
+  addBox(0.20,0.09,0.12,M.frame,-0.465,PL-0.16,z);                  // 側枠の延長(P5 → Q)
+  addBox(0.08,0.13,0.10,M.frame,-0.40,PL-0.10,z);}                  // 受け台(延長腕 → チョック)
+// スリッター(I = カッター台車の上下アーバー)。刃組はカッター台車(cutter.js)が
+// 刃組ガイダンスと同じ計算で組む。ハウジングは台車のギヤボックスと軸端部スタンドが兼ねる。
+regRoll('I',SLIT_X,PL+KC_CD/2000,KC_KNIFE_D/2000);
 // 出側テーブル
 for(let i=0;i<5;i++)roll('R1-'+(i+1),0.75+i*0.45,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['R1-1','R1-2','R1-3','R1-4','R1-5'],STRIP_W/2+0.27,2);
@@ -136,124 +136,22 @@ roll('Y2',10.95,PL+0.27,500,-1);roll('Y1',11.60,PL-0.27,500,1);
 roll('Z',12.40,PL+0.10,190,-1);
 
 /* =========================================================
- * スリッター丸刃 / 板押さえ / セパレーター(条数依存)
+ * セパレーター(条数依存)
  * =======================================================*/
 function clearGroup(grp){grp.traverse(o=>{if(o.geometry)o.geometry.dispose();});grp.clear();}
-function buildKnives(N){
-  clearGroup(knifeUp);clearGroup(knifeLo);
-  const sw=EFF_W/N;
-  // 丸刃半径は条ピッチに応じて縮小(狭条で隣接刃が視覚融合するのを防ぐ)。
-  // アーバー高さは刃径に連動: 上下刃の刃先がパスラインをLAPだけ越えて重なる
-  // (=実機のナイフラップ)。これで「刃が板に届かない」「刃が板を飲み込む」の
-  // どちらの誤描写も起きない。スペーサ(r=118mm)より必ず大径にクランプ。
-  const knifeR=Math.min(0.18,Math.max(0.13,sw*0.9)), LAP=0.004;
-  knifeRcur=knifeR;
-  knifeUp.position.y=PL+knifeR-LAP; knifeLo.position.y=PL-knifeR+LAP;
-  addCylZ(d2r(98),STRIP_W+1.6,M.steel,0,0,0,knifeUp);                  // アーバーシャフト
-  addCylZ(d2r(98),STRIP_W+1.6,M.steel,0,0,0,knifeLo);
-  addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeUp);         // 駆動継手
-  addCylZ(0.16,0.5,M.paintDark,0,0,-(STRIP_W/2+1.05),knifeLo);
-  addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeUp);addCylZ(0.118,STRIP_W+0.1,M.spacer,0,0,0,knifeLo);
-  // 刃厚は条ピッチに追従(多条では実機同様に薄刃)。刃は切断線を挟んで条の「外側」に
-  // 接して並び、条そのものには被らない — 上下刃はサイドクリアランス分だけずれる。
-  // 上下の並びは各切断位置で上刃が-Z側/下刃が+Z側。ただし最外(k=0)だけは反転させ、
-  // 両端の耳屑側に必ず「下刃」が来るようにする。こうすると左右どちらの耳屑も下刃の
-  // 頂点(PL+LAP)に乗って上へ振り上げられ、屑ガイドロール列へ左右対称に導ける。
-  const kt=Math.min(0.016,Math.max(0.004,sw*0.4)), ko=kt/2+STRAND_GAP/2;
-  for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw, sgn=(k===0)?-1:1;
-    addCylZ(knifeR,kt,M.knife,0,0,zc-sgn*ko,knifeUp,36);addCylZ(knifeR,kt,M.knife,0,0,zc+sgn*ko,knifeLo,36);}
-  // 板押さえゴムリング(ストリッパーリング): 丸刃間のスペーサ上に装着し、
-  // 帯板を押さえて刃への巻付きを防ぐ。半径=刃-6mm → リング面は板面すれすれ
-  // (LAP+2mmのクリアランス)で「押さえているが食い込まない」実機の見え方になる。
-  const ringR=knifeR-0.006;
-  const nr=sw<0.05?1:Math.max(2,Math.floor(sw/0.075));
-  for(let k=0;k<N;k++){const z0=-EFF_W/2+k*sw;
-    const seg=sw/nr, ringLen=Math.min(0.034,seg*0.7);
-    for(let i=0;i<nr;i++){const z=z0+seg*(i+0.5);
-      addCylZ(ringR,ringLen,(i%2?M.urethaneA:M.urethaneB),0,0,z,knifeUp,24);
-      addCylZ(ringR,ringLen,(i%2?M.urethaneB:M.urethaneA),0,0,z,knifeLo,24);}}}
-// 薄板切断用フィンガー(板押さえ爪): 出側のフィンガーバーから丸刃間へ差し込み、
-// 切断後の薄板を刃から剥がして通板を安定させる。上下1組。
-const fingerGroup=new THREE.Group();scene.add(fingerGroup);
-function buildFingers(N){
-  clearGroup(fingerGroup);
-  const sw=EFF_W/N, BX=SLIT_X+0.36;
-  // 爪幅は条幅に比例させ(隣条との隙間を確保しつつ)上限0.10m・下限4mmでクランプ。
-  // 狭条(多条数)では爪が細くなり、極端に狭い条では省略も可能な設計。
-  const fw=Math.max(0.004,Math.min(sw*0.62,0.10));
-  for(const s of [1,-1]){
-    addCylZ(0.026,STRIP_W+1.0,M.steel,BX,PL+s*0.30,0,fingerGroup,14);   // フィンガーバー(ハウジング間)
-    for(const zs of [-1,1])                                             // バー支持アーム → ハウジング柱
-      addBox(0.44,0.06,0.10,M.paintDark,SLIT_X+0.17,PL+s*0.30,zs*(STRIP_W/2+0.42),fingerGroup);
-    for(let k=0;k<N;k++){const zc=-EFF_W/2+(k+0.5)*sw;
-      const f=addBox(0.38,0.014,fw,M.yellow,SLIT_X+0.225,PL+s*0.168,zc,fingerGroup);
-      f.rotation.z=s*0.78;}                                             // 爪先端は刃間ニップ直後の板面へ
-  }}
 const sepGroups=[];
-// セパレーターディスクは条境界(=丸刃と同じz)で条間の隙間に垂れ込み、隣り合う条の
+// セパレーターディスクは条境界(=丸刃の切断位置)で条間の隙間に垂れ込み、隣り合う条の
 // 重なり/絡みを防ぐ。ディスク下端はPLより10mm下(条の間なので帯板とは干渉しない)。
-const SEP_Y=PL+0.21;
-function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.length){const c=sg.g.children.pop();c.geometry.dispose();sg.g.remove(c);}}
-  const sw=EFF_W/N;
+const SEP_Y=PL+0.21, SEP_H=SEP_Y+0.45;          // 軸高さ / 門形フレームの梁高さ
+function buildSeparators(){for(const sg of sepGroups)clearGroup(sg.g);
   // ディスク厚は条間隙間(STRAND_GAP)より薄く — 隙間に垂れ込んで条を仕切る
-  for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
-    addCylZ(0.22,STRAND_GAP*0.8,M.knife,sg.x,SEP_Y,zc,sg.g,28);}}}
+  for(const sg of sepGroups)for(const zc of strandCuts)addCylZ(0.22,STRAND_GAP*0.8,M.knife,sg.x,SEP_Y,zc,sg.g,28);}
 (function(){for(const x of [8.25,12.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
-  addBox(0.16,3.0,0.16,M.frame,x,1.5,-1.3);addBox(0.16,3.0,0.16,M.frame,x,1.5,1.3);addBox(0.2,0.16,2.76,M.yellow,x,3.0,0);
+  for(const s of [-1,1])addBox(0.16,SEP_H,0.16,M.frame,x,SEP_H/2,s*1.3);
+  addBox(0.2,0.16,2.76,M.yellow,x,SEP_H,0);
   addCylZ(0.04,STRIP_W+0.8,M.steel,x,SEP_Y,0,scene);
   for(const s of [-1,1])addBox(0.12,0.12,0.42,M.frame,x,SEP_Y,s*1.12);   // 軸受アーム(シャフト端→支柱)
 }})();
-
-/* =========================================================
- * カッター台車(刃替え)引出しエリア — 配置図のスリッター操作側(+Z)
- * =========================================================
- * スリッターのアーバー(上下丸刃セット)は幅方向=Z軸なので、段取り替えでは
- * 操作側(+Z、駆動継手の反対側)へそのまま引き抜く。引出しレールの先に旋回台
- * (φ4.8)があり、予備アーバーを載せたカッター台車を90°旋回させて格納しておく。
- *   t=0 旋回台上で格納(台車はライン方向X向き)
- *   t=1 旋回台が90°回ってレールと整列
- *   t=2 台車がレール上をスリッター側の段取り位置へ走行(ハウジングの手前で停止)
- * 運転中のアーバーには触れず、予備セットの搬入までを表現する。
- * =======================================================*/
-const KC_TT_Z=5.7, KC_STAGE_Z=2.7, KC_RAIL=0.45;   // 旋回台中心z / 段取り位置z / レール半軌間
-const knifeCar=(function(){
-  // 固定レール(ハウジング外 z=1.40 → 旋回台縁)
-  const z0=1.40, z1=KC_TT_Z-2.35;
-  for(const sx of [-1,1])addBox(0.10,0.06,z1-z0,M.frame,SLIT_X+sx*KC_RAIL,0.07,(z0+z1)/2,scene,false);
-  addBox(0.9,0.05,0.5,M.hazard,SLIT_X,0.025,z0-0.05,scene,false);          // 車止め(黄黒)
-  // 床の区画(引出しエリア): レール沿いの細い通路+旋回台まわりの広い区画(鍵穴形)。
-  // 通路幅を絞るのは、すぐ隣(x=+1.8〜)に屑巻取機の基礎があるため。
-  const cw=0.80, bw=2.65, az0=1.40, azm=KC_TT_Z-2.55, az1=KC_TT_Z+2.55, Y=0.013, T=0.08;
-  const line=(x0,z0,x1,z1)=>addBox(Math.max(T,Math.abs(x1-x0)),0.012,Math.max(T,Math.abs(z1-z0)),M.yellow,(x0+x1)/2,Y,(z0+z1)/2,scene,false);
-  for(const sx of [-1,1]){
-    line(SLIT_X+sx*cw,az0,SLIT_X+sx*cw,azm);             // 通路
-    line(SLIT_X+sx*cw,azm,SLIT_X+sx*bw,azm);             // 肩
-    line(SLIT_X+sx*bw,azm,SLIT_X+sx*bw,az1);}            // 旋回台区画
-  line(SLIT_X-bw,az1,SLIT_X+bw,az1);
-  // 旋回台(床面すりつけ)
-  const tt=new THREE.Group();tt.position.set(SLIT_X,0,KC_TT_Z);scene.add(tt);
-  addCylY(2.45,0.03,M.frame,0,0.015,0,tt,48);           // 旋回テーブル
-  addCylY(2.40,0.012,M.steel,0,0.036,0,tt,48);
-  addCylY(0.35,0.05,M.paintDark,0,0.045,0,tt,20);                          // センターピボット
-  for(const sx of [-1,1])addBox(0.10,0.06,4.6,M.frame,sx*KC_RAIL,0.07,0,tt,false);  // 旋回台上レール
-  // カッター台車(予備アーバー一式)— 旋回台の子。走行時はレールに沿ってローカルzを動かす
-  const car=new THREE.Group();tt.add(car);
-  addBox(1.12,0.20,2.70,M.yellow,0,0.33,0,car);                            // 台車フレーム
-  for(const sx of [-1,1])for(const wz of [-1.0,1.0]){
-    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.07,16),M.frame);
-    w.rotation.z=Math.PI/2;w.position.set(sx*KC_RAIL,0.18,wz);w.castShadow=true;car.add(w);}
-  for(const sz of [-1,1]){
-    addBox(0.95,1.20,0.16,M.paint,0,0.43+0.60,sz*1.22,car);               // アーバー受けスタンド
-    for(const ay of [0.95,1.38])addBox(0.20,0.16,0.20,M.paintDark,0,ay,sz*1.22,car);}   // 軸受
-  for(const ay of [0.95,1.38]){                                            // 予備アーバー(下/上)
-    addCylZ(d2r(98),2.60,M.steel,0,ay,0,car,20);
-    addCylZ(0.118,1.30,M.spacer,0,ay,0,car,24);
-    for(let k=0;k<=4;k++)addCylZ(0.165,0.014,M.knife,0,ay,-0.55+k*0.275+(ay>1.2?-0.009:0.009),car,32);}
-  return{set(t){const a=THREE.MathUtils.clamp(t,0,1), b=THREE.MathUtils.clamp(t-1,0,1);
-    tt.rotation.y=(1-a)*Math.PI/2;                                          // 旋回(格納 ⇔ 整列)
-    car.position.z=-b*(KC_TT_Z-KC_STAGE_Z);}};                              // 走行(整列後のみ)
-})();
-knifeCar.set(0);
 
 /* =========================================================
  * サイドスクラップワインダー(立軸・横回転)+ 耳屑ガイドロール列(両側)
@@ -297,7 +195,7 @@ function buildScrapWinder(side){
     chock(c.x,c.y,SGR,zb);                                                 // 軸受(ピローブロック)
     const hh=c.y-0.081;
     addBox(0.12,hh,0.12,M.paint,c.x,hh/2,zb);                              // 支柱(床から)
-    addBox(0.34,0.05,0.34,M.frame,c.x,0.025,zb,scene,false);}              // ベースプレート
+    addBox(0.26,0.05,0.34,M.frame,c.x,0.025,zb,scene,false);}              // ベースプレート(台車レールの外に収める)
   // ---- 縦ガイドロール(軸Y) ----
   //  arm : 出側テーブルの真上なので床から柱を立てられない → 外側の柱+水平アームで吊る
   //  base: ライン外側なので床置き台座で支える
@@ -319,19 +217,21 @@ function buildScrapWinder(side){
       addBox(0.34,0.05,0.34,M.frame,c.x,0.025,z,scene,false);}
   };
   vroll(VG1,"arm"); vroll(VG2,"base");
-  // ---- 立軸ワインダー本体 ----
+  // ---- 立軸ワインダー本体(高さは巻取り面 HTW から下へ積む) ----
   const wx=WND.x, wz=s*WND.u;
+  const yRed=HTW-0.376, yCol=0.32;                               // 減速機の下面 / ベースフレーム上面
   addBox(1.20,0.05,1.20,M.frame,wx,0.025,wz,scene,false);        // 基礎プレート
   addBox(1.00,0.28,1.00,M.paintDark,wx,0.18,wz);                 // ベースフレーム(0.04→0.32)
-  addCylY(0.15,2.08,M.paint,wx,1.36,wz,scene,20);                // 固定支柱(0.32→2.40)
-  for(const b of [-1,1]){                                        // 補強ブレース(片持ち支柱の倒れ止め)
-    const br=addBox(0.09,1.41,0.09,M.paint,wx+b*0.335,1.0,wz);br.rotation.z=b*0.266;}
-  addBox(0.52,0.30,0.52,M.paintDark,wx,2.55,wz);                 // 減速機(2.40→2.70)
-  addCylZ(0.13,0.42,M.paintDark,wx,2.53,wz+s*0.47,scene,18);     // 駆動モーター
-  addCylY(0.13,0.02,M.steel,wx,2.71,wz,scene,20);                // 軸受ボス(2.70→2.72)
+  addCylY(0.15,yRed-yCol,M.paint,wx,(yCol+yRed)/2,wz,scene,20);  // 固定支柱(ベース → 減速機)
+  for(const b of [-1,1]){                                        // 補強ブレース(ベース外周 → 支柱上部)
+    const dx=0.30,dy=(yRed-yCol)*0.75,br=addBox(0.09,Math.hypot(dx,dy),0.09,M.paint,wx+b*(0.15+dx/2),yCol+dy/2,wz);
+    br.rotation.z=b*Math.atan2(dx,dy);}
+  addBox(0.52,0.30,0.52,M.paintDark,wx,yRed+0.15,wz);            // 減速機
+  addCylZ(0.13,0.42,M.paintDark,wx,yRed+0.13,wz+s*0.47,scene,18);// 駆動モーター
+  addCylY(0.13,0.02,M.steel,wx,yRed+0.31,wz,scene,20);           // 軸受ボス
   // 回転部(軸=Y): 下フランジで平巻きコイルを受け、ドラム外周に巻き付く
   const g=new THREE.Group();g.position.set(wx,HTW,wz);scene.add(g);
-  addCylY(WND_FR,0.03,M.paintDark,0,-0.04,0,g,44);               // 下フランジ(2.721→2.751)
+  addCylY(WND_FR,0.03,M.paintDark,0,-0.04,0,g,44);               // 下フランジ(軸受ボスの直上)
   addCylY(0.126,0.20,rollMats(),0,0.075,0,g,24);                 // ドラム(巻芯 φ252)
   const coil=addCylY(1,TRIM_W,coilMats(),0,0,0,g,44);            // 屑コイル(平巻き・屑幅厚)
   addCylY(0.24,0.025,M.steel,0,0.0375,0,g,28);                   // 押えプレート(巻き始めの浮き止め)
@@ -344,23 +244,22 @@ const scrapR=buildScrapWinder(1),scrapL=buildScrapWinder(-1);
 /* =========================================================
  * ラベル(設備名)
  * =======================================================*/
-makeLabel("アンコイラ",UNC_X,PL+1.7,0);
+makeLabel("アンコイラ",UNC_X,UNC_Y+1.35,0);
 makeLabel("入側ピンチ",-10.50,PL+1.3,0);
 makeLabel("ラフレベラー",-9.45,PL+0.9,0);
 makeLabel("入側シャー",-8.51,PL+1.4,0);
 makeLabel("ループ前ピンチ",-6.90,PL+1.4,0);
 makeLabel("No.1ピット",-3.9,PL+0.5,0);
 makeLabel("スリッター前ピンチ",-1.75,PL+1.35,0);
-makeLabel("スリッターヘッド",SLIT_X,PL+1.55,0);
 makeLabel("耳屑ガイドロール",SG2.x,PL+1.02, SGZ);
 makeLabel("耳屑ガイドロール",SG2.x,PL+1.02,-SGZ);
-makeLabel("屑巻取機(立軸・横回転)",WND.x,3.32, WND.u);
-makeLabel("屑巻取機(立軸・横回転)",WND.x,3.32,-WND.u);
+makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.55, WND.u);
+makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.55,-WND.u);
 makeLabel("No.2ピット",5.5,PL+0.5,0);
-makeLabel("セパレーター",8.25,PL+1.45,0);
+makeLabel("セパレーター",8.25,SEP_H+0.4,0);
 makeLabel("テンションスタンド(MD)",9.25,PL+1.65,0);
 makeLabel("出側ピンチ",10.35,PL+1.3,0);
 makeLabel("デフロール",11.25,PL+1.5,0);
 makeLabel("テールキャッチャー",12.40,PL+0.9,0);
-makeLabel("リコイラ",REC_X,PL+1.7,0);
-makeLabel("カッター台車 引出しエリア",SLIT_X,1.9,KC_TT_Z);
+makeLabel("リコイラ",REC_X,REC_Y+1.35,0);
+makeLabel("回転テーブル(刃組段取り)",SLIT_X,1.35,KC_TT_Z);

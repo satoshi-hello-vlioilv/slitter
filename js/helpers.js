@@ -65,7 +65,7 @@ function housing(x,h,mat){mat=mat||M.paint;
   addBox(0.24,0.18,STRIP_W+1.1,M.paintDark,x,h+0.02,0);}
 
 /* 床/ピット底の高さ */
-function groundY(x){return ((x>PIT1.x0&&x<PIT1.x1)||(x>PIT2.x0&&x<PIT2.x1))?-2.32:0;}
+function groundY(x){return ((x>PIT1.x0&&x<PIT1.x1)||(x>PIT2.x0&&x<PIT2.x1))?PIT_FLOOR:0;}
 
 /* ロール列のサイドフレーム — チョック下を縦通し材で繋ぎ、支柱で床/ピット底へ下ろす */
 function chainFrame(ids,zoff,postStep){postStep=postStep||3;
@@ -155,6 +155,19 @@ function samplePolyline(pts,n,out){out=out||[];const lens=[];let total=0;
     const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
     out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));}
   return out;}
+
+/* 折れ線の弧長区間 [s0,s1] を切り出す(端は補間)。通板・抜取り中の帯の先端/後端に使う。
+ * wv(幅方向)を渡すと同じ区間を outW へ切り出す。戻り値は切り出した長さ。 */
+function clipPolyline(pts,s0,s1,outP,wv,outW){outP.length=0;if(outW)outW.length=0;
+  if(s1<=s0||pts.length<2)return 0;let acc=0;
+  const push=(i,t)=>{outP.push(new THREE.Vector3().lerpVectors(pts[i],pts[i+1],t));
+    if(outW)outW.push(new THREE.Vector3().lerpVectors(wv[i],wv[i+1],t).normalize());};
+  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]),a=acc,b=acc+l;acc=b;
+    if(b<s0||l<1e-9)continue;if(a>s1)break;
+    if(!outP.length)push(i,Math.max(0,(s0-a)/l));
+    push(i,Math.min(1,(s1-a)/l));}
+  return outP.length>1?Math.min(s1,acc)-Math.max(0,s0):0;}
+function polyLength(pts){let s=0;for(let i=0;i<pts.length-1;i++)s+=pts[i].distanceTo(pts[i+1]);return s;}
 
 /* 中心線と幅方向を同時にリサンプル(ねじり区間を持つ帯用)。
  * 幅方向は線形補間+正規化 — 隣接点の角度差は数度なので球面補間と実質一致する。 */
