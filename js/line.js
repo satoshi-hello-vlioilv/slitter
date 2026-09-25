@@ -3,46 +3,47 @@
  * 全ロール配置(BOM準拠) — 横からの概略図に沿って西→東
  * 全ロールは両端チョック(軸受)+スタンド/サイドフレームで支持し宙に浮かせない
  * =======================================================*/
-// 入側
+// ライン配置図(平面図)の寸法に準拠 — アンコイラ→スリッター 12650 / スリッター→リコイラ 13710
+//  入側: アンコイラ +2150 入側ピンチ +790 レベラー +1200 入側シャー +6810(テーブル・No.1ピット)
+//        +1700 スリッター前ピンチ → スリッター
+//  出側: スリッター +2400 屑処理 +6880(出側テーブル・No.2ピット) テンション(MD) +2630
+//        デフ・セパレーター +1800 リコイラ
 // 回転方向の規約: 接触面の周速が帯板と同方向になる向き。
 // 上面接触ロール=dir-1 / 下面接触ロール=dir+1 (帯板は+X方向へ走行)
-roll('A',-29.0,PL+0.55,280,-1);                       // スナバーロール(上面接触)
-roll('B',-28.0,PL+0.16,100,1);                        // ベンドロール(下面S掛け → dir+1)
-housing(-26.9,PL+0.9); roll('C1',-26.9,PL+0.25,500,1);roll('C2',-26.9,PL-0.25,500,-1); // 入側ピンチ
-// ラフレベラー — 小径ワークロール群は側板フレームに収める
-roll('D1',-25.95,PL,60,-1,{frame:false,chock:false});
-roll('E2-1',-25.7,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-1',-25.4,PL+0.06,150,1,{frame:false,chock:false});
-roll('E2-2',-25.1,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-2',-24.8,PL+0.06,150,1,{frame:false,chock:false});
-roll('E2-3',-24.5,PL-0.06,150,-1,{frame:false,chock:false});roll('D2',-24.2,PL,60,-1,{frame:false,chock:false});
+roll('A',-11.25,PL+0.55,280,-1);                      // スナバーロール(上面接触)
+roll('B',-10.90,PL+0.10,100,1);                       // ベンドロール(下面S掛け → dir+1)
+housing(-10.50,PL+0.9); roll('C1',-10.50,PL+0.25,500,1);roll('C2',-10.50,PL-0.25,500,-1); // 入側ピンチ
+// ラフレベラー — 小径ワークロール群(ピッチ220)は側板フレームに収める
+roll('D1',-10.10,PL,60,-1,{frame:false,chock:false});
+roll('E2-1',-9.88,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-1',-9.66,PL+0.06,150,1,{frame:false,chock:false});
+roll('E2-2',-9.44,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-2',-9.22,PL+0.06,150,1,{frame:false,chock:false});
+roll('E2-3',-9.00,PL-0.06,150,-1,{frame:false,chock:false});roll('D2',-8.80,PL,60,-1,{frame:false,chock:false});
 (function(){ // レベラー側板(床から立ち上げ)+ベース
-  const zs=STRIP_W/2+0.28, hp=PL+0.42;
-  for(const s of [-1,1])addBox(2.35,hp,0.07,M.paint,-25.05,hp/2,s*zs);
-  addBox(2.35,0.22,2*zs+0.24,M.paintDark,-25.05,0.11,0,scene,false);
-  addBox(2.35,0.1,0.07,M.paintDark,-25.05,hp+0.05,STRIP_W/2+0.28);   // 側板上フランジ
-  addBox(2.35,0.1,0.07,M.paintDark,-25.05,hp+0.05,-(STRIP_W/2+0.28));
+  const zs=STRIP_W/2+0.28, hp=PL+0.42, cx=-9.45, L=1.55;
+  for(const s of [-1,1]){addBox(L,hp,0.07,M.paint,cx,hp/2,s*zs);
+    addBox(L,0.1,0.07,M.paintDark,cx,hp+0.05,s*zs);}                 // 側板上フランジ
+  addBox(L,0.22,2*zs+0.24,M.paintDark,cx,0.11,0,scene,false);
 })();
-housing(-22.7,PL+0.95,M.paintDark);                   // 入側シャー
-roll('F',-22.7,PL+0.45,100,1);roll('G',-22.7,PL-0.30,60,-1,{frame:false});
-addBox(0.04,0.5,STRIP_W+0.4,M.steel,-22.45,PL+0.55,0); // 上刃
-addBox(0.04,0.4,STRIP_W+0.4,M.steel,-22.45,PL-0.35,0); // 下刃
-roll('H1-1',-21.2,PL-d2r(98),98,-1,{frame:false});roll('H1-2',-20.6,PL-d2r(98),98,-1,{frame:false});roll('H1-3',-20.0,PL-d2r(98),98,-1,{frame:false});
-chainFrame(['H1-1','H1-2','H1-3'],STRIP_W/2+0.27,2);   // 入側テーブル サイドフレーム
-housing(-18.0,PL+0.95);                               // 板押え/検査/ループ前ピンチ
-// ピンチはニップ面がパスラインに一致(上ロール下面=PL/下ロール上面=PL)。
-// 旧配置(±0.085)はロール面がPLから10mm浮きニップ不成立だった。
-roll('J4',-18.4,PL-0.075,150,-1,{frame:false,chock:false});roll('J1',-18.8,PL+0.075,150,1,{frame:false,chock:false});
-roll('J5',-17.6,PL-0.075,150,-1,{frame:false,chock:false});roll('J2',-18.0,PL+0.075,150,1,{frame:false,chock:false});
-roll('J3',-17.2,PL+0.075,150,1,{frame:false,chock:false});
+housing(-8.51,PL+0.95,M.paintDark);                   // 入側シャー
+roll('F',-8.51,PL+0.45,100,1);roll('G',-8.51,PL-0.30,60,-1,{frame:false});
+addBox(0.04,0.5,STRIP_W+0.4,M.steel,-8.26,PL+0.55,0); // 上刃
+addBox(0.04,0.4,STRIP_W+0.4,M.steel,-8.26,PL-0.35,0); // 下刃
+roll('H1-1',-7.95,PL-d2r(98),98,-1,{frame:false});roll('H1-2',-7.55,PL-d2r(98),98,-1,{frame:false});
+chainFrame(['H1-1','H1-2'],STRIP_W/2+0.27,2);         // 入側テーブル サイドフレーム
+housing(-6.90,PL+0.95);                               // ループ前ピンチ(ニップ面=パスライン)
+roll('J1',-7.15,PL+0.075,150,1,{frame:false,chock:false});roll('J4',-6.90,PL-0.075,150,-1,{frame:false,chock:false});
+roll('J2',-6.65,PL+0.075,150,1,{frame:false,chock:false});
 (function(){ // ピンチ群 側板+支脚
   const zs=STRIP_W/2+0.20;
-  for(const s of [-1,1]){addBox(2.2,0.8,0.06,M.paint,-18.0,PL,s*zs);
-    for(const lx of [-18.95,-17.05])addBox(0.12,PL-0.4,0.12,M.paint,lx,(PL-0.4)/2,s*zs);}
+  for(const s of [-1,1]){addBox(0.8,0.8,0.06,M.paint,-6.90,PL,s*zs);
+    for(const lx of [-7.25,-6.55])addBox(0.12,PL-0.4,0.12,M.paint,lx,(PL-0.4)/2,s*zs);}
 })();
 // No.1ルーパー(入側カテナリー K1 / 開閉式ループテーブル / 出側カテナリー K2)
-roll('K1-1',-15.8,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-15.4,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-15.0,PL-d2r(98),98,-1,{frame:false});
-roll('K2-1',-9.2,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-8.8,PL-d2r(98),98,-1,{frame:false});roll('K2-3',-8.4,PL-d2r(98),98,-1,{frame:false});
+// ピット開口 = ループ区間(K1-3 → K2-1)
+roll('K1-1',-6.20,PL-d2r(98),98,-1,{frame:false});roll('K1-2',-5.80,PL-d2r(98),98,-1,{frame:false});roll('K1-3',-5.40,PL-d2r(98),98,-1,{frame:false});
+roll('K2-1',-2.40,PL-d2r(98),98,-1,{frame:false});roll('K2-2',-2.12,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['K1-1','K1-2','K1-3'],STRIP_W/2+0.27,2);
-chainFrame(['K2-1','K2-2','K2-3'],STRIP_W/2+0.27,2);
+chainFrame(['K2-1','K2-2'],STRIP_W/2+0.27,2);
 // 開閉式ループテーブル(長手2分割・下方折り畳み式):
 //  閉(通板時) = 2枚のリーフが水平に閉じ、ロール上面=PLの平坦通板路を作る(ループ無し)
 //  開(運転時) = 各リーフがループ両端(端部カテナリーロールのすぐ内側)のヒンジ軸まわりに
@@ -73,7 +74,7 @@ function buildLooperTable(lp,inset,nRolls){
     for(const sz of [-1,1]){const z=sz*LT_BZ, gy=groundY(h.x), hh=HY-0.10-gy;
       addBox(0.09,hh,0.09,M.frame,h.x,gy+hh/2,z,looperGroup);            // 軸受柱
       addBox(0.16,0.14,0.08,M.paintDark,h.x,HY-0.02,z,looperGroup);      // 軸受
-      addBox(0.28,0.05,0.28,M.frame,h.x,gy+0.025,z,looperGroup,false);}  // ベースプレート
+      addBox(0.28,0.05,0.08,M.frame,h.x,gy+0.025,z,looperGroup,false);}  // ベースプレート(壁際なので幅方向は柱幅内)
     // --- 可動部: 折り畳みリーフ(ヒンジ軸=幅方向Z) ---
     const leaf=new THREE.Group(); leaf.position.set(h.x,HY,0); looperGroup.add(leaf);
     for(const sz of [-1,1]){
@@ -93,16 +94,16 @@ function buildLooperTable(lp,inset,nRolls){
 // dmax = 想定される最大ループ深さ(No.2は条毎の余長でLOOP_DMAXまで深くなる)
 const LOOP1={inR:'K1-3',outR:'K2-1',depth:1.5,dmax:1.5};
 const LOOP2={inR:'S1-3',outR:'S2-1',depth:1.6,dmax:LOOP_DMAX};
-const looperTable1=buildLooperTable(LOOP1,0.20,8);
-// VCロール / パスロール / スリッター前ピンチ — 全てニップ面=PL に整合
-housing(-7.4,PL+0.9); roll('L1',-7.4,PL+d2r(80),80,1);roll('L2',-7.4,PL-d2r(80),80,-1);
-roll('M',-6.4,PL-d2r(60),60,-1);
-housing(-5.1,PL+0.9); roll('N1',-5.1,PL+d2r(200),200,1);roll('N2',-5.1,PL-d2r(98),98,-1);
+const looperTable1=buildLooperTable(LOOP1,0.20,6);
+// VCロール / スリッター前ピンチ(スリッター手前1700) / ガイドテーブル — 全てニップ面=PL に整合
+// 近接配置のためロールはハウジング(チョック)で支持し、床置きスタンドは設けない
+housing(-1.91,PL+0.9); roll('L1',-1.91,PL+d2r(80),80,1,{frame:false});roll('L2',-1.91,PL-d2r(80),80,-1,{frame:false});
+housing(-1.70,PL+0.9); roll('N1',-1.70,PL+d2r(200),200,1,{frame:false});roll('N2',-1.70,PL-d2r(98),98,-1,{frame:false});
 // ガイドテーブルロール(5) — 上面=PL(帯板を下から支持)。
 // バレル面長は必ず板幅より広く取る(狭いとチョックが板を貫通する物理違反になる)
-for(let i=0;i<5;i++)roll('P'+(i+1),-3.8+i*0.4,PL-d2r(60),60,-1,{frame:false});
+for(let i=0;i<5;i++)roll('P'+(i+1),-1.45+i*0.2,PL-d2r(60),60,-1,{frame:false});
 chainFrame(['P1','P2','P3','P4','P5'],STRIP_W/2+0.27,2);
-roll('Q',-1.0,PL+d2r(120),120,1);                      // 板押えロール(下面=PLで帯板に接触)
+roll('Q',-0.40,PL+d2r(120),120,1);                     // 板押えロール(下面=PLで帯板に接触)
 // スリッター(I=スチールシャフトφ98 アーバー + 上下丸刃群)
 // アーバー高さは丸刃径に連動し buildKnives で設定(刃先ラップが板を剪断する位置)
 const knifeUp=new THREE.Group(),knifeLo=new THREE.Group();
@@ -112,28 +113,27 @@ spin(knifeUp,()=>knifeRcur,1);spin(knifeLo,()=>knifeRcur,-1);
 (function(){housing(SLIT_X,PL+1.1,M.paintDark);
   regRoll('I',SLIT_X,PL+0.18,0.18);})();
 // 出側テーブル
-for(let i=0;i<5;i++)roll('R1-'+(i+1),1.4+i*0.6,PL-d2r(98),98,-1,{frame:false});
+for(let i=0;i<5;i++)roll('R1-'+(i+1),0.75+i*0.45,PL-d2r(98),98,-1,{frame:false});
 chainFrame(['R1-1','R1-2','R1-3','R1-4','R1-5'],STRIP_W/2+0.27,2);
 // No.2ルーパー(入側カテナリー S1 / 開閉式ループテーブル / 出側カテナリー S2)
-roll('S1-1',4.8,PL-d2r(94),94,-1,{frame:false});roll('S1-2',5.2,PL-d2r(94),94,-1,{frame:false});roll('S1-3',5.6,PL-d2r(94),94,-1,{frame:false});
-roll('S2-1',11.8,PL-d2r(80),80,-1,{frame:false});roll('S2-2',12.2,PL-d2r(80),80,-1,{frame:false});roll('S2-3',12.6,PL-d2r(80),80,-1,{frame:false});
+roll('S1-1',3.05,PL-d2r(94),94,-1,{frame:false});roll('S1-2',3.40,PL-d2r(94),94,-1,{frame:false});roll('S1-3',3.76,PL-d2r(94),94,-1,{frame:false});
+roll('S2-1',7.25,PL-d2r(80),80,-1,{frame:false});roll('S2-2',7.60,PL-d2r(80),80,-1,{frame:false});roll('S2-3',7.95,PL-d2r(80),80,-1,{frame:false});
 chainFrame(['S1-1','S1-2','S1-3'],STRIP_W/2+0.27,2);
 chainFrame(['S2-1','S2-2','S2-3'],STRIP_W/2+0.27,2);
-const looperTable2=buildLooperTable(LOOP2,0.20,10);
+const looperTable2=buildLooperTable(LOOP2,0.20,6);
 // セパ押え(下面=PLで接触) / MDミニ前
-roll('T1',13.6,PL+d2r(80),80,1);roll('T2',14.3,PL-d2r(80),80,-1);
-// MDロール(上下ピンチ式): V=ミニφ250(ゴムディスク), W=主φ400(ゴムディスク)
-// 帯は上下間を通板 — ロール面がPLに接するニップ位置(旧配置は面が浮きピンチ不成立)
-housing(15.2,PL+1.1); discRoll('V1',15.2,PL+d2r(250),250,1);discRoll('V2',15.2,PL-d2r(250),250,-1);
-housing(16.8,PL+1.2,M.paintDark); discRoll('W1',16.8,PL+d2r(400),400,1);discRoll('W2',16.8,PL-d2r(400),400,-1);
-addCylZ(0.18,0.5,M.paintDark,16.8,PL+d2r(400),-(STRIP_W/2+0.95),scene); // MD駆動モーター
-addCylZ(0.18,0.5,M.paintDark,16.8,PL-d2r(400),-(STRIP_W/2+0.95),scene);
+roll('T1',8.48,PL+d2r(80),80,1);roll('T2',8.64,PL-d2r(80),80,-1);
+// テンションスタンド = MDロール(上下ピンチ式): V=ミニφ250 / W=主φ400(ゴムディスク) — 中心 +9280
+housing(8.85,PL+1.1); discRoll('V1',8.85,PL+d2r(250),250,1);discRoll('V2',8.85,PL-d2r(250),250,-1);
+housing(9.60,PL+1.2,M.paintDark); discRoll('W1',9.60,PL+d2r(400),400,1);discRoll('W2',9.60,PL-d2r(400),400,-1);
+addCylZ(0.18,0.5,M.paintDark,9.60,PL+d2r(400),-(STRIP_W/2+0.95),scene); // MD駆動モーター
+addCylZ(0.18,0.5,M.paintDark,9.60,PL-d2r(400),-(STRIP_W/2+0.95),scene);
 // 出側ピンチ(ニップ面=PL)
-housing(18.4,PL+0.9); roll('X1',18.4,PL+d2r(200),200,1);roll('X2',18.4,PL-d2r(200),200,-1);
+housing(10.35,PL+0.9); roll('X1',10.35,PL+d2r(200),200,1);roll('X2',10.35,PL-d2r(200),200,-1);
 // デフロール(上下φ500): Y2上面巻き(dir-1)→Y1下面巻き(dir+1)のS掛け
-roll('Y2',19.9,PL+0.27,500,-1);roll('Y1',20.6,PL-0.27,500,1);
+roll('Y2',10.95,PL+0.27,500,-1);roll('Y1',11.60,PL-0.27,500,1);
 // テールキャッチャー(上面接触 → dir-1)
-roll('Z',22.0,PL+0.10,190,-1);
+roll('Z',12.40,PL+0.10,190,-1);
 
 /* =========================================================
  * スリッター丸刃 / 板押さえ / セパレーター(条数依存)
@@ -198,11 +198,62 @@ function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.lengt
   // ディスク厚は条間隙間(STRAND_GAP)より薄く — 隙間に垂れ込んで条を仕切る
   for(const sg of sepGroups){for(let k=0;k<=N;k++){const zc=-EFF_W/2+k*sw;
     addCylZ(0.22,STRAND_GAP*0.8,M.knife,sg.x,SEP_Y,zc,sg.g,28);}}}
-(function(){for(const x of [13.0,21.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
+(function(){for(const x of [8.25,12.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
   addBox(0.16,3.0,0.16,M.frame,x,1.5,-1.3);addBox(0.16,3.0,0.16,M.frame,x,1.5,1.3);addBox(0.2,0.16,2.76,M.yellow,x,3.0,0);
   addCylZ(0.04,STRIP_W+0.8,M.steel,x,SEP_Y,0,scene);
   for(const s of [-1,1])addBox(0.12,0.12,0.42,M.frame,x,SEP_Y,s*1.12);   // 軸受アーム(シャフト端→支柱)
 }})();
+
+/* =========================================================
+ * カッター台車(刃替え)引出しエリア — 配置図のスリッター操作側(+Z)
+ * =========================================================
+ * スリッターのアーバー(上下丸刃セット)は幅方向=Z軸なので、段取り替えでは
+ * 操作側(+Z、駆動継手の反対側)へそのまま引き抜く。引出しレールの先に旋回台
+ * (φ4.8)があり、予備アーバーを載せたカッター台車を90°旋回させて格納しておく。
+ *   t=0 旋回台上で格納(台車はライン方向X向き)
+ *   t=1 旋回台が90°回ってレールと整列
+ *   t=2 台車がレール上をスリッター側の段取り位置へ走行(ハウジングの手前で停止)
+ * 運転中のアーバーには触れず、予備セットの搬入までを表現する。
+ * =======================================================*/
+const KC_TT_Z=5.7, KC_STAGE_Z=2.7, KC_RAIL=0.45;   // 旋回台中心z / 段取り位置z / レール半軌間
+const knifeCar=(function(){
+  // 固定レール(ハウジング外 z=1.40 → 旋回台縁)
+  const z0=1.40, z1=KC_TT_Z-2.35;
+  for(const sx of [-1,1])addBox(0.10,0.06,z1-z0,M.frame,SLIT_X+sx*KC_RAIL,0.07,(z0+z1)/2,scene,false);
+  addBox(0.9,0.05,0.5,M.hazard,SLIT_X,0.025,z0-0.05,scene,false);          // 車止め(黄黒)
+  // 床の区画(引出しエリア): レール沿いの細い通路+旋回台まわりの広い区画(鍵穴形)。
+  // 通路幅を絞るのは、すぐ隣(x=+1.8〜)に屑巻取機の基礎があるため。
+  const cw=0.80, bw=2.65, az0=1.40, azm=KC_TT_Z-2.55, az1=KC_TT_Z+2.55, Y=0.013, T=0.08;
+  const line=(x0,z0,x1,z1)=>addBox(Math.max(T,Math.abs(x1-x0)),0.012,Math.max(T,Math.abs(z1-z0)),M.yellow,(x0+x1)/2,Y,(z0+z1)/2,scene,false);
+  for(const sx of [-1,1]){
+    line(SLIT_X+sx*cw,az0,SLIT_X+sx*cw,azm);             // 通路
+    line(SLIT_X+sx*cw,azm,SLIT_X+sx*bw,azm);             // 肩
+    line(SLIT_X+sx*bw,azm,SLIT_X+sx*bw,az1);}            // 旋回台区画
+  line(SLIT_X-bw,az1,SLIT_X+bw,az1);
+  // 旋回台(床面すりつけ)
+  const tt=new THREE.Group();tt.position.set(SLIT_X,0,KC_TT_Z);scene.add(tt);
+  addCylY(2.45,0.03,M.frame,0,0.015,0,tt,48);           // 旋回テーブル
+  addCylY(2.40,0.012,M.steel,0,0.036,0,tt,48);
+  addCylY(0.35,0.05,M.paintDark,0,0.045,0,tt,20);                          // センターピボット
+  for(const sx of [-1,1])addBox(0.10,0.06,4.6,M.frame,sx*KC_RAIL,0.07,0,tt,false);  // 旋回台上レール
+  // カッター台車(予備アーバー一式)— 旋回台の子。走行時はレールに沿ってローカルzを動かす
+  const car=new THREE.Group();tt.add(car);
+  addBox(1.12,0.20,2.70,M.yellow,0,0.33,0,car);                            // 台車フレーム
+  for(const sx of [-1,1])for(const wz of [-1.0,1.0]){
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.07,16),M.frame);
+    w.rotation.z=Math.PI/2;w.position.set(sx*KC_RAIL,0.18,wz);w.castShadow=true;car.add(w);}
+  for(const sz of [-1,1]){
+    addBox(0.95,1.20,0.16,M.paint,0,0.43+0.60,sz*1.22,car);               // アーバー受けスタンド
+    for(const ay of [0.95,1.38])addBox(0.20,0.16,0.20,M.paintDark,0,ay,sz*1.22,car);}   // 軸受
+  for(const ay of [0.95,1.38]){                                            // 予備アーバー(下/上)
+    addCylZ(d2r(98),2.60,M.steel,0,ay,0,car,20);
+    addCylZ(0.118,1.30,M.spacer,0,ay,0,car,24);
+    for(let k=0;k<=4;k++)addCylZ(0.165,0.014,M.knife,0,ay,-0.55+k*0.275+(ay>1.2?-0.009:0.009),car,32);}
+  return{set(t){const a=THREE.MathUtils.clamp(t,0,1), b=THREE.MathUtils.clamp(t-1,0,1);
+    tt.rotation.y=(1-a)*Math.PI/2;                                          // 旋回(格納 ⇔ 整列)
+    car.position.z=-b*(KC_TT_Z-KC_STAGE_Z);}};                              // 走行(整列後のみ)
+})();
+knifeCar.set(0);
 
 /* =========================================================
  * サイドスクラップワインダー(立軸・横回転)+ 耳屑ガイドロール列(両側)
@@ -214,7 +265,7 @@ function buildSeparators(N){for(const sg of sepGroups){while(sg.g.children.lengt
  *
  *   SG1 屑上げロール  (軸Z / 下面接触 dir+1) 耳屑をパスライン上へ振り上げる
  *   SG2 水平化ロール  (軸Z / 上面接触 dir-1) 頂点で水平に戻しねじり区間の入口を作る
- *   ── ねじり区間(直線 1.25m ≒ 屑幅の25倍。実機目安の8~10倍以上を満たすので
+ *   ── ねじり区間(直線 0.81m ≒ 屑幅の16倍。実機目安の8~10倍以上を満たすので
  *      座屈・耳波を起こさずに幅方向が Z→Y へ回る) ──
  *   VG1 縦ガイドロール(軸Y / 上部アーム吊り) 水平面内でライン外側へ振る
  *   VG2 縦ガイドロール(軸Y / 床置き台座)     ドラムへの接線に乗せる
@@ -231,9 +282,9 @@ const SG1={x:0.62,y:PL+0.20};           // SG1 屑上げロール中心(立面)
 const SG2={x:1.35,y:PL+0.52};           // SG2 水平化ロール中心(立面)
 const HTW=SG2.y+SGR+0.006;              // SG2頂点 = ねじり区間 = 巻取り面の高さ
 // 水平面は正準座標(u = side*z、ライン外側が正)で扱い、左右は u に side を掛けて反転
-const VG1={x:2.60,u:ZTRIM+VGR+0.006};   // VG1(接点zが耳屑のzと一致する位置)
-const VG2={x:3.28,u:1.45};              // VG2
-const WND={x:2.84,u:2.26};              // 立軸ドラム中心
+const VG1={x:2.16,u:ZTRIM+VGR+0.006};   // VG1(接点zが耳屑のzと一致する位置)
+const VG2={x:2.84,u:1.45};              // VG2
+const WND={x:2.40,u:2.26};              // 立軸ドラム中心(配置図: スリッター+2400)
 const WND_FR=0.50;                       // 下フランジ半径(最大屑コイル r=0.42 を受ける)
 const SGZ=1.18;                          // 屑ガイドスタンド柱列のz(出側テーブル枠・その基礎板の外側)
 
@@ -294,22 +345,22 @@ const scrapR=buildScrapWinder(1),scrapL=buildScrapWinder(-1);
  * ラベル(設備名)
  * =======================================================*/
 makeLabel("アンコイラ",UNC_X,PL+1.7,0);
-makeLabel("入側ピンチ",-26.9,PL+1.3,0);
-makeLabel("ラフレベラー",-25.1,PL+0.9,0);
-makeLabel("入側シャー",-22.7,PL+1.4,0);
-makeLabel("ループ前ピンチ",-18.0,PL+1.4,0);
-makeLabel("No.1ルーパー",-12.0,PL+0.5,0);
-makeLabel("VCロール",-7.4,PL+1.3,0);
-makeLabel("スリッター前ピンチ",-5.1,PL+1.35,0);
+makeLabel("入側ピンチ",-10.50,PL+1.3,0);
+makeLabel("ラフレベラー",-9.45,PL+0.9,0);
+makeLabel("入側シャー",-8.51,PL+1.4,0);
+makeLabel("ループ前ピンチ",-6.90,PL+1.4,0);
+makeLabel("No.1ピット",-3.9,PL+0.5,0);
+makeLabel("スリッター前ピンチ",-1.75,PL+1.35,0);
 makeLabel("スリッターヘッド",SLIT_X,PL+1.55,0);
 makeLabel("耳屑ガイドロール",SG2.x,PL+1.02, SGZ);
 makeLabel("耳屑ガイドロール",SG2.x,PL+1.02,-SGZ);
 makeLabel("屑巻取機(立軸・横回転)",WND.x,3.32, WND.u);
 makeLabel("屑巻取機(立軸・横回転)",WND.x,3.32,-WND.u);
-makeLabel("No.2ルーパー",8.6,PL+0.5,0);
-makeLabel("セパレーター",13.0,PL+1.45,0);
-makeLabel("MDロール(上下ピンチ)",16.0,PL+1.65,0);
-makeLabel("出側ピンチ",18.4,PL+1.3,0);
-makeLabel("デフロール",20.2,PL+1.5,0);
-makeLabel("テールキャッチャー",22.0,PL+0.9,0);
+makeLabel("No.2ピット",5.5,PL+0.5,0);
+makeLabel("セパレーター",8.25,PL+1.45,0);
+makeLabel("テンションスタンド(MD)",9.25,PL+1.65,0);
+makeLabel("出側ピンチ",10.35,PL+1.3,0);
+makeLabel("デフロール",11.25,PL+1.5,0);
+makeLabel("テールキャッチャー",12.40,PL+0.9,0);
 makeLabel("リコイラ",REC_X,PL+1.7,0);
+makeLabel("カッター台車 引出しエリア",SLIT_X,1.9,KC_TT_Z);

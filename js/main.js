@@ -26,7 +26,11 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN")?0:st.target;
   st.loop1+=THREE.MathUtils.clamp(st.loop1Tgt-st.loop1,-dl,dl);
   st.loop2+=THREE.MathUtils.clamp(st.loop2Tgt-st.loop2,-dl,dl);
   looperTable1.setOpen(st.loop1/0.35);
-  looperTable2.setOpen(st.loop2/0.35);}
+  looperTable2.setOpen(st.loop2/0.35);
+  // カッター台車: 旋回(0→1)してから走行(1→2)。戻りは逆順
+  const dk=dt*0.32;
+  st.kc+=THREE.MathUtils.clamp(st.kcTgt-st.kc,-dk,dk);
+  knifeCar.set(st.kc);}
 function updateGeometry(){
   uncGroup.coil.scale.set(st.ru,st.ru,1);for(const c of recCoils)c.scale.set(st.rr,st.rr,1);
   scrapR.coil.scale.set(st.rsR,1,st.rsR);scrapL.coil.scale.set(st.rsL,1,st.rsL); // 屑コイルは軸=Y(立軸)
@@ -48,7 +52,8 @@ function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   if(st.state==="CHANGE"){text="コイル交換中";cls="info";}else if(st.state==="DECEL"){text="コイル交換準備 ─ 減速中";cls="warn";}
   else if(st.paused&&st.v<=0.004){text="ライン停止";cls="stop";}else if(st.v<tgt-0.01){text="加速中";cls="warn";}
   else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
-  ui.status.textContent=text;ui.led.className="led "+cls;}
+  ui.status.textContent=text;ui.led.className="led "+cls;
+  ui.roKnife.textContent=st.kc<0.01?"旋回台に格納":st.kc>1.99?"段取り位置(スリッター側)":st.kc<1?"旋回中":"走行中";}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
   stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);}

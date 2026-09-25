@@ -50,8 +50,8 @@ const back=new THREE.DirectionalLight(0xdfe9f4,0.22); back.position.set(4,10,-18
  * =======================================================*/
 class OrbitCam{
   constructor(cam,dom){
-    this.cam=cam; this.dom=dom; this.target=new THREE.Vector3(-3,2,0);
-    this.r=40; this.theta=0.55; this.phi=1.14;
+    this.cam=cam; this.dom=dom; this.target=new THREE.Vector3(0.5,1.6,1.0);
+    this.r=27; this.theta=0.62; this.phi=1.02;
     this.minR=0.7; this.maxR=130; this.minPhi=0.08; this.maxPhi=1.54;
     this._btn=-1; this._px=0; this._py=0; this.tween=null;
     dom.addEventListener("pointerdown",e=>{this._btn=e.button;this._px=e.clientX;this._py=e.clientY;dom.setPointerCapture(e.pointerId);});

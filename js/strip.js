@@ -101,10 +101,10 @@ function updateEntryRibbon(){const raw=_e;raw.length=0;
   raw.push(TOP('D1'));raw.push(TOP('E2-1'));raw.push(BOTTOM('E1-1'));raw.push(TOP('E2-2'));
   raw.push(BOTTOM('E1-2'));raw.push(TOP('E2-3'));raw.push(TOP('D2'));
   // ループ前ピンチJ群はニップ面=パスラインなので直線通板(面一接触・曲げ無し)
-  raw.push(V3(R['H1-1'].x,PL,0));raw.push(V3(R['H1-3'].x,PL,0));
+  raw.push(V3(R['H1-1'].x,PL,0));raw.push(V3(R['H1-2'].x,PL,0));
   raw.push(V3(R['K1-2'].x,PL,0));
   looperPath(LOOP1,st.loop1,raw,0);                          // No.1ルーパー(開閉式・フリーループ/平坦)
-  raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(V3(R.M.x,PL,0));raw.push(NIP('N1'));
+  raw.push(V3(R['K2-2'].x,PL,0));raw.push(NIP('L1'));raw.push(NIP('N1'));
   raw.push(V3(SLIT_X,PL,0));                                 // ガイドP上面/板押えQ下面は面一で接触(曲げ無し)
   const out=[];samplePolyline(raw,ENTRY_N,out);entryRibbon.update(out);}
 
@@ -147,7 +147,7 @@ const _traw=[],_twv=[],_toutP=[],_toutW=[];
  *                    起点はPL+6mm。耳屑側には必ず下刃が来る(buildKnives)ので、屑は
  *                    下刃の頂点(PL+LAP=+4mm)に乗って持ち上がる = 丸刃を突き抜けない。
  *  ② ねじり区間   : 高さHTWの水平直線を進みながら、幅方向を Z(水平)→ Y(垂直)へ90°ひねる。
- *                    長さ1.25m ≒ 屑幅の25倍で、実機の目安(幅の8~10倍以上)を満たす。
+ *                    長さ0.81m ≒ 屑幅の16倍で、実機の目安(幅の8~10倍以上)を満たす。
  *  ③ 水平面(XZ面) : VG1 → VG2 → 屑コイル。全ての円の中心が進行方向の左側に来る
  *                    「同一回転方向のチェーン」。共通接線は
  *                       θ = φ - asin((r_next - r_cur)/ρ)          (φ:中心間方位, ρ:中心間距離)

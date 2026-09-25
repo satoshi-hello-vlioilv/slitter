@@ -2,7 +2,7 @@
 /* =========================================================
  * アプリバージョン
  * =======================================================*/
-const APP_VERSION = "1.10.0";
+const APP_VERSION = "1.11.0";
 document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
 {
   const el = document.getElementById("appVersion");
@@ -16,8 +16,8 @@ console.log("[Slitter Simulator] version " + APP_VERSION);
 const PL      = 2.2;              // パスライン高さ [m]
 const STRIP_W = 1.20;             // 母材幅 [m]
 const TRIM_W  = 0.05, EFF_W = STRIP_W - TRIM_W*2;
-const UNC_X = -31.0, UNC_Y = PL;  // アンコイラ中心
-const REC_X =  24.5, REC_Y = PL;  // リコイラ中心
+const UNC_X = -12.65, UNC_Y = PL; // アンコイラ中心(スリッター手前 12650)
+const REC_X =  13.71, REC_Y = PL; // リコイラ中心(スリッター後 13710)
 const SLIT_X = 0;                 // スリッターヘッド
 const R_MANDREL = 0.20;
 const RU_MAX = 1.05, RU_MIN = 0.40;
@@ -29,9 +29,9 @@ const ACCEL = 0.40, DECEL = 0.55;
 // (φ100~120)への巻付き弧を多数含むので点間約8mmまで細かくする。
 // TWIST_N = 耳屑ねじり区間(幅方向 Z→Y の90°ひねり)の分割数。
 const ENTRY_N = 520, STRAND_N = 340, TRIM_N = 660, TWIST_N = 12;
-// ルーパーピット。開口はループ区間(端部カテナリーロール間)を必ず含む —
-// PIT2の出側はループ終端 S2-1(x=11.8)に合わせてある。
-const PIT1={x0:-15.2,x1:-8.4}, PIT2={x0:5.6,x1:11.8};
+// ルーパーピット(配置図の No.1/No.2 ピット)。開口 = ループ区間(端部カテナリーロール間)
+const PIT1={x0:-5.40,x1:-2.40}, PIT2={x0:3.76,x1:7.25};
+const FAC_X0=-22, FAC_X1=24;             // 建屋(床・柱)の範囲
 const PIT_HZ=1.00;                      // ピット側壁の内面z(=床の開口端)
 // 板厚と可視化厚の比 = 表示長さ→実長さの倍率。コイル1本(可視長約150m)が
 // 実機の約6000m(φ2100・t0.5・W1200相当)に対応する。
@@ -45,5 +45,6 @@ const st = {
   v:0, target:80/60, paused:false, state:"RUN", tChange:0, swapped:false,
   ru:RU_MAX, rr:RR_MIN, rsL:0.13, rsR:0.13, len:0, N:4, texOfs:0,
   loop1:1, loop2:1, loop1Tgt:1, loop2Tgt:1,   // ルーパーテーブル開度(0=閉/ループ無し, 1=開/フリーループ)
-  shape:"center", shapeI:20, lenCoil:0,       // 板形状(歪)の種類 / 量[I-unit] / 現コイルの通板長
+  shape:"center", shapeI:20, lenCoil:0,
+  kc:0, kcTgt:0,                              // カッター台車 0=旋回台に格納 / 1=旋回して整列 / 2=スリッター側段取り位置       // 板形状(歪)の種類 / 量[I-unit] / 現コイルの通板長
 };

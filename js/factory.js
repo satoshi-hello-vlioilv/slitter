@@ -7,9 +7,9 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
   const floorY=-0.06,T=0.12;
   // 床(ピット開口を避けて分割)
   const segs=[
-    {w:PIT1.x0-(-36)+0.0, x:(-36+PIT1.x0)/2-0.0, d:18},
+    {w:PIT1.x0-FAC_X0, x:(FAC_X0+PIT1.x0)/2, d:18},
     {w:PIT2.x0-PIT1.x1, x:(PIT1.x1+PIT2.x0)/2, d:18},
-    {w:30-PIT2.x1, x:(PIT2.x1+30)/2, d:18},
+    {w:FAC_X1-PIT2.x1, x:(PIT2.x1+FAC_X1)/2, d:18},
   ];
   for(const s of segs){const mat=new THREE.MeshStandardMaterial({map:concreteTex(Math.max(2,s.w/2.2),8),metalness:0.05,roughness:0.92});
     const m=addBox(s.w,T,s.d,mat,s.x,floorY,0,scene,false);m.receiveShadow=true;}
@@ -27,13 +27,16 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
     addBox(w,0.1,2*PIT_HZ,M.pit,cx,-2.4,0,scene,false).receiveShadow=true;
     for(const sgn of [-1,1])addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,sgn*(PIT_HZ+0.11));  // 開口縁の注意帯(床上)
   }
+  const FW=FAC_X1-FAC_X0, FC=(FAC_X0+FAC_X1)/2;
   // 通路区画線
-  addBox(70,0.012,0.12,M.yellow,-3,0.011,6.4,scene,false);
-  addBox(70,0.012,0.12,M.yellow,-3,0.011,-6.4,scene,false);
+  // 操作側(+Z)の区画線はカッター台車の引出しエリア(スリッター前 x=±2.7)で途切れさせる
+  for(const [x0,x1] of [[FAC_X0,SLIT_X-2.75],[SLIT_X+2.75,FAC_X1]])
+    addBox(x1-x0,0.012,0.12,M.yellow,(x0+x1)/2,0.011,6.4,scene,false);
+  addBox(FW,0.012,0.12,M.yellow,FC,0.011,-6.4,scene,false);
   // 建屋柱・梁(半透明・トグルで消去可) — 照明本体は残す
-  for(let x=-34;x<=28;x+=8){addBox(0.5,9,0.5,M.frameGlass,x,4.5,-8.6,buildingGroup,false);addBox(0.5,9,0.5,M.frameGlass,x,4.5,8.6,buildingGroup,false);}
-  addBox(70,0.5,0.4,M.frameGlass,-3,9.1,-8.6,buildingGroup,false);addBox(70,0.5,0.4,M.frameGlass,-3,9.1,8.6,buildingGroup,false);
-  for(let x=-32;x<=28;x+=6) for(const z of [-4,4]){addBox(2.4,0.16,0.9,M.frameGlass,x,8.7,z,buildingGroup,false);
+  for(let x=FAC_X0+2;x<=FAC_X1-2;x+=7){addBox(0.5,9,0.5,M.frameGlass,x,4.5,-8.6,buildingGroup,false);addBox(0.5,9,0.5,M.frameGlass,x,4.5,8.6,buildingGroup,false);}
+  addBox(FW,0.5,0.4,M.frameGlass,FC,9.1,-8.6,buildingGroup,false);addBox(FW,0.5,0.4,M.frameGlass,FC,9.1,8.6,buildingGroup,false);
+  for(let x=FAC_X0+3;x<=FAC_X1-3;x+=6) for(const z of [-4,4]){addBox(2.4,0.16,0.9,M.frameGlass,x,8.7,z,buildingGroup,false);
     addBox(2.1,0.05,0.66,M.lampLit,x,8.6,z,scene,false).castShadow=false;
     const pl=new THREE.PointLight(0xfff2dc,0.22,20,2.0);pl.position.set(x,8.3,z);scene.add(pl);}
 })();
@@ -62,7 +65,7 @@ const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
 /* =========================================================
  * 操作盤(オペレータコンソール)
  * =======================================================*/
-(function buildConsole(){
+function buildConsole(cx,cz){
   // GP(グラフィックパネル)画面テクスチャ — ラインミミック+数値表示
   const gpTex=canvasTex(512,300,(g,w,h)=>{
     g.fillStyle="#071019";g.fillRect(0,0,w,h);
@@ -129,7 +132,7 @@ const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
 
   // 操作員はライン(-Z)を向いて操作 → 操作器・GP画面は操作員側(+Z)を向く
   const ANG=0.42;
-  const desk=new THREE.Group();desk.position.set(-5.5,0,5.3);scene.add(desk);
+  const desk=new THREE.Group();desk.position.set(cx,0,cz);scene.add(desk);
   // キャビネット(背側寄り・浅め) — 前列操作器の真下に潜り込まない深さに
   addBox(1.86,0.9,0.46,M.paint,0,0.45,-0.16,desk);
   addBox(1.9,0.05,0.5,M.frame,0,0.9,-0.16,desk);
@@ -151,4 +154,24 @@ const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
   lamp(top, 0.18,0.21,0xffffff);                             // 表示灯(白)
   selector(top,0.40,0.21);                                   // セレクタ
   estop(top,0.66,0.13);                                      // 非常停止(右)
+}
+// 操作盤は配置図どおり操作側(+Z)に2基: 入側(アンコイラ〜レベラー付近)と出側(テンション〜デフ付近)
+buildConsole(-10.1,2.45);
+buildConsole(9.85,2.55);
+
+/* =========================================================
+ * 油圧ユニット(配置図の4基 — 反操作側 −Z)
+ * タンク+電動ポンプ+ヒートエクスチェンジャ+配管立上り
+ * =======================================================*/
+(function buildHydraulicUnits(){
+  const units=[[-3.3,-5.0,1.5,1.0],[2.4,-5.0,1.5,1.0],[10.1,-3.9,0.7,0.6],[11.4,-4.7,0.9,0.9]];
+  for(const [x,z,w,d] of units){
+    addBox(w+0.1,0.08,d+0.1,M.frame,x,0.04,z,scene,false);            // ベース
+    addBox(w,0.75,d,M.paint,x,0.47,z);                                // 油タンク
+    addCylY(Math.min(w,d)*0.2,Math.min(w,d)*0.55,M.paintDark,x-w*0.25,0.85+Math.min(w,d)*0.275,z,scene,16);  // モーター(縦形)
+    addBox(w*0.28,0.22,d*0.35,M.steel,x+w*0.22,0.96,z);               // ポンプ・弁ブロック
+    addCylY(0.03,1.2,M.steel,x+w*0.3,1.45,z+d*0.3,scene,8);          // 配管立上り
+    makeLabel("油圧ユニット",x,1.75,z);
+  }
 })();
+

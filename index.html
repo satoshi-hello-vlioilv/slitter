@@ -16,7 +16,7 @@
     <i class="fa-solid fa-industry"></i>
     <div class="ptitle-main">
       <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
-      <span class="ver-badge" id="appVersion">v1.10.0</span>
+      <span class="ver-badge" id="appVersion">v1.11.0</span>
     </div>
   </div>
   <div class="status-card">
@@ -117,7 +117,8 @@
         <button data-cam="loop2"><i class="fa-solid fa-arrows-down-to-line"></i>No.2ルーパー</button>
         <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
         <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
-        <button class="wide" data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
+        <button data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
+        <button data-cam="knife"><i class="fa-solid fa-truck-ramp-box"></i>カッター台車</button>
       </div>
     </div>
   </details>
@@ -135,6 +136,16 @@
         <label class="switch"><input type="checkbox" id="chkFence" checked><span class="knob"></span></label></div>
       <div class="toggle-row"><span><i class="fa-solid fa-table-cells"></i>ループテーブル</span>
         <label class="switch"><input type="checkbox" id="chkLoopTable" checked><span class="knob"></span></label></div>
+    </div>
+  </details>
+
+  <details class="grp">
+    <summary><i class="fa-solid fa-screwdriver-wrench"></i>段取り(刃替え)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <button class="btn btn-sm" id="btnKnife"><i class="fa-solid fa-truck-ramp-box"></i><span>カッター台車をスリッター側へ</span></button>
+      <div class="ro" style="margin-top:7px;"><i class="fa-solid fa-location-dot"></i>
+        <span>台車位置</span><b id="roKnife" style="font-size:11.5px;">旋回台に格納</b></div>
+      <div class="note">予備アーバー(上下丸刃セット)を載せた台車が旋回台で90°回ってレールに整列し、操作側からスリッター手前の段取り位置まで走行します</div>
     </div>
   </details>
 

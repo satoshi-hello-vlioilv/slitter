@@ -12,7 +12,7 @@ rebuildStrandDependent(4);
 const ui={led:document.getElementById("statusLed"),status:document.getElementById("statusText"),
   roSpeed:document.getElementById("roSpeed"),roUnc:document.getElementById("roUnc"),roRec:document.getElementById("roRec"),
   roTen:document.getElementById("roTen"),roLen:document.getElementById("roLen"),roProg:document.getElementById("roProg"),
-  roLoopDiff:document.getElementById("roLoopDiff"),
+  roLoopDiff:document.getElementById("roLoopDiff"),roKnife:document.getElementById("roKnife"),
   prog:document.getElementById("coilProg"),btnRun:document.getElementById("btnRun")};
 ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
   ui.btnRun.innerHTML=st.paused?'<i class="fa-solid fa-play"></i><span>ライン起動</span>':'<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
@@ -34,15 +34,18 @@ document.getElementById("shapeGroup").addEventListener("click",e=>{const b=e.tar
 const rngShape=document.getElementById("rngShape");
 rngShape.addEventListener("input",()=>{document.getElementById("shapeVal").textContent=rngShape.value;
   st.shapeI=parseInt(rngShape.value,10);updateShapeProfile();});
-const CAM={all:[-3,2,0,42,0.55,1.14],unc:[-30,2.3,0,9,0.72,1.10],slit:[0,2.25,0,4.5,0.62,1.0],
-  loop1:[-12,1.2,0,9,0.5,0.98],loop2:[8.6,1.1,0,9,0.5,0.98],md:[16.2,2.2,0,6,0.66,1.02],rec:[24,2.3,0,9,0.62,1.08],
-  scrap:[2.0,2.5,1.4,9,1.05,1.02]};
+const CAM={all:[0.5,1.6,1.0,27,0.62,1.02],unc:[-11.4,2.1,1.2,8,0.78,1.10],slit:[0,2.25,0,4.5,0.62,1.0],
+  loop1:[-3.9,1.0,0,7,0.55,0.98],loop2:[5.5,1.0,0,7.5,0.55,0.98],md:[9.4,2.1,0,6,0.70,1.02],rec:[13.0,2.2,1.0,8,0.72,1.08],
+  scrap:[1.6,2.5,1.4,8,1.05,1.02],knife:[0,1.2,3.8,9.5,0.35,0.95]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
 document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
 document.getElementById("chkBuilding").addEventListener("change",e=>{buildingGroup.visible=e.target.checked;});
 document.getElementById("chkLoop1").addEventListener("change",e=>{st.loop1Tgt=e.target.checked?1:0;});
 document.getElementById("chkLoop2").addEventListener("change",e=>{st.loop2Tgt=e.target.checked?1:0;});
+// カッター台車(段取り): 目標位置を 0(格納)⇔2(段取り位置)で切替。状態機械は main.js
+document.getElementById("btnKnife").addEventListener("click",()=>{st.kcTgt=st.kcTgt>1?0:2;
+  document.querySelector("#btnKnife span").textContent=st.kcTgt>1?"カッター台車を旋回台へ戻す":"カッター台車をスリッター側へ";});
 document.getElementById("chkFence").addEventListener("change",e=>{fenceGroup.visible=e.target.checked;});
 document.getElementById("chkLoopTable").addEventListener("change",e=>{looperGroup.visible=e.target.checked;});
 
