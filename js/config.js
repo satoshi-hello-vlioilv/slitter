@@ -2,7 +2,7 @@
 /* =========================================================
  * アプリバージョン
  * =======================================================*/
-const APP_VERSION = "1.12.1";
+const APP_VERSION = "1.13.0";
 document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
 {
   const el = document.getElementById("appVersion");
@@ -46,7 +46,7 @@ const REC_X =  13.71, REC_Y = 1.20; // リコイラ中心(スリッター後 137
 const SLIT_X = 0;                 // スリッターヘッド
 const R_MANDREL = 0.20;
 const RU_MAX = 1.05, RU_MIN = 0.40;
-const RR_MIN = 0.30, RR_MAX = 1.00;
+const RR_MAX = 1.00;              // 巻取りの最大半径。巻き始めはリールに載せた部品の外径(RCL.coreR)
 const H_VIS  = 0.020, UV_SCALE = 2.0;
 const ACCEL = 0.40, DECEL = 0.55;
 // リボン頂点数: 巻付き弧(コイル/スナバー/ベンド/デフ)が等間隔リサンプリングで
@@ -75,9 +75,10 @@ const d2r = (mm)=> mm/2000;       // 直径[mm] → 半径[m]
 
 const st = {
   v:0, target:80/60, paused:false, state:"RUN", tChange:0, swapped:false,
-  ru:RU_MAX, rr:RR_MIN, rsL:0.13, rsR:0.13, len:0, N:4, texOfs:0,
+  ru:RU_MAX, rr:0.30, rsL:0.13, rsR:0.13, len:0, N:4, texOfs:0,
   loop1:1, loop2:1, loop1Tgt:1, loop2Tgt:1,   // ルーパーテーブル開度(0=閉/ループ無し, 1=開/フリーループ)
   shape:"center", shapeI:20, lenCoil:0,       // 板形状(歪)の種類 / 量[I-unit] / 現コイルの通板長
   thick:0.5,                                  // 板厚[mm](刃組・コイル長さの両方が読む)
   thread:1,                                   // 通板状態(1=通板済 0=抜取済)。抜取り/通板の途中は strip.js の thread
+  changeAll:true,                             // コイル交換でアンコイラも替えるか(false=巻取りコイルの払出しだけ)
 };

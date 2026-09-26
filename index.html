@@ -16,7 +16,7 @@
     <i class="fa-solid fa-industry"></i>
     <div class="ptitle-main">
       <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
-      <span class="ver-badge" id="appVersion">v1.12.1</span>
+      <span class="ver-badge" id="appVersion">v1.13.0</span>
     </div>
   </div>
   <div class="status-card">
@@ -94,6 +94,34 @@
     </div>
   </details>
 
+  <details class="grp" open>
+    <summary><i class="fa-solid fa-circle-dot"></i>リコイラ(リール・スプール)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <div class="body">
+      <div class="sub-h">リール(マンドレル)</div>
+      <div class="seg seg-sm" id="rclReel"><button data-v="D508">φ508(03SB)</button><button data-v="D300">φ300(04S)</button></div>
+      <div class="sub-h" style="margin-top:9px;">ゴムスリーブ(FS4 φ508-610)</div>
+      <div class="seg seg-sm" id="rclSleeve"><button data-v="0">無し</button><button data-v="1">装着</button></div>
+      <div class="sub-h" style="margin-top:9px;">スプール</div>
+      <div class="seg seg-sm" id="rclSpool"><button data-v="none">無し</button><button data-v="steel">鉄</button><button data-v="paper">紙管</button><button data-v="bake">ベーク</button></div>
+      <div id="rclTubeBox">
+        <div class="sub-h" style="margin-top:9px;">紙管・ベーク 内径 / 肉厚(幅 = 製品幅・条数分)</div>
+        <div class="seg seg-sm" id="rclTubeID"><button data-v="298">φ298</button><button data-v="398">φ398</button><button data-v="505">φ505</button></div>
+        <div class="seg seg-sm" id="rclTubeT" style="margin-top:5px;"><button data-v="10">10mm</button><button data-v="15">15mm</button><button data-v="20">20mm</button></div>
+      </div>
+      <div id="rclSteelBox" hidden>
+        <div class="sub-h" style="margin-top:9px;">鉄スプール幅(mm)</div>
+        <div class="seg seg-sm seg-4" id="rclSteelW"></div>
+      </div>
+      <div class="ro ro-kv" style="margin-top:9px;"><i class="fa-solid fa-ring"></i><span>装着</span><b id="rclParts">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-circle-notch"></i><span>巻き始め径</span><b id="rclCore">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-up-right-and-down-left-from-center"></i><span>ドラム 閉/開 → 把持</span><b id="rclDrum">—</b></div>
+      <div class="rcl-fit" id="rclFit"></div>
+      <button class="btn btn-sm" id="btnRclOut" style="margin-top:9px;"><i class="fa-solid fa-dolly"></i><span>巻取りコイルを払い出す</span></button>
+      <div class="kc-msg" id="rclMsg" hidden></div>
+      <div class="note">既定の段取り: φ508リールに、製品幅と同じ紙スプール(内径φ505×肉厚10)を条数分。払出しは コイルカーのリフトで受け → ドラムを閉じ → コイルをスプールごと抜き取り → 新しいスプールを差し込んで ドラムを開いて把持 → 先端を通し直す、の順</div>
+    </div>
+  </details>
+
   <details class="grp">
     <summary><i class="fa-solid fa-wave-square"></i>板形状(歪)<i class="fa-solid fa-chevron-right chev"></i></summary>
     <div class="body">
@@ -157,6 +185,7 @@
         <button data-cam="loop2"><i class="fa-solid fa-arrows-down-to-line"></i>No.2ルーパー</button>
         <button data-cam="md"><i class="fa-solid fa-grip-lines"></i>MDロール</button>
         <button data-cam="rec"><i class="fa-solid fa-arrow-rotate-right"></i>リコイラ</button>
+        <button data-cam="reel"><i class="fa-solid fa-circle-dot"></i>リール・スプール</button>
         <button data-cam="scrap"><i class="fa-solid fa-recycle"></i>屑巻取機</button>
         <button data-cam="knife"><i class="fa-solid fa-truck-ramp-box"></i>カッター台車</button>
         <button data-cam="arbor"><i class="fa-solid fa-circle-notch"></i>刃組(アーバー)</button>
@@ -215,6 +244,7 @@
 <script src="js/scene.js"></script>
 <script src="js/materials.js"></script>
 <script src="js/helpers.js"></script>
+<script src="js/reel.js"></script>
 <script src="js/factory.js"></script>
 <script src="js/coilers.js"></script>
 <script src="js/line.js"></script>

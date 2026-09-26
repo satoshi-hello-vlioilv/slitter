@@ -83,7 +83,8 @@ rngShape.addEventListener("input",()=>{document.getElementById("shapeVal").textC
   st.shapeI=parseInt(rngShape.value,10);updateShapeProfile();});
 const CAM={all:[0.5,0.7,1.0,27,0.62,1.02],unc:[-11.4,1.3,1.2,8,0.78,1.10],slit:[0,PL+0.15,0.1,4.2,0.62,1.02],
   loop1:[-3.9,-0.6,0,7.5,0.55,1.0],loop2:[5.5,-0.6,0,8,0.55,1.0],md:[9.4,PL,0,6,0.70,1.02],rec:[13.0,1.3,1.0,8,0.72,1.08],
-  scrap:[1.6,HTW-0.1,1.4,7.5,1.05,1.02],knife:[0,0.6,2.2,8.5,0.62,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3]};
+  scrap:[1.6,HTW-0.1,1.4,7.5,1.05,1.02],knife:[0,0.6,2.2,8.5,0.62,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3],
+  reel:[REC_X,REC_Y-0.05,0.35,3.3,0.62,1.16]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
 document.getElementById("chkIds").addEventListener("change",e=>{idLabelGroup.visible=e.target.checked;});
@@ -175,3 +176,66 @@ aluUI.metal.addEventListener("input",()=>{alu.metal=aluUI.metal.value/100;
 aluUI.rough.addEventListener("input",()=>{alu.rough=aluUI.rough.value/100;
   aluUI.roughVal.textContent=aluUI.rough.value;applyAlu();});
 document.getElementById("btnAluReset").addEventListener("click",()=>{setAluPattern(alu.pattern);syncAluUI();});
+
+/* =========================================================
+ * リコイラ(リール・ゴムスリーブ・スプール)の段取り
+ * ---------------------------------------------------------
+ * 選んだ項目は残し、合わない相手を直す(スリーブを付けたらスプールは外す・リールを替えたら
+ * 挿さる内径の管へ替える…)。どう直しても合わない選択肢はボタンを無効にする。
+ * コイル交換・刃替えの段取り中は変えられない(リールの開閉とスプールの差し替えを動かしているため)。
+ * =======================================================*/
+const rclUI=(function(){
+  const $=id=>document.getElementById(id), fmt1=v=>fmt(v,1);
+  $("rclSteelW").innerHTML=REEL.SP.WIDTHS.map(w=>`<button data-v="${w}">${w}</button>`).join("");
+  const KEY={rclReel:"reel",rclSleeve:"sleeve",rclSpool:"spool",rclTubeID:"tubeID",rclTubeT:"tubeT",rclSteelW:"steelW"};
+  const PARSE={reel:v=>v,sleeve:v=>v==="1",spool:v=>v,tubeID:v=>+v,tubeT:v=>+v,steelW:v=>+v};
+  const ok=c=>REEL.stack(c).ok, tube=c=>c.spool==="paper"||c.spool==="bake";
+  const fitID=c=>REEL.TB.IDS.find(v=>ok(Object.assign({},c,{tubeID:v})));
+  /* key=val を選んだときの段取り(合わなければ null) */
+  function resolve(key,val){
+    const c=Object.assign({},RCL.cfg,{[key]:val});
+    if(key==="sleeve"&&val)c.spool="none";                       // スリーブの上に管は挿さらない
+    if(key==="spool"&&val!=="none")c.sleeve=false;
+    if(key==="reel"&&c.sleeve&&!ok(Object.assign({},c,{spool:"none"})))c.sleeve=false;
+    if(key==="reel"&&c.spool==="steel"&&!ok(c))c.spool="paper";   // 鉄が挿さらないリールは紙管へ
+    if(tube(c)&&!ok(c)){const id=fitID(c);if(id)c.tubeID=id;}
+    return ok(c)?c:null;}
+  function choose(key,val){if(locked())return;const c=resolve(key,val);if(!c)return;RCL.set(c);sync(true);}
+  Object.keys(KEY).forEach(id=>$(id).addEventListener("click",e=>{const b=e.target.closest("button");
+    if(!b||b.disabled)return;choose(KEY[id],PARSE[KEY[id]](b.dataset.v));}));
+  const locked=()=>st.state==="CHANGE"||st.state==="DECEL"||KX.busy();
+  $("btnRclOut").addEventListener("click",()=>{
+    if(st.state!=="RUN"||KX.busy()||!st.thread)return;
+    st.state="DECEL";st.changeAll=false;controls.flyTo(...CAM.rec);});
+  let sig="";
+  function sync(force){
+    const c=RCL.cfg,f=RCL.fit,lock=locked(),wound=st.rr>RCL.coreR()+0.001;
+    const canOut=st.state==="RUN"&&!KX.busy()&&!!st.thread&&wound;
+    const k=[JSON.stringify(c),lock,canOut,st.state,strandW.length,strandW[0]].join("|");
+    if(!force&&k===sig)return;sig=k;
+    Object.keys(KEY).forEach(id=>{const key=KEY[id];
+      document.querySelectorAll(`#${id} button`).forEach(b=>{const v=PARSE[key](b.dataset.v);
+        b.classList.toggle("active",c[key]===v);
+        b.disabled=lock||(c[key]!==v&&!resolve(key,v))||(key==="tubeID"&&!ok(Object.assign({},c,{tubeID:v})));});});
+    $("rclTubeBox").hidden=!tube(c);$("rclSteelBox").hidden=c.spool!=="steel";
+    // 装着と重量
+    const sp=RCL.spools,sl=RCL.sleeve,mass=sp.reduce((a,p)=>a+p.mass,0)+(sl?sl.mass:0);
+    const ws=[...new Set(strandW.map(w=>Math.round(w*1000)))];
+    let parts=c.spool==="steel"?`鉄スプール SNA32B W${c.steelW}`:tube(c)?`${c.spool==="paper"?"紙管":"ベーク"} φ${c.tubeID}×t${c.tubeT} × 幅${ws.join("/")} × ${sp.length}本`:"";
+    if(sl)parts=(parts?parts+" + ":"")+"ゴムスリーブ";
+    $("rclParts").textContent=(parts||"なし(ドラムに直接巻く)")+(mass?`(${fmt1(mass)} kg)`:"");
+    $("rclCore").textContent=`φ${fmt1(f.coreD)}`;
+    $("rclDrum").textContent=`φ${f.RS.D_CON} / φ${f.RS.D_EXP} → φ${fmt1(f.gripD)}(開度 ${Math.round(f.expT*100)}%)`;
+    // 嵌合チェック(+ 鉄スプールの幅の注意)
+    const rows=f.rows.slice(),span=strandCuts.length?Math.round(Math.abs(strandCuts[strandCuts.length-1]-strandCuts[0])*1000):0;
+    if(c.spool==="steel"&&c.steelW<span)rows.push({label:"鉄スプール幅",cls:"warn",txt:`${c.steelW} < 製品の全幅 ${span}(端の条がはみ出す)`});
+    if(c.spool==="steel"&&c.steelW>REEL.RC.SEG_L)rows.push({label:"鉄スプール幅",cls:"warn",txt:`ドラム長 ${REEL.RC.SEG_L} より長い`});
+    $("rclFit").innerHTML='<div class="r"><span>嵌合チェック</span><b></b></div>'+
+      rows.map(r=>`<div class="r"><span>${r.label}</span><b class="${r.cls}">${r.txt}</b></div>`).join("");
+    $("btnRclOut").disabled=!canOut;
+    const msg=st.state==="CHANGE"?"コイル交換中(リールの開閉・スプールの差し替え中)は段取りを変えられません":
+      KX.busy()?"刃替えの段取り中は変えられません":"";
+    $("rclMsg").textContent=msg;$("rclMsg").hidden=!msg;}
+  sync(true);
+  return {sync};
+})();

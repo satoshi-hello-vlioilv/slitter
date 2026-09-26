@@ -38,6 +38,9 @@ function buildStrands(){for(const r of strandRibbons)r.dispose();strandRibbons=[
 const SHEAR_X=-8.26;                          // 入側シャーの刃(切断位置)
 const THREAD_V=4.0;                           // 先端/後端の走行速度(可視) [m/s]
 const thread={mode:null,s:0,tail:0,need:0};   // mode: null / "out"(抜取り中) / "in"(通板中)
+/* コイル交換: 出側ピンチ(X1)で切った条。on の間は X1 から head[m] 先までだけ見せる(0 = X1 で切れている)。
+ * need = X1 から巻取り点までの最長(通し直しの終わり)。threading の間はロールも寸動速度で回す。 */
+const exitCut={on:false,head:0,need:0,threading:false};
 function clipRange(len,off){                  // 入側シャーより下流の帯の見える区間 [a,b](区間の頭からの距離)
   if(thread.mode==="out"){const a=thread.s-off;return a<len?[Math.max(0,a),len]:null;}
   if(thread.mode==="in"){const b=thread.s-off;return b>0?[0,Math.min(len,b)]:null;}
@@ -178,9 +181,11 @@ function updateStrandRibbon(rib,zc,idx){const raw=_sraw;raw.length=0;
   looperPath(LOOP2,st.loop2,raw,zc,strandSlack(idx));
   raw.push(V3(R['S2-2'].x,PL,zc));raw.push(V3(R.T1.x,PL,zc));
   raw.push(V3(R.V1.x,PL,zc));raw.push(V3(R.W1.x,PL,zc));raw.push(V3(R.X1.x,PL,zc)); // MD/出側ピンチ ニップ
+  const sX1=exitCut.on?polyLength(raw):0;                    // コイル交換で切る位置(X1 ニップ)
   for(const p of tailPoints(zc))raw.push(p);                 // デフS字→Z→リコイラ(接線・巻付き弧)
   const len=polyLength(raw), r=clipRange(len,thread.tail);
   thread.need=Math.max(thread.need,thread.tail+len);
+  if(exitCut.on&&r){exitCut.need=Math.max(exitCut.need,len-sX1);r[1]=Math.min(r[1],sX1+exitCut.head);}
   rib.mesh.visible=!!r&&r[1]-r[0]>0.01;if(!rib.mesh.visible)return;
   const src=(r[0]>0||r[1]<len)?(clipPolyline(raw,r[0],r[1],_sclip),_sclip):raw;
   _sout.length=0;samplePolyline(src,STRAND_N,_sout);rib.update(_sout);}

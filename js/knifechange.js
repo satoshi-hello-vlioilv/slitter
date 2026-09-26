@@ -36,7 +36,7 @@ const KX=(function(){
       st.loop1Tgt=0;st.loop2Tgt=0;                                            // 空になったピットのテーブルを閉じる
       say("帯板を抜き取りました。ギヤボックスがパスラインを横切れます。");}};
   const unload={label:"巻上りコイルの払出し(出側コイルカー)",                 // 後端まで巻いたコイルを降ろす
-    start(){this.t=0;this.skip=st.rr<=RR_MIN+1e-3;st.swapped=false;},
+    start(){this.t=0;this.skip=st.rr<=RCL.coreR()+1e-3;st.swapped=false;},
     run(dt){if(this.skip)return true;this.t+=dt;return coilSwap(this.t,false);}};
   const closeTables={label:"ループテーブル閉(通板準備)",
     start(){st.loop1Tgt=0;st.loop2Tgt=0;},
