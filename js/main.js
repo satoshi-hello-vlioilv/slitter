@@ -64,7 +64,8 @@ function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   syncKnifeUI();}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
-  stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);}
+  stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);
+  LBL.update(dt);}                                  // 札は描画後のカメラで置く
 window.addEventListener("resize",()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
 window.addEventListener("keydown",e=>{if(e.code==="Space"&&document.activeElement.tagName!=="INPUT"){e.preventDefault();ui.btnRun.click();}});
 animate();

@@ -244,22 +244,23 @@ const scrapR=buildScrapWinder(1),scrapL=buildScrapWinder(-1);
 /* =========================================================
  * ラベル(設備名)
  * =======================================================*/
-makeLabel("アンコイラ",UNC_X,UNC_Y+1.35,0);
-makeLabel("入側ピンチ",-10.50,PL+1.3,0);
-makeLabel("ラフレベラー",-9.45,PL+0.9,0);
-makeLabel("入側シャー",-8.51,PL+1.4,0);
-makeLabel("ループ前ピンチ",-6.90,PL+1.4,0);
-makeLabel("No.1ピット",-3.9,PL+0.5,0);
-makeLabel("スリッター前ピンチ",-1.75,PL+1.35,0);
-makeLabel("耳屑ガイドロール",SG2.x,PL+1.02, SGZ);
-makeLabel("耳屑ガイドロール",SG2.x,PL+1.02,-SGZ);
-makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.55, WND.u);
-makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.55,-WND.u);
-makeLabel("No.2ピット",5.5,PL+0.5,0);
-makeLabel("セパレーター",8.25,SEP_H+0.4,0);
-makeLabel("テンションスタンド(MD)",9.25,PL+1.65,0);
-makeLabel("出側ピンチ",10.35,PL+1.3,0);
-makeLabel("デフロール",11.25,PL+1.5,0);
-makeLabel("テールキャッチャー",12.40,PL+0.9,0);
-makeLabel("リコイラ",REC_X,REC_Y+1.35,0);
-makeLabel("回転テーブル(刃組段取り)",SLIT_X,1.35,KC_TT_Z);
+// 取付点は設備の上面(コイラはコイルの上面を追う)。rank の小さい札から良い場所へ置く。
+makeLabel("アンコイラ",UNC_X,0,0,{rank:2,follow:p=>p.set(UNC_X,UNC_Y+st.ru+0.02,0)});
+makeLabel("リコイラ",REC_X,0,0,{rank:3,follow:p=>p.set(REC_X,REC_Y+Math.max(st.rr,R_MANDREL)+0.02,0)});
+makeLabel("No.1ピット",(PIT1.x0+PIT1.x1)/2,0.02,PIT_HZ,{rank:4});          // ピット開口の操作側の縁
+makeLabel("No.2ピット",(PIT2.x0+PIT2.x1)/2,0.02,PIT_HZ,{rank:5});
+makeLabel("テンションスタンド(MD)",9.60,PL+1.32,0,{rank:6});
+makeLabel("屑巻取機(立軸・横回転)",WND.x,1.53, WND.u,{rank:7});
+makeLabel("屑巻取機(立軸・横回転)",WND.x,1.53,-WND.u,{rank:7});
+makeLabel("入側シャー",-8.51,PL+1.07,0,{rank:8});
+makeLabel("ラフレベラー",-9.45,PL+0.15,0,{rank:9});
+makeLabel("入側ピンチ",-10.50,PL+1.02,0,{rank:10});
+makeLabel("ループ前ピンチ",-6.90,PL+1.07,0,{rank:11});
+makeLabel("スリッター前ピンチ",-1.80,PL+1.02,0,{rank:12});
+makeLabel("出側ピンチ",10.35,PL+1.02,0,{rank:13});
+makeLabel("セパレーター",8.25,SEP_H+0.09,0,{rank:14});
+makeLabel("デフロール",10.95,PL+0.53,0,{rank:15});
+makeLabel("テールキャッチャー",12.40,PL+0.21,0,{rank:16});
+makeLabel("耳屑ガイドロール",SG2.x,1.30, SGZ,{rank:17});
+makeLabel("耳屑ガイドロール",SG2.x,1.30,-SGZ,{rank:17});
+makeLabel("回転テーブル(刃組段取り)",SLIT_X+0.95,0.03,KC_TT_Z,{rank:18});  // 台車が載っても隠れない甲板の縁

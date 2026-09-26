@@ -456,18 +456,16 @@ const KC=(function(){
     D3.bcx=m.bcx;
     pose();}
 
-  /* 札: 設備名(台車の真上)と OS・DS(有効長の両端の真上)。台車を回せば札も一緒に回る。
-     呼び方は刃組基準値の「OSの呼び方」「DSの呼び方」。 */
-  const tag=(text,big)=>{const sp=big?spriteText(text,30,"rgba(10,15,21,0.82)","rgba(79,198,255,0.45)","#cfe3f2")
-      :spriteText(text,26,"rgba(12,32,20,0.85)","rgba(120,210,150,0.7)","#d6f5df");
-    const s=big?0.62:0.3;sp.scale.set(sp._aspect*s,s,1);labelGroup.add(sp);return sp;};
-  const tags={name:tag("スリッター(カッター台車)",true),os:tag(BS().sideWord(MS,"OS")),ds:tag(BS().sideWord(MS,"DS"))};
+  /* 札: 設備名(台車の中央)と OS・DS(有効長の両端)。取付点はタイロッドの上面で、
+     台車を回せば一緒に回る。呼び方は刃組基準値の「OSの呼び方」「DSの呼び方」。 */
+  const tags={name:makeLabel("スリッター(カッター台車)",0,0,0,{rank:1}),         // OS/DS は小さく端に付くので先に置く
+    os:makeSubLabel(BS().sideWord(MS,"OS"),0,0,0,{rank:0.5}),ds:makeSubLabel(BS().sideWord(MS,"DS"),0,0,0,{rank:0.5})};
   const _v=new T.Vector3();
   function placeTags(){const c=D3.ctx;if(!c)return;root.updateMatrixWorld(true);
-    const L=c.res.A.arborLen, cd=c.st.knife-c.st.ov, endY=cd/2+c.st.knife/2+330;
-    tags.name.position.copy(_v.set(0,endY+420,0).applyMatrix4(g.matrixWorld));
-    tags.os.position.copy(_v.set(-(L/2+120),endY,0).applyMatrix4(g.matrixWorld));   // g-局所の −X = 計算のOS端
-    tags.ds.position.copy(_v.set(L/2+120,endY,0).applyMatrix4(g.matrixWorld));}
+    const L=c.res.A.arborLen, cd=c.st.knife-c.st.ov, topY=cd/2+MACH.tieY+MACH.tieR+5;
+    tags.name.position.copy(_v.set(0,topY,0).applyMatrix4(g.matrixWorld));
+    tags.os.position.copy(_v.set(-(L/2+120),topY,0).applyMatrix4(g.matrixWorld));   // g-局所の −X = 計算のOS端
+    tags.ds.position.copy(_v.set(L/2+120,topY,0).applyMatrix4(g.matrixWorld));}
 
   /* 姿勢を当てる(走行・軸端部・回転・駆動継手) */
   const ease=k=>(k<0.5?2*k*k:1-2*(1-k)*(1-k));

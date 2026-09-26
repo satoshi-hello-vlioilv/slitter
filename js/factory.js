@@ -174,7 +174,7 @@ buildConsole(9.85,2.55);
     addCylY(Math.min(w,d)*0.2,Math.min(w,d)*0.55,M.paintDark,x-w*0.25,0.85+Math.min(w,d)*0.275,z,scene,16);  // モーター(縦形)
     addBox(w*0.28,0.22,d*0.35,M.steel,x+w*0.22,0.96,z);               // ポンプ・弁ブロック
     addCylY(0.03,1.2,M.steel,x+w*0.3,1.45,z+d*0.3,scene,8);          // 配管立上り
-    makeLabel("油圧ユニット",x,1.75,z);
+    makeLabel("油圧ユニット",x,0.86,z,{rank:30});                    // 取付点=タンク上面
   }
 })();
 

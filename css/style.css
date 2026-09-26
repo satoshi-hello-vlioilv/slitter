@@ -117,6 +117,18 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
   padding:6px 11px;letter-spacing:.04em;backdrop-filter:blur(6px);}
 #help i{color:var(--acc);margin:0 3px 0 9px;}
 #help i:first-child{margin-left:0;}
+/* 3D の札(画面座標に置き、重ならないよう毎フレーム並べ直す)— パネルより下・キャンバスより上 */
+#labels{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+#labels svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;}
+#labels .ln{stroke-width:1;}
+#labels .ln.main{stroke:rgba(79,198,255,.75);}   #labels .dt.main{fill:#4fc6ff;}
+#labels .ln.sub{stroke:rgba(120,210,150,.8);}    #labels .dt.sub{fill:#78d296;}
+#labels .ln.rid{stroke:rgba(240,180,40,.75);}    #labels .dt.rid{fill:#f0b428;}
+.tag3d{position:absolute;left:0;top:0;white-space:nowrap;font-weight:600;line-height:1.2;
+  border-radius:5px;visibility:hidden;opacity:0;will-change:transform,opacity;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.tag3d.main{font-size:12px;padding:3px 8px;color:#cfe3f2;background:rgba(10,15,21,.84);border:1px solid rgba(79,198,255,.5);}
+.tag3d.sub{font-size:10.5px;padding:2px 6px;color:#d6f5df;background:rgba(12,32,20,.86);border:1px solid rgba(120,210,150,.7);}
+.tag3d.rid{font-size:10px;padding:1px 5px;color:#ffe6a8;background:rgba(20,12,6,.82);border:1px solid rgba(240,180,40,.6);border-radius:4px;}
 /* 刃組(カッター台車)の読み出し */
 .ro.ro-kv{align-items:flex-start;}
 .ro.ro-kv span{flex:none;white-space:nowrap;}

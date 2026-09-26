@@ -19,8 +19,7 @@ function spin(obj,r,dir,axis){spinners.push({obj,r,dir,axis:axis||'z'});return o
 
 /* 回転体(ロール)レジストリ — BOM準拠 */
 const R={};                       // id -> {x,y,r}
-const idLabelGroup=new THREE.Group(); scene.add(idLabelGroup);
-function regRoll(id,x,y,r){R[id]={x,y,r}; if(id) makeIdLabel(id,x,y+r+0.12,0);}
+function regRoll(id,x,y,r){R[id]={x,y,r}; if(id) makeIdLabel(id,x,y+r,0);}   // 札の取付点=ロール上面
 
 /* 軸受チョック(ピローブロック) — 本体ブロック+軸受ハウジング+軸端+取付ボルト */
 function chock(x,y,r,z,parent){
@@ -181,21 +180,158 @@ function samplePathFrames(pts,wv,n,outP,outW){const lens=[];let total=0;
     outW.push(new THREE.Vector3().lerpVectors(wv[seg],wv[seg+1],t).normalize());}}
 
 /* =========================================================
- * ラベル(スプライト)
+ * ラベル(画面の札)
+ * ---------------------------------------------------------
+ * 札は画面の上に px の大きさで置く(寄っても設備を覆わない)。
+ * 毎フレーム、取付点(設備の上面)を画面へ投影して札の置き場所を決める:
+ *   ① 取付点の真上 → ② ふさがっていれば 先に置いた札の上/左右へ寄せる
+ *   → ③ どこにも置けなければ隠す。寄せた札は引出し線で取付点と結ぶ。
+ * 置く順は 種類(設備名・OS/DS → ロールID)→ rank の小さい順 → カメラに近い順。
+ * 同じ名前の札(両側の屑巻取機・油圧ユニットなど)は近い1枚だけが優先で、残りと OS/DS・ロールIDは
+ * 「取付点のすぐそばに素直に置けるときだけ」出す(全景で札が塔のように積み上がらない)。
+ * 新しく出す札は少し(0.15〜0.3 秒)続けて置けてから出す。前の置き場所の近くは少し安く見る(カメラを回したときの点滅・跳ね止め)。
+ * 減点: 引出し線が他の札の裏を通る / 札が他の取付点・引出し線を隠す / 引出し線どうしが交わる。
+ * パネル・操作ヘルプの下には置かない(取付点が隠れている札は出さない)。
  * =======================================================*/
-const labelGroup=new THREE.Group(); scene.add(labelGroup);
-function spriteText(text,size,bg,bd,fg){const c=document.createElement("canvas"),g=c.getContext("2d");
-  const font=`600 ${size}px "Segoe UI","Hiragino Sans",Meiryo,sans-serif`;g.font=font;
-  const tw=Math.ceil(g.measureText(text).width);c.width=tw+24;c.height=size+22;g.font=font;
-  g.fillStyle=bg;g.strokeStyle=bd;g.lineWidth=2;const r=8,w=c.width,h=c.height;
-  g.beginPath();g.moveTo(r,1);g.lineTo(w-r,1);g.quadraticCurveTo(w-1,1,w-1,r);g.lineTo(w-1,h-r);
-  g.quadraticCurveTo(w-1,h-1,w-r,h-1);g.lineTo(r,h-1);g.quadraticCurveTo(1,h-1,1,h-r);g.lineTo(1,r);g.quadraticCurveTo(1,1,r,1);g.closePath();g.fill();g.stroke();
-  g.fillStyle=fg;g.textBaseline="middle";g.fillText(text,12,h/2+1);
-  const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;tex.minFilter=THREE.LinearFilter;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true}));
-  sp._aspect=c.width/c.height;return sp;}
-function makeLabel(text,x,y,z){const sp=spriteText(text,30,"rgba(10,15,21,0.82)","rgba(79,198,255,0.45)","#cfe3f2");
-  const s=0.62;sp.scale.set(sp._aspect*s,s,1);sp.position.set(x,y,z);labelGroup.add(sp);}
-function makeIdLabel(text,x,y,z){const sp=spriteText(text,26,"rgba(20,12,6,0.8)","rgba(240,180,40,0.6)","#ffe6a8");
-  const s=0.3;sp.scale.set(sp._aspect*s,s,1);sp.position.set(x,y,z);idLabelGroup.add(sp);}
-idLabelGroup.visible=false;
+const labelGroup={visible:true}, idLabelGroup={visible:false};   // 表示切替(設備名 / ロールID)
+const LBL=(function(){
+  const NS="http://www.w3.org/2000/svg";
+  const layer=document.createElement("div");layer.id="labels";document.body.appendChild(layer);
+  const svg=document.createElementNS(NS,"svg");layer.appendChild(svg);
+  // stem: 札の下端〜取付点 / gap: 札どうしの隙間 / up・side: 寄せてよい距離[px]
+  // far: これより遠いと出さない[m] / opt: そばに素直に置けるときだけ出す / appear: 出るまでの確認時間[s]
+  const KIND={main:{tier:0,stem:10,gap:4,up:150,side:120,far:Infinity,opt:false,appear:0.15},
+              sub: {tier:0,stem:7, gap:3,up:40, side:40, far:12,      opt:true, appear:0.15},
+              rid: {tier:2,stem:6, gap:2,up:48, side:36, far:Infinity,opt:true, appear:0.3}};
+  const HYST=16, HYST_R=14, OPT_MAX=30;                      // 前の置き場所の優先(半径px内)/ 任意札の上限
+  const PEN={crossBox:90,hideDot:100,hideLead:40,crossLead:15};
+  const GEN_MAX=14;                                          // 候補づくりに使う近くの札の数
+  const items=[], placed=[], leads=[], _p=new THREE.Vector3();
+  let W=0,H=0,obst=[],obstDirty=true;
+  const OBST_IDS=["panel","help"];
+  if(typeof ResizeObserver!=="undefined"){const ro=new ResizeObserver(()=>{obstDirty=true;});
+    for(const id of OBST_IDS){const e=document.getElementById(id);if(e)ro.observe(e);}}
+  window.addEventListener("resize",()=>{obstDirty=true;});
+
+  function add(text,pos,kind,group,opt){opt=opt||{};
+    const el=document.createElement("div");el.className="tag3d "+kind;el.textContent=text;layer.appendChild(el);
+    const ln=document.createElementNS(NS,"line");ln.setAttribute("class","ln "+kind);svg.appendChild(ln);
+    const dot=document.createElementNS(NS,"circle");dot.setAttribute("class","dt "+kind);
+    dot.setAttribute("r",kind==="rid"?1.6:2.2);svg.appendChild(dot);
+    const it={el,ln,dot,k:KIND[kind],group,rank:opt.rank==null?50:opt.rank,follow:opt.follow||null,
+      text,position:pos.clone(),w:0,h:0,ax:0,ay:0,d:0,dup:false,okT:0,
+      want:false,shown:false,a:0,tx:0,ty:0,ox:0,oy:0,out:""};
+    items.push(it);return it;}
+
+  /* ---- 画面上の当たり判定 ---- */
+  const hitRect=(l,t,r,b,q,m)=>l<q.r+m&&r>q.l-m&&t<q.b+m&&b>q.t-m;
+  function segHitsRect(x1,y1,x2,y2,q){                    // 線分と矩形(Liang–Barsky)
+    let t0=0,t1=1;const dx=x2-x1,dy=y2-y1;
+    for(const [p,v] of [[-dx,x1-q.l],[dx,q.r-x1],[-dy,y1-q.t],[dy,q.b-y1]]){
+      if(p===0){if(v<0)return false;continue;}
+      const s=v/p;if(p<0){if(s>t1)return false;if(s>t0)t0=s;}else{if(s<t0)return false;if(s<t1)t1=s;}}
+    return t0<t1;}
+  function segCross(a,b){                                  // 線分どうしの交差(端点の接触は除く)
+    const d=(p,q,r)=>(q.x2-q.x1)*(r-q.y1)-(q.y2-q.y1)*(p-q.x1);
+    const d1=d(a.x1,b,a.y1),d2=d(a.x2,b,a.y2),d3=d(b.x1,a,b.y1),d4=d(b.x2,a,b.y2);
+    return d1*d2<0&&d3*d4<0;}
+
+  /* ---- 1枚の置き場所を探す(候補を安い順に試す)。lim: 任意の札が受け入れる上限(減点も不可) ---- */
+  function place(it,lim){
+    const k=it.k,w=it.w,h=it.h,ax=it.ax,ay=it.ay,y0=ay-k.stem,g=k.gap;
+    const L0=ax-w/2-k.side-g, R0=ax+w/2+k.side+g, T0=y0-k.up-h-g;
+    const near=[];                                          // 候補の札と重なり得るもの(判定は全部で行う)
+    for(const q of placed)if(q.r>L0&&q.l<R0&&q.b>T0&&q.t<ay+g)near.push(q);
+    for(const q of obst)if(q.r>L0&&q.l<R0&&q.b>T0&&q.t<ay+g)near.push(q);
+    const gen=near.length>GEN_MAX?near.slice().sort((p,q)=>
+      Math.abs((p.l+p.r)/2-ax)+Math.abs(p.b-y0)-Math.abs((q.l+q.r)/2-ax)-Math.abs(q.b-y0)).slice(0,GEN_MAX):near;
+    // 候補: 真上・画面の端・近くの札の左/右/上にぴったり。丸めは必ず相手から離れる向き
+    // (近づく向きに丸めると 1px 未満の重なりで候補が1フレームおきに消え、札が跳ねる)
+    const dxs=new Set([0,Math.ceil(4+w/2-ax),Math.floor(W-4-w/2-ax)]), dys=new Set([0]);
+    for(const q of gen){dxs.add(Math.floor(q.l-g-w/2-ax));dxs.add(Math.ceil(q.r+g+w/2-ax));dys.add(Math.ceil(y0-(q.t-g)));}
+    const prev=it.shown?{dx:it.tx,dy:it.ty}:null;
+    if(prev){dxs.add(prev.dx);dys.add(prev.dy);}
+    const cand=[];
+    for(const dx of dxs){if(Math.abs(dx)>k.side)continue;
+      for(const dy of dys){if(dy<0||dy>k.up)continue;
+        let c=dy+1.25*Math.abs(dx);
+        if(prev){const dd=Math.hypot(dx-prev.dx,dy-prev.dy);   // 前の置き場所の近く(隣の札に付いて動く分も含む)を優先
+          if(dd<HYST_R)c-=HYST*(1-dd/HYST_R);}
+        if(c<=lim)cand.push({dx,dy,c});}}
+    cand.sort((a,b)=>a.c-b.c);
+    let best=null,bestC=Infinity;
+    for(const c of cand){if(c.c>=bestC)break;
+      const l=ax+c.dx-w/2,r=l+w,b=y0-c.dy,t=b-h;
+      if(l<2||r>W-2||t<2||b>H-2)continue;
+      let bad=false;for(const q of near)if(hitRect(l,t,r,b,q,g)){bad=true;break;}
+      if(bad)continue;
+      // 減点: 引出し線が他の札の裏を通る / 札が他の取付点・引出し線を隠す / 引出し線どうしが交わる
+      const lx=Math.min(Math.max(ax,l+5),r-5), me={x1:ax,y1:ay,x2:lx,y2:b};
+      let pen=0;
+      if(c.dx!==0||c.dy!==0)for(const q of placed)if(segHitsRect(ax,ay,lx,b,q))pen+=PEN.crossBox;
+      for(const s of leads){
+        if(s.x1>l-4&&s.x1<r+4&&s.y1>t-4&&s.y1<b+4)pen+=PEN.hideDot;
+        else if(segHitsRect(s.x1,s.y1,s.x2,s.y2,{l:l-2,t:t-2,r:r+2,b:b+2}))pen+=PEN.hideLead;
+        else if(segCross(me,s))pen+=PEN.crossLead;}
+      if(pen>0&&lim<Infinity)continue;                       // 任意の札は減点なしで置けるときだけ
+      if(c.c+pen<bestC){bestC=c.c+pen;best={dx:c.dx,dy:c.dy,l,t,r,b,lx};}}
+    return best;}
+
+  /* ---- 取付点を画面へ(出せないときは false) ---- */
+  function project(it){
+    if(!it.group.visible||!it.w)return false;
+    if(it.follow)it.follow(it.position);
+    if(it.k.far<Infinity&&camera.position.distanceTo(it.position)>it.k.far)return false;
+    _p.copy(it.position).project(camera);
+    if(_p.z<-1||_p.z>1)return false;                          // カメラの後ろ・遠すぎ
+    const ax=(_p.x+1)/2*W, ay=(1-_p.y)/2*H;
+    if(ax<0||ax>W||ay<0||ay>H)return false;
+    for(const q of obst)if(ax>q.l&&ax<q.r&&ay>q.t&&ay<q.b)return false;   // パネルの下
+    it.ax=ax;it.ay=ay;it.d=_p.z;return true;}
+
+  /* ---- 毎フレーム: 投影 → 置く → 書き出す(DOMの読み取りは先に済ませる) ---- */
+  function update(dt){
+    W=window.innerWidth;H=window.innerHeight;
+    for(const it of items)if(!it.w){it.w=it.el.offsetWidth;it.h=it.el.offsetHeight;}
+    if(obstDirty){obstDirty=false;obst=[];
+      for(const id of OBST_IDS){const e=document.getElementById(id);if(!e)continue;
+        const r=e.getBoundingClientRect();if(r.width>0&&r.height>0)obst.push({l:r.left,t:r.top,r:r.right,b:r.bottom});}}
+    const act=[];
+    for(const it of items){it.want=false;if(project(it))act.push(it);else it.okT=0;}
+    act.sort((a,b)=>a.k.tier-b.k.tier||a.rank-b.rank||a.d-b.d);
+    const seen=new Set();                                         // 同じ名前は近い1枚が優先、残りは後回し
+    for(const it of act){const key=it.k.tier+"|"+it.text;it.dup=seen.has(key);seen.add(key);}
+    act.sort((a,b)=>a.k.tier-b.k.tier||a.dup-b.dup);             // 安定ソート(順番は上のまま)
+    placed.length=0;leads.length=0;
+    for(const it of act){
+      const lim=(it.k.opt||it.dup)?OPT_MAX+(it.shown?HYST:0):Infinity;
+      const best=place(it,lim);
+      it.okT=best?it.okT+dt:0;
+      it.want=!!best&&(it.shown||it.okT>=it.k.appear);          // 新しく出す札は少し続けて置けてから
+      if(!it.want)continue;
+      it.tx=best.dx;it.ty=best.dy;
+      placed.push({l:best.l,t:best.t,r:best.r,b:best.b});
+      leads.push({x1:it.ax,y1:it.ay,x2:best.lx,y2:best.b});}
+    const km=1-Math.exp(-dt*14), ka=1-Math.exp(-dt*12);
+    for(const it of items){
+      if(it.want){if(!it.shown||it.a<0.05){it.ox=it.tx;it.oy=it.ty;}else{it.ox+=(it.tx-it.ox)*km;it.oy+=(it.ty-it.oy)*km;}}
+      it.shown=it.want;
+      it.a+=((it.want?1:0)-it.a)*ka;if(!it.want&&it.a<0.03)it.a=0;
+      if(it.a===0){if(it.out!=="off"){it.out="off";it.el.style.visibility="hidden";
+        it.ln.style.visibility="hidden";it.dot.style.visibility="hidden";}continue;}
+      const l=Math.round(it.ax+it.ox-it.w/2), t=Math.round(it.ay-it.k.stem-it.oy-it.h);
+      const lx=Math.min(Math.max(it.ax,l+5),l+it.w-5), a=it.a.toFixed(2);
+      const key=l+","+t+","+a+","+Math.round(it.ax)+","+Math.round(it.ay);
+      if(key===it.out)continue;
+      if(it.out==="off"||!it.out){it.el.style.visibility="visible";it.ln.style.visibility="visible";it.dot.style.visibility="visible";}
+      it.out=key;
+      it.el.style.transform=`translate(${l}px,${t}px)`;it.el.style.opacity=a;
+      it.ln.setAttribute("x1",it.ax.toFixed(1));it.ln.setAttribute("y1",it.ay.toFixed(1));
+      it.ln.setAttribute("x2",lx.toFixed(1));it.ln.setAttribute("y2",t+it.h);it.ln.style.opacity=a;
+      it.dot.setAttribute("cx",it.ax.toFixed(1));it.dot.setAttribute("cy",it.ay.toFixed(1));it.dot.style.opacity=a;}}
+  return{add,update,items};
+})();
+/* 設備名(opt.rank: 小さいほど先に良い場所へ / opt.follow(pos): 取付点を毎フレーム動かす) */
+function makeLabel(text,x,y,z,opt){return LBL.add(text,V3(x,y,z),"main",labelGroup,opt);}
+function makeSubLabel(text,x,y,z,opt){return LBL.add(text,V3(x,y,z),"sub",labelGroup,opt);}
+function makeIdLabel(text,x,y,z){return LBL.add(text,V3(x,y,z),"rid",idLabelGroup);}
