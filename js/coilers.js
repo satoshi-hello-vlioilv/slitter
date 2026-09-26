@@ -2,18 +2,32 @@
 /* =========================================================
  * アンコイラ / リコイラ
  * =======================================================*/
-// 本体(駆動側 −Z)。ベースはコイルカーピットの縁(z=−0.75)より奥に収める
-function coilerBody(x,y){
-  const h=y+0.62;
-  addBox(1.7,h,1.4,M.paint,x,h/2,-1.55);
-  addBox(2.2,0.26,1.6,M.paintDark,x,0.13,-1.6);
-  addCylZ(0.42,0.62,M.paintDark,x,y,-1.1,scene);}
+/* 本体(駆動側 −Z)— 配置図の外形どおり。基礎は GL から立ち上げる(床の枠の外へ出る所があるため)
+ *   b: {x0,x1,zB,zF} 本体の平面範囲 / hf: 主軸受ハウジングの前端 z */
+function coilerBody(x,y,b,hf){
+  const h=y+0.62,H=h-GL_Y;
+  addBox(b.x1-b.x0,H,b.zF-b.zB,M.paint,(b.x0+b.x1)/2,GL_Y+H/2,(b.zB+b.zF)/2);
+  addCylZ(0.42,hf-b.zF,M.paintDark,x,y,(b.zF+hf)/2,scene);                 // 主軸受ハウジング(本体前面から突き出す)
+  return h;}
+// 横に並ぶコイル置き台(スキッド)— 配置図でカー走行路の脇にある桟の列
+function coilSkid(x0,x1,z0,z1){const w=x1-x0,cx=(x0+x1)/2,n=Math.round((z1-z0)/0.25);
+  for(const s of [x0+0.05,x1-0.05])addBox(0.1,0.24,z1-z0,M.paintDark,s,0.12,(z0+z1)/2);
+  for(let i=0;i<=n;i++)addBox(w,0.05,0.07,M.frame,cx,0.265,z0+(z1-z0)*i/n,scene,false);}
+// アンコイラ: 本体 x −14.11〜−11.98・z −4.22〜−1.09(モーターは上に載る)
 const uncGroup=(function(){
-  coilerBody(UNC_X,UNC_Y);
+  const h=coilerBody(UNC_X,UNC_Y,{x0:-14.11,x1:-11.98,zB:-4.22,zF:-1.09},-0.79);
+  addCylZ(0.26,1.39,M.paintDark,-13.65,h+0.26,-2.87,scene,20);            // 駆動モーター(本体上・軸 z)
+  addBox(0.40,0.46,1.0,M.paintDark,-13.07,h+0.23,-3.66);                  // 減速機
   const g=new THREE.Group();g.position.set(UNC_X,UNC_Y,0);scene.add(g);
-  addCylZ(R_MANDREL,2.0,rollMats(),0,0,-0.07,g);
+  addCylZ(R_MANDREL,2.32,rollMats(),0,0,0.09,g);                          // マンドレル(先端 z=1.25)
   const coil=addCylZ(1,1.2,coilMats(),0,0,0,g,48);
-  spin(g,()=>st.ru,-1);return{g,coil};})();
+  spin(g,()=>st.ru,-1);
+  // 外側支持(配置図: 上流側 x −14.95〜−13.59・z 0.64〜1.70 の台から軸をマンドレル先端 z=1.28 へ伸ばす)
+  const sx=UNC_X-1.65,sz=1.28,arm=UNC_X-sx;                                 // 柱は床の縁(x −14.59)の内側
+  addBox(0.6,0.22,0.6,M.frame,sx,0.11,sz);addBox(0.36,UNC_Y+0.45,0.36,M.paint,sx,(UNC_Y+0.45)/2,sz);
+  addBox(arm,0.3,0.32,M.paint,sx+arm/2,UNC_Y,sz);addBox(0.52,0.62,0.30,M.paintDark,UNC_X,UNC_Y,sz);
+  coilSkid(-14.26,-13.62,2.03,6.08);
+  return{g,coil};})();
 
 /* =========================================================
  * リコイラ — リール RD-1467(reel.js)+ ゴムスリーブ / スプール + 条毎のコイル
@@ -25,26 +39,27 @@ const uncGroup=(function(){
  * コイルは中空で、巻き始め径 = いちばん外の部品の外径(紙スプールなら φ525)。
  * スプール(鉄・紙管・ベーク)はコイルと一緒に払い出す。ゴムスリーブはリールに残る。
  * =======================================================*/
-// 本体: 主軸受ハウジングの前面を z=−0.87 に(ドラムのセグメント端 −0.855 の手前で止める)
+// 本体(配置図: x 12.96〜15.25・z −4.30〜−1.43)。主軸受ハウジングの前面は z=−0.87
+// (ドラムのセグメント端 −0.855 の手前で止める)。奥のモーター台は床の枠の外(GL)に立つ
 (function recoilerBody(x,y){
-  const h=y+0.62;
-  addBox(1.7,h,1.36,M.paint,x,h/2,-1.58);                   // 駆動側ハウジング(減速機・モーター)
-  addBox(2.2,0.26,1.6,M.paintDark,x,0.13,-1.6);
-  addCylZ(0.42,0.50,M.paintDark,x,y,-1.12,scene);           // 主軸受ハウジング
-  addCylZ(0.19,0.012,M.steel,x,y,-0.866,scene,40);})(REC_X,REC_Y);   // 前面の軸受シール(カラー φ250 の外)
+  const h=coilerBody(x,y,{x0:12.96,x1:15.25,zB:-4.30,zF:-1.43},-0.87);
+  addCylZ(0.19,0.012,M.steel,x,y,-0.866,scene,40);            // 前面の軸受シール(カラー φ250 の外)
+  addCylZ(0.27,1.12,M.paintDark,13.73,h+0.27,-3.47,scene,20);  // 主モーター(本体上・軸 z)
+  addBox(1.03,1.1-GL_Y,0.71,M.paint,14.68,GL_Y+(1.1-GL_Y)/2,-4.655);   // 奥の駆動ユニット(GL 基礎)
+  coilSkid(14.62,15.52,1.95,5.85);})(REC_X,REC_Y);
 const recGroup=new THREE.Group();recGroup.position.set(REC_X,REC_Y,0);scene.add(recGroup);
 spin(recGroup,()=>st.rr,-1);
 // リールサポート(スイング開閉式) — コイルカーがラインに直角(+Z)から侵入できるよう、縦軸まわりに
 // 横へ振り出して経路から退避する。支柱はカー走行帯(ピット x=REC_X±1.1)の外側(+X)。
 // 先端の軸受箱はリールの外側軸受ジャーナル(φ220・z 0.93〜1.09)とねじ端を受ける。
-const REC_SUP_X=REC_X+1.6, REC_SUP_Z=1.0, REC_ARM=REC_SUP_X-REC_X;
+const REC_SUP_X=REC_X+2.1, REC_SUP_Z=1.05, REC_ARM=REC_SUP_X-REC_X;   // 配置図: 下流側 x 14.6〜16.0 の台・軸心 z≈1.1
 const recSupport=(function(){
   const h=REC_Y+0.45;
   addBox(0.36,h,0.36,M.paint,REC_SUP_X,h/2,REC_SUP_Z);       // 固定支柱(経路外)
   addBox(0.9,0.22,0.9,M.frame,REC_SUP_X,0.11,REC_SUP_Z);
   const piv=new THREE.Group(); piv.position.set(REC_SUP_X,0,REC_SUP_Z); scene.add(piv); // 縦軸ピボット
   addBox(REC_ARM,0.3,0.32,M.paint,-REC_ARM/2,REC_Y,0,piv);   // 水平アーム(-Xへ伸びリール端へ)
-  addBox(0.52,0.62,0.30,M.paintDark,-REC_ARM,REC_Y,0.03,piv); // 軸受箱(前面 z=0.88 — セグメント端 0.855 の外)
+  addBox(0.52,0.62,0.30,M.paintDark,-REC_ARM,REC_Y,0.03,piv); // 軸受箱(前面 z=0.93 — セグメント端 0.855 の外)
   addCylZ(0.2,0.05,M.steel,-REC_ARM,REC_Y,0.205,piv,36);      // 軸受カバー(ねじ端の側)
   return piv;})();
 const RCL=(function(){
@@ -112,7 +127,7 @@ function buildRecCoils(){RCL.rebuild();}
 // 配置図どおり入側(アンコイラ)・出側(リコイラ)の両方に設け、同じ構造を使う。
 // Vスキッドはリフト(cradle)に載り、コイル下面まで上がってコイルを受ける。
 // 出側は V を駆動側(−Z)へ寄せて、ピット端(z=−0.75)の手前でも全条のコイルの下に届くようにする。
-const CAR_PARK=5.4, CAR_IN=0.35;
+const CAR_PARK=4.9, CAR_IN=0.35;                              // 待機位置は配置図のカー(z 3.9〜5.9)
 // V の見かけの頂点(ライナー上面の2平面が中心線で交わる高さ・カー基準)/ ランプ角。
 // ライナー: 中心 (±0.40, 0.95)・厚さ 0.04・傾き CAR_VANG → 頂点 = 0.95 + 0.02/cos − 0.40·tan
 const CAR_VANG=0.72, CAR_V0=0.95+0.02/Math.cos(CAR_VANG)-0.40*Math.tan(CAR_VANG);
@@ -140,4 +155,4 @@ function buildCoilCar(x,zPark,coilR,z0,z1,vOfs){
   if(coilR){const c=addCylZ(coilR,STRIP_W,coilMats(),0,CAR_V0+coilR/Math.cos(CAR_VANG),0,cradle,40);c.receiveShadow=true;}
   return g;}
 const coilCar=buildCoilCar(REC_X,CAR_PARK,0,CAR_PITS[1].z0,CAR_PITS[1].z1,-0.2); // 出側: 巻上りコイルの払出し(交換時に走行)
-const uncCar=buildCoilCar(UNC_X,4.2,0.95,CAR_PITS[0].z0,CAR_PITS[0].z1,0);      // 入側: 次コイルを載せて待機
+const uncCar=buildCoilCar(UNC_X,5.6,0.95,CAR_PITS[0].z0,CAR_PITS[0].z1,0);      // 入側: 次コイルを載せて待機

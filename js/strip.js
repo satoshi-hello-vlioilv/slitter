@@ -209,24 +209,23 @@ function updateTrim(rib,sw,rs){
   const s=sw.side, zt=s*ZTRIM, raw=_traw, wv=_twv;
   raw.length=0;wv.length=0;
   const put=(p,w)=>{raw.push(p);wv.push(w);};
-  // ---- ① 立面(XY面): 分離点 → SG1下面 → SG2上面 ----
-  const c1={x:SG1.x,y:SG1.y,r:SGR+0.006}, c2={x:SG2.x,y:SG2.y,r:SGR+0.006};
-  const t12=tangentBetween(c1,'bottom',c2,'top');                     // SG1下面→SG2上面(内接線)
+  // ---- ① 立面(XY面): 刃の外周 → SG1下面 → (テーブルロールの下)→ SG2上面 → 垂直に落ちて SG3下面 ----
+  // 刃の包絡: 最外刃が下刃なら下刃の外周(頂点 PL+ラップ/2)に乗って下がる。上刃なら上刃に押し下げ
+  // られているので、下軸の同心円で頂点を上刃の下端(PL−ラップ/2)の下に置いた包絡に沿って下がる。
   const kg=KC.geom(), upper=kg&&(s>0?kg.osUpper:kg.dsUpper);
-  let a1;
-  if(upper){                                                          // 最外刃=上刃: 刃の縁に沿ってから上がる
-    const ck={x:SLIT_X,y:PL+kg.yU,r:kg.knifeR+0.004};
-    const tk=tangentBetween(ck,'bottom',c1,'bottom');                 // 上刃の下 → SG1下面(外接線)
-    for(const p of arcPoints(ck.x,ck.y,ck.r,-Math.PI/2,tk.t1.a,5)){p.z=zt;put(p,Z_AXIS);}
-    a1=tk.t2.a;
-  }else{                                                              // 最外刃=下刃: 刃の頂点に乗って上がる
-    const tIn=tangentToSide(c1.x,c1.y,c1.r,'bottom',SLIT_X,PL+0.006); // 分離点→SG1下面の接点
-    put(V3(SLIT_X,PL+0.006,zt),Z_AXIS);a1=tIn.a;}
-  for(const p of arcPoints(c1.x,c1.y,c1.r,a1,t12.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
-  for(const p of arcPoints(c2.x,c2.y,c2.r,t12.t2.a,Math.PI/2,7)){p.z=zt;put(p,Z_AXIS);} // 頂点=水平で離れる
+  const yU=kg?kg.yU:0.158, kR=kg?kg.knifeR:0.159, ov2=kR-yU, yc=PL-yU;
+  const ck={x:SLIT_X,y:yc,r:(upper?PL-ov2-0.004:PL+ov2+0.004)-yc};
+  const c1={x:SG1.x,y:SG1.y,r:SGR+0.006}, c2={x:SG2.x,y:SG2.y,r:SGR+0.006}, c3={x:SG3.x,y:SG3.y,r:SGR+0.006};
+  const tk=tangentBetween(ck,'top',c1,'bottom');                      // 刃 → SG1下面(内接線)
+  const t12=tangentBetween(c1,'bottom',c2,'top');                     // SG1下面 → SG2上面(内接線)
+  const t23=tangentBetween(c2,'top',c3,'bottom');                     // SG2上面 → SG3下面(垂直に落ちる)
+  for(const p of arcPoints(ck.x,ck.y,ck.r,Math.PI/2,tk.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
+  for(const p of arcPoints(c1.x,c1.y,c1.r,tk.t2.a,t12.t1.a,6)){p.z=zt;put(p,Z_AXIS);}
+  for(const p of arcPoints(c2.x,c2.y,c2.r,t12.t2.a,t23.t1.a,8)){p.z=zt;put(p,Z_AXIS);}
+  for(const p of arcPoints(c3.x,c3.y,c3.r,t23.t2.a,-Math.PI/2,7)){p.z=zt;put(p,Z_AXIS);} // 底 = HTW で水平
   // ---- ② ねじり区間(水平直線・幅方向 Z→Y) ----
   for(let j=1;j<TWIST_N;j++){const t=j/TWIST_N,a=t*Math.PI/2;
-    put(V3(THREE.MathUtils.lerp(c2.x,VG1.x,t),HTW,zt),V3(0,Math.sin(a),Math.cos(a)));}
+    put(V3(THREE.MathUtils.lerp(c3.x,VG1.x,t),HTW,zt),V3(0,Math.sin(a),Math.cos(a)));}
   // ---- ③ 水平面(XZ面): VG1 → VG2 → 屑コイル(左巻きチェーン) ----
   const ch=[{x:VG1.x,u:VG1.u,r:VGR+0.006},{x:VG2.x,u:VG2.u,r:VGR+0.006},{x:WND.x,u:WND.u,r:rs+0.004}];
   let th=0;                                                           // ねじり区間の進行方向(+X)

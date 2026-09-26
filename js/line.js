@@ -154,80 +154,64 @@ function buildSeparators(){for(const sg of sepGroups)clearGroup(sg.g);
 }})();
 
 /* =========================================================
- * サイドスクラップワインダー(立軸・横回転)+ 耳屑ガイドロール列(両側)
+ * サイドスクラップワインダー(立軸・横回転)— ライン下にもぐらせる配置
  * =========================================================
- * 耳屑はスリッター出側では「幅方向=Z(水平に寝た姿勢)」で出てくる。これを立軸
- * (軸=Y)のドラムへ横回転で巻き取るには、(a)幅方向をY(垂直)へ90°ひねり、
- * (b)水平面内の進行方向をドラムの回転方向に合わせて接線で入れる、の2つが要る。
- * そのための誘導列(片側4本):
+ * 配置図ではワインダーはスリッター+2400、ライン中心から ±1230 にあり、出側テーブル
+ * (板幅+340 のロール・側枠 ±870)と平面で重なる。そこでワインダーは床下のスクラップピット
+ * (x 1.42〜3.42 をライン直角に横切る)に沈め、床より 450 下の面で巻く。
+ * 出側テーブルの側枠はピットに渡した梁で受ける(柱はピットへ下ろさない)。
  *
- *   SG1 屑上げロール  (軸Z / 下面接触 dir+1) 耳屑をパスライン上へ振り上げる
- *   SG2 水平化ロール  (軸Z / 上面接触 dir-1) 頂点で水平に戻しねじり区間の入口を作る
- *   ── ねじり区間(直線 0.81m ≒ 屑幅の16倍。実機目安の8~10倍以上を満たすので
- *      座屈・耳波を起こさずに幅方向が Z→Y へ回る) ──
- *   VG1 縦ガイドロール(軸Y / 上部アーム吊り) 水平面内でライン外側へ振る
- *   VG2 縦ガイドロール(軸Y / 床置き台座)     ドラムへの接線に乗せる
- *   ドラム(軸Y・下フランジ付き)              横回転で平巻きの屑コイルにする
- *
- * VG1・VG2・ドラムは「中心が常に進行方向の左側」に来る配置で統一してある。
- * つまり耳屑は一度も逆向きに曲がらないまま同じ回転方向でドラムへ入る(逆ひねり
- * ・逆巻き・ロール貫通のいずれも起こらない)。ロール/ドラムの回転方向は接触点の
- * 周速が屑の進行方向と一致する向き = 上から見て左右で対称な向き(dir=-side)。
+ * 耳屑は幅方向=Z(水平に寝た姿勢)でスリッターを出る。経路(片側):
+ *   ① 立面(XY面): 刃の外周(下刃、または上刃に押し下げられた下側の包絡)に沿って下がり
+ *      SG1(下面接触)で水平に戻す → テーブルロールの下(床上 0.30)をくぐり
+ *      SG2(上面接触)でピットへ垂直に落とす → SG3(下面接触)で巻取り面の高さ HTW に水平化
+ *   ② ねじり区間: HTW の水平直線 0.61m(屑幅の約12倍)で幅方向を Z → Y へ 90° ひねる
+ *   ③ 水平面(XZ面): VG1 → VG2(軸Y)で外へ振り返し、立軸ドラムへ接線で入れる
+ * VG1・VG2・ドラムは「中心が常に進行方向の左側」に来る配置で統一してある(逆曲げ・逆巻きなし)。
+ * ロール/ドラムの回転方向は接触点の周速が屑の進行方向と一致する向き。
  */
 const ZTRIM=EFF_W/2+TRIM_W/2;            // 耳屑の中心z(スリッター出側)
 const SGR=0.05, VGR=0.06;                // ガイドロール半径(φ100 / φ120)
-const SG1={x:0.62,y:PL+0.20};           // SG1 屑上げロール中心(立面)
-const SG2={x:1.35,y:PL+0.52};           // SG2 水平化ロール中心(立面)
-const HTW=SG2.y+SGR+0.006;              // SG2頂点 = ねじり区間 = 巻取り面の高さ
+const HTW=-0.45;                         // 巻取り面(床より 450 下 = ピットの中)
+const SG1={x:0.58,y:0.36};              // SG1 水平戻しロール(台車の台座 x±0.38 の外・テーブルロールの下)
+const SG2={x:1.58,y:0.25};              // SG2 落としロール(ピットの縁の内側)
+const SG3={x:SG2.x+2*(SGR+0.006),y:HTW+SGR+0.006};   // SG3 水平化ロール(SG2 から垂直に落ちた所)
 // 水平面は正準座標(u = side*z、ライン外側が正)で扱い、左右は u に side を掛けて反転
-const VG1={x:2.16,u:ZTRIM+VGR+0.006};   // VG1(接点zが耳屑のzと一致する位置)
-const VG2={x:2.84,u:1.45};              // VG2
-const WND={x:2.40,u:2.26};              // 立軸ドラム中心(配置図: スリッター+2400)
+const VG1={x:2.30,u:ZTRIM+VGR+0.006};   // VG1(接点zが耳屑のzと一致する位置)
+const VG2={x:3.10,u:0.80};              // VG2(ピットの下流側で外へ振り返す)
+const WND={x:2.40,u:1.23};              // 立軸ドラム中心(配置図: スリッター+2400・ライン中心 ±1230)
 const WND_FR=0.50;                       // 下フランジ半径(最大屑コイル r=0.42 を受ける)
-const SGZ=1.18;                          // 屑ガイドスタンド柱列のz(出側テーブル枠・その基礎板の外側)
+const SGZ=1.18;                          // 屑ガイドロールの軸受柱列のz(出側テーブル側枠 ±0.87 の外)
 
 function buildScrapWinder(side){
-  const s=side, zt=s*ZTRIM, zb=s*SGZ;
-  // ---- 屑上げ/水平化ロール(軸Z・側方スタンドから片持ち) ----
-  for(const sg of [{c:SG1,dir:1},{c:SG2,dir:-1}]){const c=sg.c;
-    spin(addCylZ(SGR,0.16,rollMats(),c.x,c.y,zt,scene,20),SGR,sg.dir);     // バレル(屑幅より広い)
-    addCylZ(0.018,Math.abs(zb-zt)+0.12,M.steel,c.x,c.y,(zt+zb)/2,scene,12);// 軸(スタンドへ片持ち)
-    chock(c.x,c.y,SGR,zb);                                                 // 軸受(ピローブロック)
-    const hh=c.y-0.081;
-    addBox(0.12,hh,0.12,M.paint,c.x,hh/2,zb);                              // 支柱(床から)
-    addBox(0.26,0.05,0.34,M.frame,c.x,0.025,zb,scene,false);}              // ベースプレート(台車レールの外に収める)
-  // ---- 縦ガイドロール(軸Y) ----
-  //  arm : 出側テーブルの真上なので床から柱を立てられない → 外側の柱+水平アームで吊る
-  //  base: ライン外側なので床置き台座で支える
-  const vroll=(c,mount)=>{
-    const z=s*c.u, yb=HTW-0.09, yt=HTW+0.09;
-    spin(addCylY(VGR,0.18,rollMats(),c.x,HTW,z,scene,22),VGR,-s,'y');      // バレル(屑幅0.05を余裕で収める)
-    if(mount==="arm"){
-      addCylY(0.022,0.14,M.steel,c.x,yt+0.07,z,scene,12);                  // 軸(上へ)
-      addBox(0.20,0.09,0.20,M.paintDark,c.x,yt+0.045,z);                   // 軸受箱
-      const ay=HTW+0.25;
-      addBox(0.14,0.14,Math.abs(zb-z)+0.14,M.paint,c.x,ay,(z+zb)/2);       // 水平アーム(屑の上0.15を通す)
-      const hh=ay+0.07;
-      addBox(0.13,hh,0.13,M.paint,c.x,hh/2,zb);                            // 柱
-      addBox(0.36,0.05,0.36,M.frame,c.x,0.025,zb,scene,false);
-    }else{
-      addBox(0.24,0.12,0.24,M.paintDark,c.x,yb-0.06,z);                    // 軸受箱(台座上)
-      const hh=yb-0.12;
-      addBox(0.15,hh,0.15,M.paint,c.x,hh/2,z);                             // 台座柱
-      addBox(0.34,0.05,0.34,M.frame,c.x,0.025,z,scene,false);}
-  };
-  vroll(VG1,"arm"); vroll(VG2,"base");
-  // ---- 立軸ワインダー本体(高さは巻取り面 HTW から下へ積む) ----
+  const s=side, zt=s*ZTRIM, zb=s*SGZ, PF=SCRAP_PIT.floor;
+  // ---- SG1〜SG3(軸Z・側方の柱から片持ち) ----
+  const sroll=(c,dir)=>{
+    spin(addCylZ(SGR,0.16,rollMats(),c.x,c.y,zt,scene,20),SGR,dir);          // バレル(屑幅より広い)
+    addCylZ(0.018,Math.abs(zb-zt)+0.12,M.steel,c.x,c.y,(zt+zb)/2,scene,12);   // 軸(柱へ片持ち)
+    chock(c.x,c.y,SGR,zb);};
+  sroll(SG1,1);sroll(SG2,-1);sroll(SG3,1);
+  {const hh=SG1.y-0.081;addBox(0.12,hh,0.12,M.paint,SG1.x,hh/2,zb);addBox(0.26,0.05,0.34,M.frame,SG1.x,0.025,zb,scene,false);}
+  {const x=(SG2.x+SG3.x)/2,top=SG2.y-0.08,hh=top-PF;                         // SG2/SG3 は1本の柱(ピット底から)
+    addBox(0.14,hh,0.12,M.paint,x,PF+hh/2,zb);addBox(0.34,0.05,0.34,M.frame,x,PF+0.025,zb,scene,false);}
+  // ---- 縦ガイドロール(軸Y・ピット底の台座) ----
+  const vroll=c=>{const z=s*c.u,yb=HTW-0.09;
+    spin(addCylY(VGR,0.18,rollMats(),c.x,HTW,z,scene,22),VGR,-s,'y');        // バレル(屑幅0.05を余裕で収める)
+    addBox(0.24,0.12,0.24,M.paintDark,c.x,yb-0.06,z);                          // 軸受箱
+    const hh=yb-0.12-PF;addBox(0.15,hh,0.15,M.paint,c.x,PF+hh/2,z);
+    addBox(0.34,0.05,0.34,M.frame,c.x,PF+0.025,z,scene,false);};
+  vroll(VG1);vroll(VG2);
+  // ---- 立軸ワインダー本体(ピット底から積む) ----
   const wx=WND.x, wz=s*WND.u;
-  const yRed=HTW-0.376, yCol=0.32;                               // 減速機の下面 / ベースフレーム上面
-  addBox(1.20,0.05,1.20,M.frame,wx,0.025,wz,scene,false);        // 基礎プレート
-  addBox(1.00,0.28,1.00,M.paintDark,wx,0.18,wz);                 // ベースフレーム(0.04→0.32)
+  const yRed=HTW-0.376, yCol=PF+0.32;                            // 減速機の下面 / ベースフレーム上面
+  addBox(0.95,0.05,0.95,M.frame,wx,PF+0.025,wz,scene,false);     // 基礎プレート
+  addBox(0.80,0.28,0.80,M.paintDark,wx,PF+0.18,wz);              // ベースフレーム
   addCylY(0.15,yRed-yCol,M.paint,wx,(yCol+yRed)/2,wz,scene,20);  // 固定支柱(ベース → 減速機)
   for(const b of [-1,1]){                                        // 補強ブレース(ベース外周 → 支柱上部)
-    const dx=0.30,dy=(yRed-yCol)*0.75,br=addBox(0.09,Math.hypot(dx,dy),0.09,M.paint,wx+b*(0.15+dx/2),yCol+dy/2,wz);
+    const dx=0.24,dy=(yRed-yCol)*0.75,br=addBox(0.08,Math.hypot(dx,dy),0.08,M.paint,wx+b*(0.15+dx/2),yCol+dy/2,wz);
     br.rotation.z=b*Math.atan2(dx,dy);}
   addBox(0.52,0.30,0.52,M.paintDark,wx,yRed+0.15,wz);            // 減速機
-  addCylZ(0.13,0.42,M.paintDark,wx,yRed+0.13,wz+s*0.47,scene,18);// 駆動モーター
+  addCylZ(0.13,0.42,M.paintDark,wx,yRed+0.13,wz+s*0.47,scene,18);// 駆動モーター(ライン外側へ)
   addCylY(0.13,0.02,M.steel,wx,yRed+0.31,wz,scene,20);           // 軸受ボス
   // 回転部(軸=Y): 下フランジで平巻きコイルを受け、ドラム外周に巻き付く
   const g=new THREE.Group();g.position.set(wx,HTW,wz);scene.add(g);
@@ -250,8 +234,8 @@ makeLabel("リコイラ",REC_X,0,0,{rank:3,follow:p=>p.set(REC_X,REC_Y+Math.max(
 makeLabel("No.1ピット",(PIT1.x0+PIT1.x1)/2,0.02,PIT_HZ,{rank:4});          // ピット開口の操作側の縁
 makeLabel("No.2ピット",(PIT2.x0+PIT2.x1)/2,0.02,PIT_HZ,{rank:5});
 makeLabel("テンションスタンド(MD)",9.60,PL+1.32,0,{rank:6});
-makeLabel("屑巻取機(立軸・横回転)",WND.x,1.53, WND.u,{rank:7});
-makeLabel("屑巻取機(立軸・横回転)",WND.x,1.53,-WND.u,{rank:7});
+makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24, WND.u,{rank:7});   // 床下(スクラップピット)
+makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24,-WND.u,{rank:7});
 makeLabel("入側シャー",-8.51,PL+1.07,0,{rank:8});
 makeLabel("ラフレベラー",-9.45,PL+0.15,0,{rank:9});
 makeLabel("入側ピンチ",-10.50,PL+1.02,0,{rank:10});
@@ -261,6 +245,6 @@ makeLabel("出側ピンチ",10.35,PL+1.02,0,{rank:13});
 makeLabel("セパレーター",8.25,SEP_H+0.09,0,{rank:14});
 makeLabel("デフロール",10.95,PL+0.53,0,{rank:15});
 makeLabel("テールキャッチャー",12.40,PL+0.21,0,{rank:16});
-makeLabel("耳屑ガイドロール",SG2.x,1.30, SGZ,{rank:17});
-makeLabel("耳屑ガイドロール",SG2.x,1.30,-SGZ,{rank:17});
+makeLabel("耳屑ガイドロール",SG2.x,SG2.y+0.06, ZTRIM,{rank:17});
+makeLabel("耳屑ガイドロール",SG2.x,SG2.y+0.06,-ZTRIM,{rank:17});
 makeLabel("回転テーブル(刃組段取り)",SLIT_X+0.95,0.03,KC_TT_Z,{rank:18});  // 台車が載っても隠れない甲板の縁
