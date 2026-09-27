@@ -33,29 +33,18 @@ function chock(x,y,r,z,parent){
   return s;}
 function chockPair(x,y,r,len){const s=chock(x,y,r,(len/2+0.10));chock(x,y,r,-(len/2+0.10));return s;}
 
-/* 一般ロール(鋼) — 幅方向Z軸。chock:両端軸受 / frame:床置きスタンド(ベースプレート付) */
+/* 一般ロール(鋼) — 幅方向Z軸。chock:両端軸受 / frame:床置きスタンド(ベースプレート付・gy = 据付面の高さ) */
 function roll(id,x,y,dMM,dir,opt){opt=opt||{};
-  const r=d2r(dMM), len=opt.len||(STRIP_W+0.34), seg=dMM>=200?40:22;
+  const r=d2r(dMM), len=opt.len||(STRIP_W+0.34), seg=dMM>=200?40:22, gy=opt.gy||0;
   const m=addCylZ(r,len,opt.mats||rollMats(),x,y,0,scene,seg);
   spin(m,r,dir==null?-1:dir);
   const cs=(opt.chock!==false)?chockPair(x,y,r,len):0;
-  if(opt.frame!==false && y-r>0.12){
-    const s=cs||0.12, hh=Math.max(0.06,y-0.675*s);
+  if(opt.frame!==false && y-r-gy>0.12){
+    const s=cs||0.12, hh=Math.max(0.06,y-0.675*s-gy);
     for(const sd of [-1,1]){const zc=sd*(len/2+0.10);
-      addBox(Math.max(0.12,s*0.8),hh,0.13,M.frame,x,hh/2,zc);   // 支柱
-      addBox(0.32,0.05,0.34,M.frame,x,0.025,zc,scene,false);}}  // ベースプレート
+      addBox(Math.max(0.12,s*0.8),hh,0.13,M.frame,x,gy+hh/2,zc);   // 支柱
+      addBox(0.32,0.05,0.34,M.frame,x,gy+0.025,zc,scene,false);}}  // ベースプレート
   regRoll(id,x,y,r); return m;}
-
-/* MDロール — 1軸に幅狭ゴム輪切り円盤を多数(山王鐵工MDロール)。軸端チョック付 */
-function discRoll(id,x,y,dMM,dir){
-  const r=d2r(dMM), len=STRIP_W+0.16;
-  addCylZ(0.05,len+0.5,M.steel,x,y,0,scene);
-  chock(x,y,Math.max(r*0.55,0.08), (len+0.5)/2+0.04);
-  chock(x,y,Math.max(r*0.55,0.08),-((len+0.5)/2+0.04));
-  const g=new THREE.Group(); g.position.set(x,y,0); scene.add(g);
-  const nd=Math.max(22,Math.round(len/0.038)), dz=len/nd;
-  for(let i=0;i<nd;i++){const z=-len/2+dz*(i+0.5);addCylZ(r,dz*0.8,(i%2?M.rubberA:M.rubberB),0,0,z,g,18);}
-  spin(g,r,dir); regRoll(id,x,y,r); return g;}
 
 /* スタンドハウジング(2柱+天梁) */
 function housing(x,h,mat){mat=mat||M.paint;

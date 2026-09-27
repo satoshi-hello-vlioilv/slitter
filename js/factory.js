@@ -27,7 +27,8 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
     const p=OUT[i],q=OUT[(i+1)%OUT.length],dir=Math.sign(q[0]-p[0]),xa=c.x-dir*CAR_PIT_HW,xb=c.x+dir*CAR_PIT_HW;
     OUT.splice(i+1,0,[xa,c.zEdge],[xa,c.z0],[xb,c.z0],[xb,c.zEdge]);}
   const SP=SCRAP_PIT, PITS=[PIT1,PIT2].map(p=>rectP(p.x0,-PIT_HZ,p.x1,PIT_HZ));
-  const HOLES=[...PITS,rectP(SP.x0,SP.z0,SP.x1,SP.cover.z0)];                                   // 足場の開口
+  const MDP=rectP(MD_PIT.x0,MD_PIT.z0,MD_PIT.x1,MD_PIT.z1);                                    // MD の区画(据付面を下げる — md.js の架台)
+  const HOLES=[...PITS,rectP(SP.x0,SP.z0,SP.x1,SP.cover.z0),MDP];                               // 足場の開口
   const LANES=CAR_PITS.map(c=>rectP(c.x-CAR_PIT_HW,c.z0,c.x+CAR_PIT_HW,c.z1));
   const deckAt=(x,z)=>inPoly(OUT,x,z)&&!HOLES.some(h=>inPoly(h,x,z));
   const groundAt=(x,z)=>![...PITS,SP.poly,...LANES].some(h=>inPoly(h,x,z));                  // GL が地面(ピット・溝でない)
@@ -96,6 +97,14 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
   for(const c of CAR_PITS){for(const s of [-1,1])guard(c.x+s*CAR_PIT_HW,c.z0,c.x+s*CAR_PIT_HW,c.zEdge,s,0);
     guard(c.x-CAR_PIT_HW,c.z0,c.x+CAR_PIT_HW,c.z0,0,-1);}
   boxes(M.stage,posts.concat(rails));
+  // MD 区画の段差(足場 → 据付面 MD_FL): 縁の蹴込み板と足場側の注意帯
+  {const kick=[],d=-MD_FL;
+    MDP.forEach((p,i)=>{const q=MDP[(i+1)%4],L=Math.hypot(q[0]-p[0],q[1]-p[1]),alongX=Math.abs(q[0]-p[0])>0.01;
+      let nx=-(q[1]-p[1])/L,nz=(q[0]-p[0])/L;if(inPoly(MDP,(p[0]+q[0])/2+nx*0.02,(p[1]+q[1])/2+nz*0.02)){nx=-nx;nz=-nz;}   // 外向き
+      const cx=(p[0]+q[0])/2,cz=(p[1]+q[1])/2;
+      kick.push(alongX?[cx,-d/2,cz-nz*0.006,L,d,0.012]:[cx-nx*0.006,-d/2,cz,0.012,d,L]);
+      addBox(alongX?L:0.14,0.022,alongX?0.14:L,M.hazard,cx+nx*0.11,0.012,cz+nz*0.11,scene,false);});
+    boxes(M.stage,kick);}
   // 階段(GL ↔ 足場)。鋼製: 縞鋼板の踏板7段(蹴込みなし)・ささら桁は足場の緑・手すりは両側(黄)。axis の向きに降りる
   const tread=(w,d,x,y,z)=>{const g=new THREE.BoxGeometry(w,0.04,d),uv=g.attributes.uv;
     for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w,uv.getY(i)*d);                        // UV をメートルに(縞の大きさを揃える)

@@ -58,8 +58,6 @@ const M={
   roll:new THREE.MeshStandardMaterial({color:0x9aa2aa,metalness:0.9,roughness:0.32}),
   rollCap:new THREE.MeshStandardMaterial({map:rollCapTex,metalness:0.75,roughness:0.4}),
   rubber:new THREE.MeshStandardMaterial({color:0x2c3036,metalness:0.1,roughness:0.85}),
-  rubberA:new THREE.MeshStandardMaterial({color:0x42474e,metalness:0.04,roughness:0.92}),
-  rubberB:new THREE.MeshStandardMaterial({color:0x32363c,metalness:0.04,roughness:0.95}),
   paint:new THREE.MeshStandardMaterial({color:0x33688f,metalness:0.35,roughness:0.55}),
   paintDark:new THREE.MeshStandardMaterial({color:0x24465f,metalness:0.35,roughness:0.6}),
   frame:new THREE.MeshStandardMaterial({color:0x39424c,metalness:0.55,roughness:0.5}),

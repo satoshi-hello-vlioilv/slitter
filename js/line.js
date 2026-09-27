@@ -121,15 +121,12 @@ roll('S2-1',7.25,PL-d2r(80),80,-1,{frame:false});roll('S2-2',7.60,PL-d2r(80),80,
 chainFrame(['S1-1','S1-2','S1-3'],STRIP_W/2+0.27,2);
 chainFrame(['S2-1','S2-2','S2-3'],STRIP_W/2+0.27,2);
 const looperTable2=buildLooperTable(LOOP2,0.20,6);
-// セパ押え(下面=PLで接触) / MDミニ前
-roll('T1',8.48,PL+d2r(80),80,1);roll('T2',8.64,PL-d2r(80),80,-1);
-// テンションスタンド = MDロール(上下ピンチ式): V=ミニφ250 / W=主φ400(ゴムディスク) — 中心 +9280
-housing(8.85,PL+1.1); discRoll('V1',8.85,PL+d2r(250),250,1);discRoll('V2',8.85,PL-d2r(250),250,-1);
-housing(9.60,PL+1.2,M.paintDark); discRoll('W1',9.60,PL+d2r(400),400,1);discRoll('W2',9.60,PL-d2r(400),400,-1);
-addCylZ(0.18,0.5,M.paintDark,9.60,PL+d2r(400),-(STRIP_W/2+0.95),scene); // MD駆動モーター
-addCylZ(0.18,0.5,M.paintDark,9.60,PL-d2r(400),-(STRIP_W/2+0.95),scene);
-// 出側ピンチ(ニップ面=PL)
-housing(10.35,PL+0.9); roll('X1',10.35,PL+d2r(200),200,1);roll('X2',10.35,PL-d2r(200),200,-1);
+// セパ押え(下面=PLで接触) / MDミニ前 — 軸受は MD フレーム入側の柱(z ±0.96〜)に腕で取り付ける
+roll('T1',8.44,PL+d2r(80),80,1,{frame:false});roll('T2',8.58,PL-d2r(80),80,-1,{frame:false});
+for(const [x,y] of [[8.44,PL+d2r(80)],[8.58,PL-d2r(80)]])for(const s of [-1,1])addBox(0.08,0.10,0.05,M.frame,x,y,s*0.945);
+// テンションスタンド = MD-1800(md.js): V=ミニφ250(前段)/ W=主φ400(後段)のマルチディスクロール — 中心 MD_X
+// 出側ピンチ(ニップ面=PL)。MD の出側スイングテーブル(主ロール出側直後の長さ 400)の先に置く
+housing(10.50,PL+0.9); roll('X1',10.50,PL+d2r(200),200,1);roll('X2',10.50,PL-d2r(200),200,-1);
 // デフロール(上下φ500): Y2上面巻き(dir-1)→Y1下面巻き(dir+1)のS掛け
 roll('Y2',10.95,PL+0.27,500,-1);roll('Y1',11.60,PL-0.27,500,1);
 // テールキャッチャー(上面接触 → dir-1)
@@ -147,7 +144,8 @@ function buildSeparators(){for(const sg of sepGroups)clearGroup(sg.g);
   // ディスク厚は条間隙間(STRAND_GAP)より薄く — 隙間に垂れ込んで条を仕切る
   for(const sg of sepGroups)for(const zc of strandCuts)addCylZ(0.22,STRAND_GAP*0.8,M.knife,sg.x,SEP_Y,zc,sg.g,28);}
 (function(){for(const x of [8.25,12.0]){const g=new THREE.Group();scene.add(g);sepGroups.push({x,g});
-  for(const s of [-1,1])addBox(0.16,SEP_H,0.16,M.frame,x,SEP_H/2,s*1.3);
+  const gy=(x>MD_PIT.x0&&x<MD_PIT.x1)?MD_FL:0;                          // MD 区画の中は据付面から立てる
+  for(const s of [-1,1])addBox(0.16,SEP_H-gy,0.16,M.frame,x,(SEP_H+gy)/2,s*1.3);
   addBox(0.2,0.16,2.76,M.yellow,x,SEP_H,0);
   addCylZ(0.04,STRIP_W+0.8,M.steel,x,SEP_Y,0,scene);
   for(const s of [-1,1])addBox(0.12,0.12,0.42,M.frame,x,SEP_Y,s*1.12);   // 軸受アーム(シャフト端→支柱)
@@ -233,7 +231,6 @@ makeLabel("アンコイラ",UNC_X,0,0,{rank:2,follow:p=>p.set(UNC_X,UNC_Y+st.ru+
 makeLabel("リコイラ",REC_X,0,0,{rank:3,follow:p=>p.set(REC_X,REC_Y+Math.max(st.rr,R_MANDREL)+0.02,0)});
 makeLabel("No.1ピット",(PIT1.x0+PIT1.x1)/2,0.02,PIT_HZ,{rank:4});          // ピット開口の操作側の縁
 makeLabel("No.2ピット",(PIT2.x0+PIT2.x1)/2,0.02,PIT_HZ,{rank:5});
-makeLabel("テンションスタンド(MD)",9.60,PL+1.32,0,{rank:6});
 makeLabel("屑巻取機(立軸・横回転)",WND.x,0.02,(SCRAP_PIT.cover.z0+SCRAP_PIT.cover.hatch.z1)/2,{rank:7});   // 操作側は蓋の下 → 点検蓋に付ける
 makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24,-WND.u,{rank:7});                      // 駆動側は開口から見える(スクラップピット)
 makeLabel("入側シャー",-8.51,PL+1.07,0,{rank:8});
