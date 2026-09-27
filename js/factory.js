@@ -3,6 +3,10 @@
  * 工場床・ピット・建屋
  * =======================================================*/
 const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱・梁(トグル対象)
+/* 床(GL+1000)の上か — 配置図の枠の内側 */
+function floorAt(x,z){const P=FLOOR_POLY;let c=false;
+  for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,zi]=P[i],[xj,zj]=P[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}
+  return c;}
 (function buildFactory(){
   const FD=9, PH0=-GL_Y;                  // 床の半奥行き(建屋)/ 床の高さ(GL から 1.0)
   // 床(GL+1000)は配置図の枠線の形で、GL まで押し出した1つの塊にする(縁の立ち上がり面も一緒にできる)。
@@ -12,9 +16,9 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
   const outline=new THREE.Shape();
   FLOOR_POLY.forEach(([x,z],i)=>i?outline.lineTo(x,-z):outline.moveTo(x,-z));outline.closePath();
   for(const p of [PIT1,PIT2])outline.holes.push(rect(p.x0,-PIT_HZ,p.x1,PIT_HZ));
-  outline.holes.push(rect(SCRAP_PIT.x0,SCRAP_PIT.z0,SCRAP_PIT.x1,SCRAP_PIT.z1));
+  {const h=new THREE.Path();SCRAP_PIT.poly.forEach(([x,z],i)=>i?h.lineTo(x,-z):h.moveTo(x,-z));h.closePath();outline.holes.push(h);}
   for(const c of CAR_PITS)outline.holes.push(rect(c.x-CAR_PIT_HW,c.z0,c.x+CAR_PIT_HW,c.zEdge-0.002));
-  {const h=new THREE.Path();h.absarc(SLIT_X,-KC_TT_Z,KC_PIT_R,0,Math.PI*2,true);outline.holes.push(h);}
+  outline.holes.push(rect(KC_TT.x-KC_TT.hx,KC_TT.z-KC_TT.hz,KC_TT.x+KC_TT.hx,KC_TT.z+KC_TT.hz));   // 回転テーブルのピット口(図の正方形)
   const sg=new THREE.ExtrudeGeometry(outline,{depth:PH0,bevelEnabled:false,curveSegments:72});
   sg.rotateX(-Math.PI/2);sg.translate(0,-PH0,0);
   const ftex=concreteTex(1/2.2,1/2.2);                 // UV=床の座標[m] → 2.2mに1枚
@@ -39,15 +43,17 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
   // 床の縁の注意帯(階段の口を除く)は省略し、縁の笠木(鋼製アングル)を回す
   FLOOR_POLY.forEach((p,i)=>{const q=FLOOR_POLY[(i+1)%FLOOR_POLY.length],L=Math.hypot(q[0]-p[0],q[1]-p[1]);
     const m=addBox(L,0.03,0.06,M.steel,(p[0]+q[0])/2,-0.012,(p[1]+q[1])/2,scene,false);m.rotation.y=-Math.atan2(q[1]-p[1],q[0]-p[0]);});
-  // 階段(GL ↔ 床)。段数6・蹴上げ 1000/6・手すり両側
-  for(const S of STAIRS){const n=6,w=S.x1-S.x0,cx=(S.x0+S.x1)/2,tr=S.run/(n-1),rise=PH0/n;
-    for(let k=0;k<n-1;k++)                                // 踏板 k の上面 = 床 − 蹴上げ×(k+1)(最後の1段は GL)
-      addBox(w-0.08,0.04,tr+0.02,M.frame,cx,-rise*(k+1)-0.02,S.z+S.dir*tr*(k+0.5));
-    const ang=Math.atan2(PH0,S.run),Ls=Math.hypot(PH0,S.run);
-    for(const e of [S.x0+0.03,S.x1-0.03]){
-      const st=addBox(0.05,0.22,Ls,M.paintDark,e,-PH0/2-0.08,S.z+S.dir*S.run/2);st.rotation.x=S.dir*ang;       // ささら桁
-      const hr=addBox(0.045,0.045,Ls,M.yellow,e,-PH0/2+0.92,S.z+S.dir*S.run/2,scene,false);hr.rotation.x=S.dir*ang; // 手すり
-      for(const f of [0,1]){const zz=S.z+S.dir*S.run*f,yb=f?GL_Y:0;addBox(0.05,0.92,0.05,M.yellow,e,yb+0.46,zz,scene,false);}}}
+  // 階段(GL ↔ 床)。踏面7段・蹴上げ 1000/8・ささら桁と手すりは両側。axis の向きに降りる
+  for(const S of STAIRS){const n=7,tr=S.run/n,rise=PH0/(n+1),w=S.a1-S.a0,ca=(S.a0+S.a1)/2;
+    const at=(u,a)=>S.axis==="z"?[a,u]:[u,a];                                  // (進み u, 幅方向 a) → [x,z]
+    for(let k=0;k<n;k++){const u=S.edge+S.dir*tr*(k+0.5),[x,z]=at(u,ca);
+      const b=S.axis==="z"?addBox(w-0.08,0.04,tr+0.02,M.frame,x,-rise*(k+1)-0.02,z):addBox(tr+0.02,0.04,w-0.08,M.frame,x,-rise*(k+1)-0.02,z);}
+    const ang=Math.atan2(PH0,S.run),Ls=Math.hypot(PH0,S.run),um=S.edge+S.dir*S.run/2;
+    for(const e of [S.a0+0.03,S.a1-0.03]){const [x,z]=at(um,e);
+      const st=S.axis==="z"?addBox(0.05,0.22,Ls,M.paintDark,x,-PH0/2-0.08,z):addBox(Ls,0.22,0.05,M.paintDark,x,-PH0/2-0.08,z);
+      const hr=S.axis==="z"?addBox(0.045,0.045,Ls,M.yellow,x,-PH0/2+0.92,z,scene,false):addBox(Ls,0.045,0.045,M.yellow,x,-PH0/2+0.92,z,scene,false);
+      if(S.axis==="z"){st.rotation.x=S.dir*ang;hr.rotation.x=S.dir*ang;}else{st.rotation.z=-S.dir*ang;hr.rotation.z=-S.dir*ang;}
+      for(const f of [0,1]){const [px,pz]=at(S.edge+S.dir*S.run*f,e);addBox(0.05,0.92,0.05,M.yellow,px,(f?GL_Y:0)+0.46,pz,scene,false);}}}
   // ルーパーピット — 側壁の内面/端壁の内面が、そのまま床の開口端になる(RC躯体と同じ納まり)
   const PH=-PIT_FLOOR+0.05;                           // 壁の高さ(床上面 → ピット床の下面)
   for(const p of [PIT1,PIT2]){
@@ -57,13 +63,32 @@ const buildingGroup=new THREE.Group(); scene.add(buildingGroup);   // 建屋柱�
     addBox(w,0.1,2*PIT_HZ,M.pit,cx,PIT_FLOOR-0.05,0,scene,false).receiveShadow=true;
     for(const sgn of [-1,1])addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,sgn*(PIT_HZ+0.11));  // 開口縁の注意帯(床上)
   }
-  // スクラップワインダーのピット(ライン直角に横切る)。出側テーブルの側枠はピットに渡した梁で受ける
-  {const P=SCRAP_PIT,w=P.x1-P.x0,L=P.z1-P.z0,cx=(P.x0+P.x1)/2,cz=(P.z0+P.z1)/2,D=-P.floor+0.05;
-    for(const x of [P.x0-0.05,P.x1+0.05])addBox(0.1,D,L+0.2,M.pit,x,-D/2,cz);
-    for(const z of [P.z0-0.05,P.z1+0.05])addBox(w,D,0.1,M.pit,cx,-D/2,z);
-    addBox(w,0.1,L,M.pit,cx,P.floor-0.05,cz,scene,false).receiveShadow=true;
-    for(const s of [-1,1])addBox(w+0.1,0.16,0.16,M.frame,cx,-0.08,s*(STRIP_W/2+0.27));      // 梁(テーブル側枠の下)
-    for(const x of [P.x0-0.11,P.x1+0.11])addBox(0.14,0.022,L,M.hazard,x,0.012,cz);}
+  // スクラップワインダーのピット(図の L 字)。出側テーブルの側枠はピットに渡した梁で受ける
+  {const P=SCRAP_PIT,poly=P.poly,D=-P.floor+0.05,n=poly.length;
+    const inside=(x,z)=>{let c=false;for(let i=0,j=n-1;i<n;j=i++){const [xi,zi]=poly[i],[xj,zj]=poly[j];
+      if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}return c;};
+    for(let i=0;i<n;i++){const [x0,z0]=poly[i],[x1,z1]=poly[(i+1)%n],L=Math.hypot(x1-x0,z1-z0),ux=(x1-x0)/L,uz=(z1-z0)/L;
+      let nx=uz,nz=-ux;const mx=(x0+x1)/2,mz=(z0+z1)/2;if(inside(mx+nx*0.02,mz+nz*0.02)){nx=-nx;nz=-nz;}   // 外向き
+      const w=addBox(Math.abs(ux)>0.5?L+0.12:0.06,D,Math.abs(ux)>0.5?0.06:L+0.12,M.pit,mx+nx*0.03,-D/2,mz+nz*0.03);
+      const hx=mx+nx*0.11,hz=mz+nz*0.11;
+      if(floorAt(hx-ux*L/2,hz-uz*L/2)&&floorAt(hx+ux*L/2,hz+uz*L/2))
+        addBox(Math.abs(ux)>0.5?L:0.14,0.022,Math.abs(ux)>0.5?0.14:L,M.hazard,hx,0.012,hz);}                // 開口縁の注意帯
+    addBox(P.x1-P.x0,0.1,3.676-P.z0,M.pit,(P.x0+P.x1)/2,P.floor-0.05,(P.z0+3.676)/2,scene,false).receiveShadow=true;
+    addBox(5.33-P.x0,0.1,P.z1-3.676,M.pit,(P.x0+5.33)/2,P.floor-0.05,(3.676+P.z1)/2,scene,false).receiveShadow=true;
+    for(const s of [-1,1])addBox(P.x1-P.x0+0.1,0.16,0.16,M.frame,(P.x0+P.x1)/2,-0.08,s*(STRIP_W/2+0.27));}  // 梁(テーブル側枠の下)
+  // 回転テーブルまわりの床の区画(図の点対称の3区画・縞鋼板・床と同じ高さ)と回転範囲の安全帯
+  for(const r of KC_TT.plates)addBox(r.x1-r.x0,0.008,r.z1-r.z0,M.checker,(r.x0+r.x1)/2,0.004,(r.z0+r.z1)/2,scene,false).receiveShadow=true;
+  {const R=KC_TT.sweepR,N=260,pos=[],idx=[],w=0.06;
+    const open=(x,z)=>(Math.abs(x-KC_TT.x)<KC_TT.hx&&Math.abs(z-KC_TT.z)<KC_TT.hz)||
+      SCRAP_PIT.poly&&x>SCRAP_PIT.x0-0.07&&x<5.40&&z>SCRAP_PIT.z0-0.07&&z<SCRAP_PIT.z1+0.07&&(x<SCRAP_PIT.x1+0.07||z>3.60);
+    for(let i=0;i<N;i++){const a0=2*Math.PI*i/N,a1=2*Math.PI*(i+1)/N,am=(a0+a1)/2;
+      const mx=KC_TT.x+R*Math.cos(am),mz=KC_TT.z+R*Math.sin(am);
+      if(open(mx,mz)||!floorAt(mx,mz))continue;                                                              // 開口の上・床の外は描かない
+      const b=pos.length/3;
+      for(const a of [a0,a1])for(const rr of [R-w/2,R+w/2])pos.push(KC_TT.x+rr*Math.cos(a),0.005,KC_TT.z+rr*Math.sin(a));
+      idx.push(b,b+2,b+1,b+1,b+2,b+3);}
+    const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));gg.setIndex(idx);gg.computeVertexNormals();
+    const ring=new THREE.Mesh(gg,new THREE.MeshStandardMaterial({color:0xe8b324,roughness:0.7,side:THREE.DoubleSide}));ring.receiveShadow=true;scene.add(ring);}
   // コイルカー走行路(床の開口 → 床の外は GL の浅い溝)
   for(const c of CAR_PITS){const w=2*CAR_PIT_HW,D=CAR_PIT_D,L=c.z1-c.z0,cz=(c.z0+c.z1)/2,L1=c.zEdge-c.z0,c1=(c.z0+c.zEdge)/2;
     const L2=c.z1-c.zEdge,c2=(c.zEdge+c.z1)/2,D2=D+GL_Y;
@@ -107,7 +132,7 @@ const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
 /* =========================================================
  * 操作盤(オペレータコンソール)
  * =======================================================*/
-function buildConsole(cx,cz){
+function buildConsole(cx,cz,w,d){                 // w×d: 配置図の操作盤の外形(机の本体 1.9×0.8 をこの大きさに合わせる)
   // GP(グラフィックパネル)画面テクスチャ — ラインミミック+数値表示
   const gpTex=canvasTex(512,300,(g,w,h)=>{
     g.fillStyle="#071019";g.fillRect(0,0,w,h);
@@ -174,7 +199,7 @@ function buildConsole(cx,cz){
 
   // 操作員はライン(-Z)を向いて操作 → 操作器・GP画面は操作員側(+Z)を向く
   const ANG=0.42;
-  const desk=new THREE.Group();desk.position.set(cx,0,cz);scene.add(desk);
+  const desk=new THREE.Group();desk.position.set(cx,0,cz);desk.scale.set(w/1.9,1,d/0.8);scene.add(desk);
   // キャビネット(背側寄り・浅め) — 前列操作器の真下に潜り込まない深さに
   addBox(1.86,0.9,0.46,M.paint,0,0.45,-0.16,desk);
   addBox(1.9,0.05,0.5,M.frame,0,0.9,-0.16,desk);
@@ -198,18 +223,18 @@ function buildConsole(cx,cz){
   estop(top,0.66,0.13);                                      // 非常停止(右)
 }
 // 操作盤は配置図どおり操作側(+Z)に2基: 入側(アンコイラ〜レベラー付近)と出側(テンション〜デフ付近)
-buildConsole(-10.1,2.45);
-buildConsole(9.85,2.55);
+buildConsole(-9.893,2.553,1.053,0.515);          // 入側: 図の □ 1053×515
+buildConsole(9.828,2.729,1.684,0.742);           // 出側: 図の □ 1684×742
 
 /* =========================================================
  * 油圧ユニット(配置図の4基 — 反操作側 −Z)
  * タンク+電動ポンプ+ヒートエクスチェンジャ+配管立上り
  * =======================================================*/
 (function buildHydraulicUnits(){
-  const units=[[-2.64,-4.93,1.35,0.9],[2.41,-4.93,1.0,0.9],[10.34,-3.03,0.5,0.35],[11.58,-4.72,0.62,0.8]];   // 配置図の位置・大きさ
+  const units=[[-2.664,-4.954,1.342,0.865],[2.403,-4.963,0.884,0.845],[10.280,-3.646,0.452,0.351],[11.553,-4.665,0.534,0.742]];   // 配置図の位置・大きさ(1.png で線に合わせた・床の縁の内側)
   for(const [x,z,w,d] of units){
-    addBox(w+0.1,0.08,d+0.1,M.frame,x,0.04,z,scene,false);            // ベース
-    addBox(w,0.75,d,M.paint,x,0.47,z);                                // 油タンク
+    addBox(w,0.08,d,M.frame,x,0.04,z,scene,false);                    // ベース(図の外形)
+    addBox(w-0.08,0.75,d-0.08,M.paint,x,0.47,z);                      // 油タンク
     addCylY(Math.min(w,d)*0.2,Math.min(w,d)*0.55,M.paintDark,x-w*0.25,0.85+Math.min(w,d)*0.275,z,scene,16);  // モーター(縦形)
     addBox(w*0.28,0.22,d*0.35,M.steel,x+w*0.22,0.96,z);               // ポンプ・弁ブロック
     addCylY(0.03,1.2,M.steel,x+w*0.3,1.45,z+d*0.3,scene,8);          // 配管立上り

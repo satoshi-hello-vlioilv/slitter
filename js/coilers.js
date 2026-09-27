@@ -23,7 +23,7 @@ const uncGroup=(function(){
   const coil=addCylZ(1,1.2,coilMats(),0,0,0,g,48);
   spin(g,()=>st.ru,-1);
   // 外側支持(配置図: 上流側 x −14.95〜−13.59・z 0.64〜1.70 の台から軸をマンドレル先端 z=1.28 へ伸ばす)
-  const sx=UNC_X-1.65,sz=1.28,arm=UNC_X-sx;                                 // 柱は床の縁(x −14.59)の内側
+  const sx=UNC_X-1.63,sz=1.19,arm=UNC_X-sx;                              // 図の支持台 z 0.66〜1.73 の中心                                 // 柱は床の縁(x −14.59)の内側
   addBox(0.6,0.22,0.6,M.frame,sx,0.11,sz);addBox(0.36,UNC_Y+0.45,0.36,M.paint,sx,(UNC_Y+0.45)/2,sz);
   addBox(arm,0.3,0.32,M.paint,sx+arm/2,UNC_Y,sz);addBox(0.52,0.62,0.30,M.paintDark,UNC_X,UNC_Y,sz);
   coilSkid(-14.26,-13.62,2.03,6.08);
@@ -46,7 +46,7 @@ const uncGroup=(function(){
   addCylZ(0.19,0.012,M.steel,x,y,-0.866,scene,40);            // 前面の軸受シール(カラー φ250 の外)
   addCylZ(0.27,1.12,M.paintDark,13.73,h+0.27,-3.47,scene,20);  // 主モーター(本体上・軸 z)
   addBox(1.03,1.1-GL_Y,0.71,M.paint,14.68,GL_Y+(1.1-GL_Y)/2,-4.655);   // 奥の駆動ユニット(GL 基礎)
-  coilSkid(14.62,15.52,1.95,5.85);})(REC_X,REC_Y);
+  coilSkid(14.62,15.50,1.98,5.88);})(REC_X,REC_Y);
 const recGroup=new THREE.Group();recGroup.position.set(REC_X,REC_Y,0);scene.add(recGroup);
 spin(recGroup,()=>st.rr,-1);
 // リールサポート(スイング開閉式) — コイルカーがラインに直角(+Z)から侵入できるよう、縦軸まわりに

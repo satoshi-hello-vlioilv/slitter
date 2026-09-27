@@ -95,7 +95,8 @@ const KC=(function(){
   const world=new T.Group(),pivot=new T.Group(),deck=new T.Group(),g=new T.Group(),rig=new T.Group();
   const fix=new T.Group(),stand=new T.Group(),drive=new T.Group(),armU=new T.Group(),armL=new T.Group();
   root.add(world,pivot,fix,drive);pivot.add(deck,g);g.add(rig,armU,armL);fix.add(stand);
-  pivot.position.x=MACH.ttX;
+  // テーブル中心はレールの線から横(root z)に ttLat ずれる。台車は甲板の上でも線上(root z=0)に載る
+  pivot.position.set(MACH.ttX,0,MACH.ttLat);g.position.z=-MACH.ttLat;
   g.scale.x=-1;rig.scale.x=-1;       // 軸の上の物だけ写し返す(計算のOS端 → 軸端部スタンドの側)
   const arm=(y)=>(y>0?armU:armL);
   // 上下アーバーは刃の周速=ライン速度で回る(上軸の下面・下軸の上面が帯板と同じ向きに進む)。
@@ -357,8 +358,9 @@ const KC=(function(){
    * 床は工場の床スラブ(回転テーブルのピットは factory.js が開口を抜いてある)。
    * ====================================================*/
   function site(m){
-    const M=MACH, W=world, floorY=m.bedTop-M.floorDrop;
-    const tR=KC_TT_R, sepX0=M.ttX+tR+M.sepGap, sepX1=sepX0+M.sepW;
+    const M=MACH, W=world, floorY=m.bedTop-M.floorDrop, tR=KC_TT_R, lat=M.ttLat;
+    // 着地土台は配置図の区画(root: x=ライン中心からの距離・z=横)
+    const LD=KC_TT.land, sepX0=LD.z0*1000, sepX1=LD.z1*1000, sepZ=(LD.x0+LD.x1)*500, sepD=(LD.x1-LD.x0)*1000;
     const steelD=matOf("steelD",{color:"#8f99a4",metalness:.7,roughness:.3});
     const rail=matOf("rail",{color:"#7b858f",metalness:.68,roughness:.35});
     const dark=matOf("dark",{color:"#39424e",metalness:.56,roughness:.38});
@@ -366,6 +368,7 @@ const KC=(function(){
     const blueD=matOf("blueD",{color:PAINT.dark,metalness:.18,roughness:.62});
     const blueL=matOf("blueL",{color:PAINT.light,metalness:.18,roughness:.54});
     const pitM=matOf("pitWall",{color:"#4e545b",metalness:.05,roughness:.95});
+    const plateM=matOf("plate",{color:"#858e97",metalness:.55,roughness:.5,side:T.DoubleSide});
     const bx=(list,mat,o)=>{const b=batch(G.box,mat,list);if(b)(o||W).add(b);};
     const railRun=(o,x0,x1,z)=>{const len=x1-x0,cx=(x0+x1)/2;if(len<=1)return;
       bx([{x:cx,y:floorY+9,z,l:len,r:18,d:250}],steelD,o);
@@ -374,34 +377,43 @@ const KC=(function(){
       const n=Math.max(2,Math.round(len/620)),tie=[];
       for(let i=0;i<=n;i++)tie.push({x:x0+len*i/n,y:m.railTop-31,z,l:74,r:6,d:230});
       bx(tie,dark,o);};
-    // 床のレール: ライン位置の台車の駆動側の端から回転テーブルの縁まで
+    // 甲板の縁までの距離(横 d の線上)。レールは縁の 10 手前で切る(甲板のレールと向かい合わせ)
+    const edge=d=>Math.sqrt(Math.max(0,tR*tR-d*d));
+    // 床のレール: ライン位置の台車の駆動側の端から甲板の縁まで(ピット口の固定の縁板の上も通る)
     const rx0=m.x0-150;
-    for(const s of [-1,1])railRun(W,rx0,M.ttX-tR-30,s*M.railZ);
+    for(const s of [-1,1]){const z=s*M.railZ;railRun(W,rx0,M.ttX-edge(z-lat)-10,z);}
     bx([{x:rx0-40,y:floorY+60,z:0,l:80,r:120,d:2*M.railZ+260}],matOf("stop",{color:"#e8b324",metalness:.2,roughness:.6}));   // 車止め
-    // 回転テーブル: ピット縁(床側・回らない)+ピットの壁と底 + 甲板(台車と一緒に回る)
-    const pit=new T.Mesh(G.annulus,steelD);pit.position.set(M.ttX,floorY+4,0);pit.scale.set(tR+190,1,tR+190);
-    pit.receiveShadow=true;W.add(pit);
+    // ピット口(図の正方形・固定)。甲板の外の四隅は縁板で塞ぐ(床と同じ高さ)
+    {const hx=KC_TT.hz*1000,hz=KC_TT.hx*1000,sh=new T.Shape();       // root x ↔ 図の z / root z ↔ 図の x
+      sh.moveTo(M.ttX-hx,-(lat-hz));sh.lineTo(M.ttX+hx,-(lat-hz));sh.lineTo(M.ttX+hx,-(lat+hz));sh.lineTo(M.ttX-hx,-(lat+hz));sh.closePath();
+      const h=new T.Path();h.absarc(M.ttX,-lat,tR+12,0,Math.PI*2,true);sh.holes.push(h);
+      const gg=new T.ShapeGeometry(sh,72);gg.rotateX(-Math.PI/2);
+      const pl=new T.Mesh(gg,plateM);pl.position.y=floorY+1;pl.receiveShadow=true;W.add(pl);
+      const fr=[];                                                     // 口の縁の山形鋼
+      for(const s of [-1,1]){fr.push({x:M.ttX+s*hx,y:floorY-3,z:lat,l:40,r:10,d:2*hz+40});fr.push({x:M.ttX,y:floorY-3,z:lat+s*hz,l:2*hx,r:10,d:40});}
+      bx(fr,steelD);}
+    // 回転テーブル: ピットの壁と底(甲板の下)+ 甲板(台車と一緒に回る)
     const wall=new T.Mesh(new T.CylinderGeometry(1,1,1,96,1,true),                           // 内側から見る壁
       matOf("pitWallIn",{color:"#4e545b",metalness:.05,roughness:.95,side:T.BackSide}));
-    wall.position.set(M.ttX,floorY-80,0);wall.scale.set((tR+190)*0.87,160,(tR+190)*0.87);W.add(wall);
-    const floorDisc=new T.Mesh(G.disc,pitM);floorDisc.position.set(M.ttX,floorY-165,0);floorDisc.scale.set((tR+190)*0.87,10,(tR+190)*0.87);
+    wall.position.set(M.ttX,floorY-80,lat);wall.scale.set(tR+12,160,tR+12);W.add(wall);
+    const floorDisc=new T.Mesh(G.disc,pitM);floorDisc.position.set(M.ttX,floorY-165,lat);floorDisc.scale.set(tR+12,10,tR+12);
     floorDisc.receiveShadow=true;W.add(floorDisc);
     const dk=new T.Mesh(G.disc,steelD);dk.position.set(0,floorY-63,0);dk.scale.set(tR,130,tR);dk.receiveShadow=true;deck.add(dk);
     const rim=new T.Mesh(G.ringGeo,steelD);rim.position.set(0,floorY+3,0);rim.scale.set(tR-6,tR-6,tR-6);deck.add(rim);
-    for(const s of [-1,1]){const h2=Math.sqrt(Math.max(0,tR*tR-Math.pow(s*M.railZ,2)))-30;railRun(deck,-h2,h2,s*M.railZ);}
+    for(const s of [-1,1]){const z=-lat+s*M.railZ,h2=edge(z)-10;railRun(deck,-h2,h2,z);}   // 甲板のレール(台車の線上)
     bx([{x:0,y:floorY+4,z:0,l:180,r:6,d:180}],dark,deck);
     if(D3.rigGeo)D3.rigGeo.deckTop=floorY-63+65;
     // 着地土台。テーブルの外に据え付けてあり、送り出した軸端部がここに降りる
-    const cx=(sepX0+sepX1)/2,len=M.sepW,bedY=m.bedTop-M.baseH/2;
-    bx([{x:cx,y:bedY,z:0,l:len,r:M.baseH,d:M.baseD}],blue);
-    bx([{x:cx,y:bedY-M.baseH/2-58,z:0,l:len-60,r:116,d:M.baseD-150}],blueD);
-    bx([{x:cx,y:m.bedTop+6,z:0,l:len-40,r:12,d:M.baseD-40}],blueL);
+    const cx=(sepX0+sepX1)/2,len=sepX1-sepX0,bedY=m.bedTop-M.baseH/2;
+    bx([{x:cx,y:bedY,z:sepZ,l:len,r:M.baseH,d:sepD}],blue);
+    bx([{x:cx,y:bedY-M.baseH/2-58,z:sepZ,l:len-60,r:116,d:sepD-150}],blueD);
+    bx([{x:cx,y:m.bedTop+6,z:sepZ,l:len-40,r:12,d:sepD-40}],blueL);
     const leg=[],pad=[];
-    for(const sx of [sepX0+110,sepX1-110])for(const s of [-1,1]){const fz=s*(M.baseD/2-130);
+    for(const sx of [sepX0+110,sepX1-110])for(const s of [-1,1]){const fz=sepZ+s*(sepD/2-130);
       leg.push({x:sx,y:(m.bedTop-116+floorY+30)/2,z:fz,l:160,r:(m.bedTop-116)-(floorY+30),d:150});
       pad.push({x:sx,y:floorY+16,z:fz,l:210,r:32,d:200});}
     bx(leg,dark);bx(pad,steelD);
-    bx([{x:sepX0+26,y:m.bedTop+28,z:0,l:40,r:56,d:M.baseD-120}],steelD);
+    bx([{x:sepX0+26,y:m.bedTop+28,z:sepZ,l:40,r:56,d:sepD-120}],steelD);
     return{tR,sepX0,sepX1,floorY};}
 
   /* ======================================================
@@ -471,10 +483,11 @@ const KC=(function(){
   const ease=k=>(k<0.5?2*k*k:1-2*(1-k)*(1-k));
   function pose(){
     const bcx=D3.bcx==null?0:D3.bcx;
-    const carX=THREE.MathUtils.lerp(-MACH.ttX,-bcx,ease(D3.travel));
+    const carX=THREE.MathUtils.lerp(-MACH.ttX,-bcx+MACH.ttC,ease(D3.travel));   // テーブル中心より ttC 先で止まる
     g.position.x=carX;fix.position.x=MACH.ttX+carX;              // 走行には軸端部も付いていく
     stand.position.x=ease(D3.open)*MACH.travel;                   // 軸端部を送り出す(着地土台へ)
-    pivot.rotation.y=Math.PI*ease(D3.rot);                        // 台車を半回転
+    pivot.rotation.y=-Math.PI*ease(D3.rot);                       // 台車を半回転(台車はテーブル中心から横にずれて載るので、
+                                                                  // 外へ出た角が着地土台・外した軸端部の側を通らない向きに回す)
     for(const s of sleeves)s.position.x=-(1-ease(D3.cpl))*220;  // 継手スリーブを引いて外す
     placeTags();}
 

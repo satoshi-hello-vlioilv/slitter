@@ -11,7 +11,7 @@
  * できない操作は止めて、何を先にするかを言う(判定は blockReason の1箇所)。
  * =======================================================*/
 const KX=(function(){
-  const D=KC.D3, DUR={cpl:1.6,travel:6.0,open:2.5,rot:4.0};
+  const D=KC.D3, DUR={cpl:1.6,travel:10.0,open:2.5,rot:4.0};        // 走行はテーブルまで約 6.2m
   const q=[]; let cur=null, msg="", msgT=0;
   const near=(v,t)=>Math.abs(v-t)<1e-3;
   const busy=()=>!!cur||q.length>0;

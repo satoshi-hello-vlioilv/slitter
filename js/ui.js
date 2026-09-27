@@ -83,7 +83,7 @@ rngShape.addEventListener("input",()=>{document.getElementById("shapeVal").textC
   st.shapeI=parseInt(rngShape.value,10);updateShapeProfile();});
 const CAM={all:[0.5,0.7,1.0,27,0.62,1.02],unc:[-11.4,1.3,1.2,8,0.78,1.10],slit:[0,PL+0.15,0.1,4.2,0.62,1.02],
   loop1:[-3.9,-0.6,0,7.5,0.55,1.0],loop2:[5.5,-0.6,0,8,0.55,1.0],md:[9.4,PL,0,6,0.70,1.02],rec:[13.0,1.3,1.0,8,0.72,1.08],
-  scrap:[2.1,-0.25,0.9,5.2,0.95,0.92],knife:[0,0.6,2.2,8.5,0.62,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3],
+  scrap:[2.1,-0.25,0.9,5.2,0.95,0.92],knife:[-2.3,0.4,4.4,10.5,0.50,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3],
   reel:[REC_X,REC_Y-0.05,0.35,3.3,0.62,1.16]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});

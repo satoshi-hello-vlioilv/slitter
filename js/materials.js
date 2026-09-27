@@ -44,7 +44,14 @@ function concreteTex(rx,ry){const t=concreteTexBase.clone();t.needsUpdate=true;t
 const hazardTex=canvasTex(128,128,(g,w,h)=>{g.fillStyle="#16191d";g.fillRect(0,0,w,h);g.fillStyle="#e8b324";
   for(let x=-h;x<w+h;x+=44){g.beginPath();g.moveTo(x,0);g.lineTo(x+22,0);g.lineTo(x+22-h,h);g.lineTo(x-h,h);g.closePath();g.fill();}});
 
+// 縞鋼板(チェッカープレート)— 斜めの突起を千鳥に並べる。box の UV は面ごとに 0〜1 なので 1面に 12×12 個
+const checkerTex=canvasTex(256,256,(g,w,h)=>{g.fillStyle="#8b939b";g.fillRect(0,0,w,h);
+  const n=12,s=w/n;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const cx=(i+0.5)*s,cy=(j+0.5)*s,a=((i+j)%2?1:-1)*Math.PI/4;
+    g.save();g.translate(cx,cy);g.rotate(a);g.fillStyle="rgba(40,46,52,0.55)";g.fillRect(-s*0.34,-s*0.07+1.2,s*0.68,s*0.14);
+    g.fillStyle="rgba(215,222,228,0.75)";g.fillRect(-s*0.34,-s*0.07,s*0.68,s*0.12);g.restore();}});
 const M={
+  checker:new THREE.MeshStandardMaterial({map:checkerTex,metalness:0.6,roughness:0.45}),
   strip:new THREE.MeshStandardMaterial({map:stripTex,color:0xeef2f5,metalness:0.45,roughness:0.5,side:THREE.DoubleSide}),
   coilSide:new THREE.MeshStandardMaterial({map:stripTex,color:0xd2d8dd,metalness:0.8,roughness:0.32}),
   coilCap:new THREE.MeshStandardMaterial({map:coilCapTex,metalness:0.7,roughness:0.42}),
