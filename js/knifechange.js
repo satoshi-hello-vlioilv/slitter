@@ -9,11 +9,14 @@
  *            → 駆動継手を外す → ①ラインの台車を引き出す(空いた受け口へ)
  *            → ③テーブルを 180° 回す(待機台車がレールの線に並ぶ)→ ①待機台車をラインへ入れる
  *            → 駆動継手を入れる → ループテーブル閉 → 通板 → ループテーブル復帰 → 運転再開
- *   待機台車の組み替え: ②軸端部を外す(受け口の着地土台へ送り出す)→ 条数を選んで組む → ②軸端部を戻す
+ *   待機台車の組み替え: ②軸端部を外す(受け口の着地土台へ送り出す)→ 刃組の組み替え → ②軸端部を戻す
+ * 刃組を組み替えられるのはラインの外(回転テーブルの段取り位置)に出ている台車だけ。ラインの台車の刃組は
+ * 変えられないので、スリット条件(条数・板厚)を変えると段取り替えになる(request):
+ *   待機台車をその刃組に組み替える(運転を続けたまま)→ ライン停止 → 通板材の抜取り → 入れ替え → 通板 → 運転再開
  * できない操作は止めて、何を先にするかを言う(判定は blockReason の1箇所)。
  * =======================================================*/
 const KX=(function(){
-  const CARS=KC.CARS, SH=KC.SH, DUR={cpl:1.6,travel:10.0,open:2.5,rot:6.0};   // 走行はテーブルまで約 6.2m
+  const CARS=KC.CARS, SH=KC.SH, DUR={cpl:1.6,travel:10.0,open:2.5,rot:6.0,unstack:3.5,stack:3.5};   // 走行はテーブルまで約 6.2m
   const q=[]; let cur=null, msg="", msgT=0;
   const near=(v,t)=>Math.abs(v-t)<1e-3;
   const busy=()=>!!cur||q.length>0;
@@ -64,9 +67,23 @@ const KX=(function(){
   const DECOUPLE=()=>tween(SH,"cpl",0,"駆動継手を外す");
   const COUPLE=()=>tween(SH,"cpl",1,"駆動継手を入れる");
   const PULL=c=>tween(c.D,"travel",1,`①${c.name}を引き出す(レール走行)`,`${c.name}を回転テーブルの受け口へ引き出しました。`,c);
-  // ラインへ入れ始めた台車がラインの台車になる(条数・帯板・リコイラのスプールを合わせ直すのは api.onSwap)
+  // ラインへ入れ始めた台車がラインの台車になる(条数・板厚・帯板・リコイラのスプールを合わせ直すのは api.onLine)
   const PUSH=c=>tween(c.D,"travel",0,`①${c.name}をラインへ入れる(レール走行)`,`${c.name}をライン位置へ入れました。`,c,
-    {start(){if(KC.active!==c){KC.setActive(c);if(api.onSwap)api.onSwap(c);}}});
+    {start(){if(KC.active!==c)KC.setActive(c);if(api.onLine)api.onLine(c);}});
+  /* 刃組の組み替え(段取り位置で軸端部を外した台車): 外した OS 端から部材を外していき、
+     新しい刃組を DS 端から順に入れていく。組み替えの中身は start で計算する */
+  const RESET=(c,N,thick)=>{let ctx=null,ph=0,t=0,L0=0,L1=0;
+    return{label:`刃組の組み替え(${c.name}: ${c.N}条 → ${N}条)`,car:c,
+      start(){ctx=KC.solveFor(N,thick,c.i);ph=0;t=0;L0=c.D.ctx.res.A.arborLen/2+400;L1=ctx.res.A.arborLen/2+400;},
+      run(dt){t+=dt;
+        if(ph===0){const k=Math.min(1,t/DUR.unstack);KC.setStack(c,-L0+2*L0*k);if(k<1)return false;
+          KC.rebuildCar(c,ctx);KC.setStack(c,Infinity);ph=1;t=0;return false;}
+        const k=Math.min(1,t/DUR.stack);KC.setStack(c,L1-2*L1*k);return k>=1;},
+      done(){KC.setStack(c,-Infinity);say(`${c.name}を ${c.N}条・板厚 ${thick}mm の刃組に組み替えました。`);}};};
+  const same=(c,N,thick)=>!!c&&c.D.ctx&&c.N===N&&Math.abs(c.D.ctx.st.thick-thick)<1e-6;
+  // 段取り位置の台車をその刃組にする(軸端部を外す → 組み替え → 戻す)。もうその刃組なら軸端部を戻すだけ
+  const SETUP=(c,N,thick)=>same(c,N,thick)?(near(c.D.open,0)?[]:[CLOSE(c)]):
+    [...(near(c.D.open,1)?[]:[OPEN(c)]),RESET(c,N,thick),CLOSE(c)];
   const OPEN=c=>tween(c.D,"open",1,`②${c.name}の軸端部を外す(着地土台へ送り出し)`,
     `${c.name}の軸端部を 330mm 送り出しました。軸の先が剥き出しで、刃組を組み替えられます。`,c);
   const CLOSE=c=>tween(c.D,"open",0,`②${c.name}の軸端部を戻す`,`${c.name}の軸端部を戻しました。`,c);
@@ -121,6 +138,30 @@ const KX=(function(){
       open:o?[near(o.D.open,1)?"②軸端部戻し":"②軸端部外し",o.name]:["②軸端部外し",""],
       spin:["③回す","テーブル180°"]};}
 
+  /* スリット条件の変更 = 段取り替え。ラインの台車は組み替えられないので、段取り位置の台車を
+     その刃組にしてから入れ替える(ラインが空なら、並んでいる台車かもう一方を組んで入れる)。
+     何もしなくてよい / できないときは false(理由は note) */
+  function request(N,thick){
+    if(busy()){say("段取りの途中です。終わってから変えてください。");return false;}
+    if(st.state==="DECEL"||st.state==="CHANGE"){say("コイル交換中は段取り替えできません。");return false;}
+    if(aligned()<0){say("テーブルが回りきっていません。");return false;}
+    const L=lineCar(), list=[];
+    if(L){
+      if(same(L,N,thick)){say(`ラインの${L.name}はもう ${N}条・板厚 ${thick}mm の刃組です。`);return false;}
+      const S=other(L);
+      list.push(...SETUP(S,N,thick),...OUT_PRE(),PULL(L),ROT(),PUSH(S),...IN_POST());
+      say(`段取り替え: ${L.N}条 → ${N}条。${same(S,N,thick)?`${S.name}はその刃組なので入れ替えます。`:`${S.name}をライン外で組み替えてから入れ替えます。`}`);}
+    else{const R=railCar(), O=opCar();
+      if(same(R,N,thick))list.push(PUSH(R),...IN_POST());
+      else list.push(...SETUP(O,N,thick),ROT(),PUSH(O),...IN_POST());
+      say(`段取り替え: ${N}条・板厚 ${thick}mm の台車をラインへセットします。`);}
+    run(list);return true;}
+  /* 待機台車(段取り位置・軸端部を外してある)を手で組み替える。ラインは止めない */
+  function setupStandby(N){const o=opCar();
+    if(busy()||!o||!near(o.D.open,1))return false;
+    if(same(o,N,o.D.ctx.st.thick))return false;
+    run([RESET(o,N,o.D.ctx.st.thick)],true);return true;}
+
   function step(dt){
     if(msgT>0){msgT-=dt;if(msgT<=0)msg="";}
     for(let guard=0;guard<4;guard++){
@@ -138,7 +179,7 @@ const KX=(function(){
     const a=aligned();
     return (a<0?"回転テーブル(旋回中)":a===D.slot?"回転テーブル(レールの線)":"回転テーブル(段取り位置)")+
       (near(D.open,1)?"・軸端部外し":"");}
-  const api={act,toggleAll,step,blockReason,where,plan,busy,lineBusy,inLine,lineCar,railCar,opCar,onSwap:null,
+  const api={act,toggleAll,request,setupStandby,step,blockReason,where,plan,busy,lineBusy,inLine,lineCar,railCar,opCar,onLine:null,
     get note(){return msg;}, get label(){return cur?cur.label:"";}, get car(){return cur?cur.car:null;}};
   return api;
 })();

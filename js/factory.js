@@ -62,12 +62,13 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
     addBox(w,0.1,2*PIT_HZ,M.pit,cx,PIT_FLOOR-0.05,0,scene,false).receiveShadow=true;
     for(const sgn of [-1,1])addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,sgn*(PIT_HZ+0.11));  // 開口縁の注意帯(床上)
   }
-  // 回転テーブルの回転範囲(安全帯の円)の中は、床に立ち上がる物を置かない(回る枠が上を通る)。
-  // 線分 (x0,z0)+t(ux,uz)・t∈[0,L] のうち、円の外の区間(半径 sweepR+0.04 = 注意帯の半幅 0.07 − 安全帯の半幅 0.03)
-  function outsideSweep(x0,z0,ux,uz,L){const R=KC_TT.sweepR+0.04,dx=x0-KC_TT.x,dz=z0-KC_TT.z;
-    const b=dx*ux+dz*uz,c=dx*dx+dz*dz-R*R,D=b*b-c;if(D<=0)return [[0,L]];
-    const t1=-b-Math.sqrt(D),t2=-b+Math.sqrt(D),out=[];
-    if(t1>0.05)out.push([0,Math.min(L,t1)]);if(t2<L-0.05)out.push([Math.max(0,t2),L]);return out;}
+  // スクラップピットの縁のうち開いている区間(操作側 z ≥ cover.z0 は蓋で塞いである)。
+  // 線分 (x0,z0)+t(ux,uz)・t∈[0,L] の z < cover.z0 の区間を返す
+  function openSpan(x0,z0,ux,uz,L){const zc=SCRAP_PIT.cover.z0;
+    if(Math.abs(uz)<1e-6)return z0<zc?[[0,L]]:[];
+    const t=(zc-z0)/uz;
+    if(uz>0)return t<=0?[]:[[0,Math.min(L,t)]];
+    return t>=L?[]:[[Math.max(0,t),L]];}
   // スクラップワインダーのピット(図の L 字)。出側テーブルの側枠はピットに渡した梁で受ける
   {const P=SCRAP_PIT,poly=P.poly,D=-P.floor+0.05,n=poly.length;
     const inside=(x,z)=>{let c=false;for(let i=0,j=n-1;i<n;j=i++){const [xi,zi]=poly[i],[xj,zj]=poly[j];
@@ -77,17 +78,37 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
       const w=addBox(Math.abs(ux)>0.5?L+0.12:0.06,D,Math.abs(ux)>0.5?0.06:L+0.12,M.pit,mx+nx*0.03,-D/2,mz+nz*0.03);
       const hx=mx+nx*0.11,hz=mz+nz*0.11;
       if(floorAt(hx-ux*L/2,hz-uz*L/2)&&floorAt(hx+ux*L/2,hz+uz*L/2))
-        for(const [a,b] of outsideSweep(hx-ux*L/2,hz-uz*L/2,ux,uz,L)){const l=b-a,c=(a+b)/2-L/2;      // 開口縁の注意帯
+        for(const [a,b] of openSpan(x0,z0,ux,uz,L)){const l=b-a,c=(a+b)/2-L/2;                        // 開口縁の注意帯(開いている区間)
           addBox(Math.abs(ux)>0.5?l:0.14,0.022,Math.abs(ux)>0.5?0.14:l,M.hazard,hx+ux*c,0.012,hz+uz*c);}}
     addBox(P.x1-P.x0,0.1,3.676-P.z0,M.pit,(P.x0+P.x1)/2,P.floor-0.05,(P.z0+3.676)/2,scene,false).receiveShadow=true;
     addBox(5.33-P.x0,0.1,P.z1-3.676,M.pit,(P.x0+5.33)/2,P.floor-0.05,(3.676+P.z1)/2,scene,false).receiveShadow=true;
     for(const s of [-1,1])addBox(P.x1-P.x0+0.1,0.16,0.16,M.frame,(P.x0+P.x1)/2,-0.08,s*(STRIP_W/2+0.27));}  // 梁(テーブル側枠の下)
+  /* 操作側の開口の蓋(足場)— 縞鋼板 t9 のパネルを受け梁(H150)に載せ、上面は床 +4mm。
+     ライン側の縁は出側テーブル側枠の梁の外面から。屑巻取機の真上のパネルは取手付きの点検蓋。
+     縁には注意帯と手すり(ピット手すりの表示に連動)。SG2/SG3 の柱は蓋を貫いて立つ。 */
+  {const P=SCRAP_PIT,z0=P.cover.z0,HT=P.cover.hatch,T=0.009,top=0.004,xe=5.33,ze=3.676;
+    const xs1=[P.x0,HT.x0,HT.x1,P.x1], xs2=[P.x1,4.355,xe], zs=[z0,HT.z1,2.75,ze,4.58,P.z1];   // パネル割り(点検蓋も1枚のパネル)
+    const panel=(x0,z0p,x1,z1)=>{const w=x1-x0-0.004,d=z1-z0p-0.004,g=new THREE.BoxGeometry(w,T,d),uv=g.attributes.uv;
+      for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/1.08,uv.getY(i)*d/1.08);                    // 約 90mm に1つの模様
+      const m=new THREE.Mesh(g,M.checker);m.position.set((x0+x1)/2,top-T/2,(z0p+z1)/2);m.receiveShadow=true;m.castShadow=true;scene.add(m);};
+    for(let j=0;j<zs.length-1;j++){
+      for(let i=0;i<xs1.length-1;i++)panel(xs1[i],zs[j],xs1[i+1],zs[j+1]);
+      if(zs[j]>=ze-1e-6)for(let i=0;i<xs2.length-1;i++)panel(xs2[i],zs[j],xs2[i+1],zs[j+1]);}
+    const by=top-T-0.075;                                                                  // 受け梁(パネルの継ぎ目の下・ピットの壁から壁へ)
+    for(const z of zs.slice(1,-1))addBox((z>=ze-1e-6?xe:P.x1)-P.x0,0.15,0.10,M.frame,((z>=ze-1e-6?xe:P.x1)+P.x0)/2,by,z,scene,false);
+    for(const x of [HT.x0,HT.x1])addBox(0.08,0.15,P.z1-z0,M.frame,x,by,(z0+P.z1)/2,scene,false);
+    addBox(0.08,0.15,P.z1-ze,M.frame,4.355,by,(ze+P.z1)/2,scene,false);
+    const edge=[[P.x0,z0,P.x0,P.z1],[P.x1,z0,P.x1,ze],[P.x1,ze,xe,ze],[xe,ze,xe,P.z1],[P.x0,P.z1,xe,P.z1]];   // 縁の受け(壁の天端の山形鋼)
+    for(const [ax,az,bx,bz] of edge){const L=Math.hypot(bx-ax,bz-az);
+      addBox(Math.abs(bx-ax)>0.01?L:0.05,0.05,Math.abs(bx-ax)>0.01?0.05:L,M.frame,(ax+bx)/2,top-T-0.025,(az+bz)/2,scene,false);}
+    const hx=(HT.x0+HT.x1)/2, hz=(z0+HT.z1)/2;                                             // 点検蓋の取手(屑コイルの払出し口)
+    for(const s of [-1,1])addBox(0.16,0.018,0.03,M.steel,hx+s*0.30,top+0.009,hz,scene,false);
+    addBox(P.x1-P.x0,0.022,0.14,M.hazard,(P.x0+P.x1)/2,top+0.011,z0+0.18,scene,false);}   // 縁の注意帯(手すりの内側)
   // 回転テーブルの回転範囲の安全帯(図の外側の円)。枠(正方形の甲板・4つの張出し)は cutter.js で一緒に回る
   {const R=KC_TT.sweepR,N=260,pos=[],idx=[],w=0.06;
-    const open=(x,z)=>SCRAP_PIT.poly&&x>SCRAP_PIT.x0-0.07&&x<5.40&&z>SCRAP_PIT.z0-0.07&&z<SCRAP_PIT.z1+0.07&&(x<SCRAP_PIT.x1+0.07||z>3.60);
     for(let i=0;i<N;i++){const a0=2*Math.PI*i/N,a1=2*Math.PI*(i+1)/N,am=(a0+a1)/2;
       const mx=KC_TT.x+R*Math.cos(am),mz=KC_TT.z+R*Math.sin(am);
-      if(open(mx,mz)||!floorAt(mx,mz))continue;                                                              // 開口の上・床の外は描かない
+      if(!floorAt(mx,mz))continue;                                                                           // 床の外は描かない(ピットの角は蓋の上)
       const b=pos.length/3;
       for(const a of [a0,a1])for(const rr of [R-w/2,R+w/2])pos.push(KC_TT.x+rr*Math.cos(a),0.005,KC_TT.z+rr*Math.sin(a));
       idx.push(b,b+2,b+1,b+1,b+2,b+3);}
@@ -121,6 +142,11 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
  * =======================================================*/
 const fenceGroup=new THREE.Group(); scene.add(fenceGroup);
 (function buildPitFence(){
+  // スクラップピットの操作側の蓋(足場)のライン側の縁 — 側枠の支柱の台板(z≤0.98)と SG2/SG3 の柱(z≥1.12)のあいだ
+  {const P=SCRAP_PIT,FZ=P.cover.z0+0.08,H=1.08,top=0.004,w=P.x1-P.x0,cx=(P.x0+P.x1)/2;
+    for(const x of [P.x0+0.03,cx,P.x1-0.03])addBox(0.06,H,0.06,M.frame,x,top+H/2,FZ,fenceGroup);
+    for(const ry of [H-0.04,H*0.52])addBox(w,0.045,0.045,M.yellow,cx,top+ry,FZ,fenceGroup);
+    addBox(w,0.15,0.028,M.yellow,cx,top+0.075,FZ,fenceGroup);}
   const FZ=1.26, H=1.08;                                   // 柵のz / 手すり高さ
   for(const p of [PIT1,PIT2]){
     const w=p.x1-p.x0, cx=(p.x0+p.x1)/2, n=Math.max(2,Math.round(w/1.5));

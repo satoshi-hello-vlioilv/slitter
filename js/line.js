@@ -234,8 +234,8 @@ makeLabel("リコイラ",REC_X,0,0,{rank:3,follow:p=>p.set(REC_X,REC_Y+Math.max(
 makeLabel("No.1ピット",(PIT1.x0+PIT1.x1)/2,0.02,PIT_HZ,{rank:4});          // ピット開口の操作側の縁
 makeLabel("No.2ピット",(PIT2.x0+PIT2.x1)/2,0.02,PIT_HZ,{rank:5});
 makeLabel("テンションスタンド(MD)",9.60,PL+1.32,0,{rank:6});
-makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24, WND.u,{rank:7});   // 床下(スクラップピット)
-makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24,-WND.u,{rank:7});
+makeLabel("屑巻取機(立軸・横回転)",WND.x,0.02,(SCRAP_PIT.cover.z0+SCRAP_PIT.cover.hatch.z1)/2,{rank:7});   // 操作側は蓋の下 → 点検蓋に付ける
+makeLabel("屑巻取機(立軸・横回転)",WND.x,HTW+0.24,-WND.u,{rank:7});                      // 駆動側は開口から見える(スクラップピット)
 makeLabel("入側シャー",-8.51,PL+1.07,0,{rank:8});
 makeLabel("ラフレベラー",-9.45,PL+0.15,0,{rank:9});
 makeLabel("入側ピンチ",-10.50,PL+1.02,0,{rank:10});

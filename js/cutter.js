@@ -86,6 +86,10 @@ const KC=(function(){
     return m;}
   function clear(o){while(o.children.length){const c=o.children.pop();
     if(c.isInstancedMesh&&c.dispose)c.dispose();}}
+  /* 軸に通す部材の目印(組み替えの見せ方 setStack が読む): まとめ描きは各部材の軸方向位置(DS 端から順)、
+     1個の物はその位置 */
+  const stack=(m,items)=>{if(m)m.userData.xs=items.map(q=>q.x);return m;};
+  const stackAt=(m,x)=>{m.userData.stackX=x;return m;};
 
   /* ---- 入れ物 ----
      root: WaveLog の世界 → ライン / world: 床のレール・車止め(動かない)/ drive: 駆動側の固定設備
@@ -169,21 +173,22 @@ const KC=(function(){
       const plate={x:face+sg*F.plate/2,l:F.plate};
       const gap={x:(face+sg*F.plate+out(F.plate+F.relief))/2,l:F.relief+take};
       const bodyQ={x:out(F.plate+F.relief+F.body/2),l:F.body};
+      const os=sg<0, tag=(m,x)=>os?stackAt(m,x):m;       // OS 端のシートは組み替えのとき最初に外す
       for(const q of [plate,bodyQ]){const m=new T.Mesh(tubeGeo(ro,ri),body);
-        m.position.set(q.x,0,0);m.scale.set(q.l,1,1);m.castShadow=true;m.receiveShadow=true;grp.add(m);}
+        m.position.set(q.x,0,0);m.scale.set(q.l,1,1);m.castShadow=true;m.receiveShadow=true;grp.add(tag(m,q.x));}
       const pistons=[];                                 // ピストン18本(逃げの中で押さえ板と本体をつなぐ)
       for(let i=0;i<F.pistonN;i++){const a=(F.pistonA0+i*360/F.pistonN)*Math.PI/180;
         pistons.push({x:gap.x,y:Math.cos(a)*F.pcd/2,z:Math.sin(a)*F.pcd/2,l:gap.l,r:F.pistonD/2});}
-      const pm=batch(G.cyl,pin,pistons);if(pm)grp.add(pm);npist+=pistons.length;
+      const pm=batch(G.cyl,pin,pistons);if(pm)grp.add(tag(pm,gap.x));npist+=pistons.length;
       for(const sgn of [-1,1]){                          // 加圧装置2か所(外周の窓と加圧スクリュウ M22)
         const ang=Math.atan2(-67,sgn*F.devX),ax=out(F.devAxial);
         const win=new T.Mesh(G.box,hole);
         win.position.set(ax,Math.sin(ang)*(F.devR-F.devH/2+3),Math.cos(ang)*(F.devR-F.devH/2+3));
-        win.rotation.set(-ang+Math.PI/2,0,0);win.scale.set(F.devW,F.devH,F.devT);grp.add(win);
+        win.rotation.set(-ang+Math.PI/2,0,0);win.scale.set(F.devW,F.devH,F.devT);grp.add(tag(win,ax));
         const sc=new T.Mesh(G.cyl,pin);
         sc.position.set(ax,Math.sin(ang)*(F.devR-F.devH),Math.cos(ang)*(F.devR-F.devH));
         sc.quaternion.setFromUnitVectors(new T.Vector3(1,0,0),new T.Vector3(0,Math.sin(ang),Math.cos(ang)));
-        sc.scale.set(8,F.screwD/2,F.screwD/2);grp.add(sc);}
+        sc.scale.set(8,F.screwD/2,F.screwD/2);grp.add(tag(sc,ax));}
       seen.push({y,face,take});});
     D3.fseat={n:seen.length,pistons:npist,w:FSEAT_W,od:F.od,side:sg>0?"DS":"OS",
       faces:seen.map(q=>+q.face.toFixed(3)),take:seen.map(q=>q.take)};}
@@ -333,9 +338,10 @@ const KC=(function(){
     const liner=skin(sh.liner,"liner",{color:"#a8b2bd",metalness:.38,roughness:.46});
     const edge=skin(sh.liner,"linerEdge",{color:"#5d6975",metalness:.42,roughness:.55});
     // 部材は図面どおり内径の開いた輪。上下のアーバーへ分けて入れる(運転中は一緒に回る)
+    // 部材は DS 端から順に並べて持つ(組み替えのとき、外した軸端部の側 = OS 端から外し、DS 端から入れていく)
     const put=(list,ro,ri,mat)=>{if(!mat)return;
       for(const up of [true,false]){const items=list.filter(q=>(q.y>0)===up).map(q=>({x:off(q.x),y:0,l:q.len,r:1,d:1}));
-        const m=batch(tubeGeo(ro,ri),mat,items);if(m)(up?armU:armL).add(m);}};
+        const m=stack(batch(tubeGeo(ro,ri),mat,items.sort((a,b)=>b.x-a.x)),items);if(m)(up?armU:armL).add(m);}};
     const linerR=(+MS.P.spacerOD||240)/2, ringBore=(+MS.P.ringBore||241)/2;
     if(liner){const real=out.liner.filter(q=>!q.filler),ls=real.map(q=>({x:q.x,y:q.y,len:q.sz-0.8}));
       put(ls,linerR,bore,liner);
@@ -354,7 +360,7 @@ const KC=(function(){
         const zc=-((+st.knife||300)/2+40)-90+(+f.length||560)/2;   // 上流端を押さえアングルの背に揃える
         if(mat)for(const up of [true,false]){
           const items=fings.filter(q=>(q.y>0)===up).map(q=>({x:off(q.x),y:(up?1:-1)*(th/2+ft/2),z:zc,l:q.sz-1.0,r:1,d:1}));
-          const m=batch(fingerShapeGeo(f),mat,items);if(m)g.add(m);}}
+          const m=stack(batch(fingerShapeGeo(f),mat,items.sort((a,b)=>b.x-a.x)),items);if(m)g.add(m);}}
       if(out.lube.length){const L0=out.lube[0].lube;
         put(out.lube.map(q=>({x:q.x,y:q.y,len:q.sz-1.0})),L0.od/2,L0.bore/2,
           skin(sh.ring,"lube",{color:COL.lube,metalness:.02,roughness:.9}));}}
@@ -524,8 +530,9 @@ const KC=(function(){
 
   /* 刃組の計算(ラインの条件 → WaveLog の st) */
   const ringHex=od=>BS().ringMeta(MS,IX,od).hex||"#8d97a6";
+  const stripW=N=>Math.floor(EFF_W*1000/N/0.05+1e-9)*0.05;      // 条幅は寸法刻みへ切り下げ(余りは耳へ)
   function solveFor(N,thick,car){
-    const B=BS(), w=Math.floor(EFF_W*1000/N/0.05+1e-9)*0.05;     // 条幅は寸法刻みへ切り下げ(余りは耳へ)
+    const B=BS(), w=stripW(N);
     const mk=()=>{const s=B.defaultState();s.equipment=MS.equipment;s.W=STRIP_W*1000;s.thick=thick;
       s.lots=[{name:"LOT1",w:+w.toFixed(3),n:N}];s.order=[];B.syncOrder(s);B.applyStandards(s,MS);
       const c=B.clearanceFor(MS,s.thick);if(c)s.clr=c;
@@ -550,13 +557,20 @@ const KC=(function(){
       osUpper:A.sign[0]<0, dsUpper:A.sign[n]>0};}
 
   const rebuildAll=()=>{for(const c of CARS)if(c.D.ctx)rebuildCar(c,c.D.ctx);};
+  /* 組み替えの見せ方: 軸方向位置(g/アーバーの局所 x・OS 端 = −)が X より DS 側の部材だけ出す。
+     X を OS 端 → DS 端へ動かすと外していき、DS 端 → OS 端へ戻すと入れていく。X=-Infinity で全部 */
+  function setStack(c,X){
+    const cut=o=>{for(const m of o.children){const xs=m.userData.xs;
+      if(xs){let k=0;while(k<xs.length&&xs[k]>X)k++;m.count=k;m.visible=k>0;}
+      else if(m.userData.stackX!=null)m.visible=m.userData.stackX>X;}};
+    cut(c.armU);cut(c.armL);cut(c.g);}
   return{MS,IX,root,pivot,drive,deck,world,SH,CARS,
     get D3(){return ACTIVE.D;}, get active(){return ACTIVE;},                    // ラインの台車(入っている/最後に入った)
     get standby(){return CARS.find(c=>c!==ACTIVE);},
     setActive(c){ACTIVE=c;use(c);pose();},
     get g(){return ACTIVE.g;}, get rig(){return ACTIVE.rig;}, get armU(){return ACTIVE.armU;},
     get armL(){return ACTIVE.armL;}, get fix(){return ACTIVE.fix;}, get stand(){return ACTIVE.stand;},
-    solveFor, rebuild(ctx){rebuildCar(ACTIVE,ctx);}, rebuildCar, pose, geom, ease,
+    solveFor, stripW, rebuild(ctx){rebuildCar(ACTIVE,ctx);}, rebuildCar, setStack, pose, geom, ease,
     get frame(){return ACTIVE.frame;}, get site(){return siteInfo;},
     setShow(k,on){VIS.show[k]=on;rebuildAll();},
     setHide(mode){VIS.hide=mode;rebuildAll();}};

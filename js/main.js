@@ -82,6 +82,7 @@ function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   else if(st.state==="CHANGE"){text="コイル交換中";cls="info";}else if(st.state==="DECEL"){text="コイル交換準備 ─ 減速中";cls="warn";}
   else if(st.paused&&st.v<=0.004){text="ライン停止";cls="stop";}else if(st.v<tgt-0.01){text="加速中";cls="warn";}
   else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
+  if(st.state==="RUN"&&KX.label)text+=" ─ 段取り: "+KX.label;              // 運転を続けたまま待機台車を組み替えている間
   ui.status.textContent=text;ui.led.className="led "+cls;
   syncKnifeUI();rclUI.sync();}
 const clock=new THREE.Clock();

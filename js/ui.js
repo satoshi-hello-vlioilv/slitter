@@ -12,20 +12,27 @@ const ui={led:document.getElementById("statusLed"),status:document.getElementByI
 
 /* =========================================================
  * 条数・板厚に依存する部分の再構築(刃組の計算 → カッター台車 → 条・セパレーター・コイル)
- * ラインの条数 = ラインの台車(KC.active)の刃組。待機台車は段取り位置で別に組む(sbUI)。
+ * ラインの条数・板厚 = ラインの台車(KC.active)の刃組。ラインの台車は組み替えられないので、
+ * スリット条件を変えると段取り替え(KX.request: 待機台車をライン外で組み替え → 停止・抜取り → 入れ替え →
+ * 通板 → 運転)になる。待機台車は段取り位置で手でも組み替えられる(sbUI)。
  * =======================================================*/
 const fmt=(v,d)=>{const t=(+v).toFixed(d);return t.indexOf(".")<0?t:t.replace(/\.?0+$/,"");};   // 末尾の0だけ落とす
-function rebuildStrandDependent(N){
+function rebuildStrandDependent(N){                      // はじめの刃組(ラインの台車)。以後の変更は段取り替え(order)
   KC.rebuild(KC.solveFor(N,st.thick,KC.active.i));applyLine();}
 /* ラインの台車の刃組をラインへ(条・セパレーター・リコイラのスプール・読み出し)。入れ替えたときも呼ぶ */
 function applyLine(){const c=KC.active, ctx=c.D.ctx;
-  st.N=c.N;buildStrands();buildSeparators();buildRecCoils();
-  document.getElementById("roStrandW").textContent=fmt(ctx.w,2);
+  st.N=c.N;st.thick=ctx.st.thick;buildStrands();buildSeparators();buildRecCoils();
   document.getElementById("bsCar").textContent=c.name;
-  showStrandN(c.N);paintBladeSet(ctx,c.D.pack);}
+  showStrandN(c.N);showThick(st.thick);paintBladeSet(ctx,c.D.pack);}
 function showStrandN(N){
   document.querySelectorAll("#strandGroup button").forEach(x=>x.classList.toggle("active",parseInt(x.dataset.n,10)===N));
-  document.getElementById("rngStrand").value=N;document.getElementById("strandVal").textContent=N;}
+  document.getElementById("rngStrand").value=N;document.getElementById("strandVal").textContent=N;
+  document.getElementById("roStrandW").textContent=fmt(KC.stripW(N),2);}
+function showThick(t){document.getElementById("rngThick").value=t;document.getElementById("thickVal").textContent=(+t).toFixed(1);}
+/* スリット条件を変えた = 段取り替えの指示。始められないとき・変わらないときは表示をラインの刃組へ戻す */
+function order(N,thick){
+  if(KX.request(N,thick)){showStrandN(N);showThick(thick);controls.flyTo(...CAM.knife);return true;}
+  showStrandN(st.N);showThick(st.thick);return false;}
 /* 判定(組んでみて分かる断り): 端数・板押さえが載らない面・押さえ代超え・空きの帯外れ → [class, 文] */
 function bladeJudge(ctx){
   const res=ctx.res, A=res.A, fs=res.fit.floatSeat, bad=[];
@@ -64,7 +71,7 @@ function paintBladeSet(ctx,pack){
   el.className="bs-judge "+cls;el.textContent=txt;}
 rebuildStrandDependent(4);
 KC.rebuildCar(KC.standby,KC.solveFor(4,st.thick,KC.standby.i));             // 待機台車(はじめは同じ刃組)
-KX.onSwap=()=>applyLine();                                                    // 入れ替えた台車の刃組をラインへ
+KX.onLine=()=>applyLine();                                                    // ラインへ入れた台車の刃組をラインへ
 
 ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
   ui.btnRun.innerHTML=st.paused?'<i class="fa-solid fa-play"></i><span>ライン起動</span>':'<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
@@ -72,15 +79,17 @@ ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
 const rng=document.getElementById("rngSpeed");
 rng.addEventListener("input",()=>{document.getElementById("speedVal").textContent=rng.value;st.target=rng.value/60;});
 const rngStrand=document.getElementById("rngStrand");
-function setStrandN(N){if(KX.lineBusy())return;showStrandN(N);rebuildStrandDependent(N);}
-document.getElementById("strandGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
-  setStrandN(parseInt(b.dataset.n,10));});
-rngStrand.addEventListener("input",()=>setStrandN(parseInt(rngStrand.value,10)));
+// 条数: ボタンは押したとき、スライダーは離したときに段取り替えを指示する(動かしている間は数だけ出す)
+document.getElementById("strandGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;
+  order(parseInt(b.dataset.n,10),st.thick);});
+rngStrand.addEventListener("input",()=>{const N=parseInt(rngStrand.value,10);
+  document.getElementById("strandVal").textContent=N;document.getElementById("roStrandW").textContent=fmt(KC.stripW(N),2);});
+rngStrand.addEventListener("change",()=>order(parseInt(rngStrand.value,10),st.thick));
 // 板厚 — 刃組(クリアランス・フィンガー/ゴムリングの切替・リング径)とコイル長さの両方が読む
 const rngThick=document.getElementById("rngThick");
-rngThick.addEventListener("input",()=>{if(KX.lineBusy())return;st.thick=parseFloat(rngThick.value);
-  document.getElementById("thickVal").textContent=st.thick.toFixed(1);rebuildStrandDependent(st.N);
-  const sb=KC.standby;KC.rebuildCar(sb,KC.solveFor(sb.N,st.thick,sb.i));sbUI.sync(true);});   // 待機台車も同じ板厚で組み直す
+// 板厚もクリアランス・板押さえ(フィンガー/ゴムリング)が変わるので、離したときに段取り替えを指示する
+rngThick.addEventListener("input",()=>{document.getElementById("thickVal").textContent=parseFloat(rngThick.value).toFixed(1);});
+rngThick.addEventListener("change",()=>order(st.N,+parseFloat(rngThick.value).toFixed(1)));
 // 板形状(歪) — 種類と量を変えると条毎の伸び差プロファイルが更新される
 document.getElementById("shapeGroup").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#shapeGroup button").forEach(x=>x.classList.toggle("active",x===b));
@@ -90,7 +99,7 @@ rngShape.addEventListener("input",()=>{document.getElementById("shapeVal").textC
   st.shapeI=parseInt(rngShape.value,10);updateShapeProfile();});
 const CAM={all:[0.5,0.7,1.0,27,0.62,1.02],unc:[-11.4,1.3,1.2,8,0.78,1.10],slit:[0,PL+0.15,0.1,4.2,0.62,1.02],
   loop1:[-3.9,-0.6,0,7.5,0.55,1.0],loop2:[5.5,-0.6,0,8,0.55,1.0],md:[9.4,PL,0,6,0.70,1.02],rec:[13.0,1.3,1.0,8,0.72,1.08],
-  scrap:[2.1,-0.25,0.9,5.2,0.95,0.92],knife:[-2.3,0.4,4.4,10.5,0.50,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3],
+  scrap:[2.1,-0.25,-0.9,5.2,2.19,0.92],knife:[-2.3,0.4,4.4,10.5,0.50,0.98],arbor:[0.1,PL,0.2,2.6,1.2,1.3],
   reel:[REC_X,REC_Y-0.05,0.35,3.3,0.62,1.16]};
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>controls.flyTo(...CAM[b.dataset.cam])));
 document.getElementById("chkLabels").addEventListener("change",e=>{labelGroup.visible=e.target.checked;});
@@ -112,20 +121,21 @@ document.querySelectorAll("[data-step]").forEach(b=>b.addEventListener("click",(
 const sbUI=(function(){
   const $=id=>document.getElementById(id), rng=$("rngStandby");
   const can=c=>!!c&&c.D.open>0.999&&!KX.busy();
-  rng.addEventListener("input",()=>{const c=KX.opCar();if(!can(c))return;
-    KC.rebuildCar(c,KC.solveFor(parseInt(rng.value,10),st.thick,c.i));
-    if(c===KC.active)applyLine();                                   // ラインが空で、最後にラインにいた台車を組み替えたとき
-    sync(true);});
+  let drag=false;                                                   // 動かしている間は数だけ出し、離したら組み替える
+  rng.addEventListener("input",()=>{drag=true;const N=parseInt(rng.value,10);
+    $("sbVal").textContent=N;$("sbW").textContent=fmt(KC.stripW(N),2);});
+  rng.addEventListener("change",()=>{drag=false;const c=KX.opCar();
+    if(!can(c)||!KX.setupStandby(parseInt(rng.value,10)))sync(true);});
   let sig="";
   function sync(force){const c=KX.opCar(), ok=can(c), busy=KX.busy(), open=!!c&&c.D.open>0.999;
-    const k=[c?c.i:-1,c?c.N:0,c?c.w:0,ok,busy,open].join("|");if(!force&&k===sig)return;sig=k;
+    const k=[c?c.i:-1,c?c.N:0,c?c.w:0,ok,busy,open].join("|");if(drag||(!force&&k===sig))return;sig=k;
     rng.disabled=!ok;$("sbName").textContent=c?c.name:"—";
     if(c){$("sbVal").textContent=c.N;$("sbW").textContent=fmt(c.w,2);if(+rng.value!==c.N)rng.value=c.N;
       const [cls,txt]=bladeJudge(c.D.ctx);$("sbJudge").className="bs-judge "+cls;$("sbJudge").textContent=txt;}
     $("sbJudge").hidden=!c;
     $("sbNote").textContent=!c?"段取り位置に台車がありません(テーブルを回しきると並びます)":
       busy?"動いている間は組み替えられません":
-      ok?"条数を選ぶとその場で組み替えます。終わったら「②軸端部戻し」":`「②軸端部外し」で${c.name}の軸の先を出すと組み替えられます`;}
+      ok?"条数を選ぶと、外した OS 端から部材を外して組み替えます。終わったら「②軸端部戻し」":`「②軸端部外し」で${c.name}の軸の先を出すと組み替えられます`;}
   sync(true);
   return{sync};})();
 let kcSig="";
