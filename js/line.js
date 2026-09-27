@@ -15,8 +15,12 @@ roll('B',-10.90,PL+0.10,100,1);                       // ベンドロール(下�
 housing(-10.50,PL+0.9); roll('C1',-10.50,PL+0.25,500,1);roll('C2',-10.50,PL-0.25,500,-1); // 入側ピンチ
 // ラフレベラー — 小径ワークロール群(ピッチ220)は側板フレームに収める
 roll('D1',-10.10,PL,60,-1,{frame:false,chock:false});
-roll('E2-1',-9.88,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-1',-9.66,PL+0.06,150,1,{frame:false,chock:false});
-roll('E2-2',-9.44,PL-0.06,150,-1,{frame:false,chock:false});roll('E1-2',-9.22,PL+0.06,150,1,{frame:false,chock:false});
+roll('E2-1',-9.88,PL-0.06,150,-1,{frame:false,chock:false});const LEV_E1=[roll('E1-1',-9.66,PL+0.06,150,1,{frame:false,chock:false})];
+roll('E2-2',-9.44,PL-0.06,150,-1,{frame:false,chock:false});LEV_E1.push(roll('E1-2',-9.22,PL+0.06,150,1,{frame:false,chock:false}));
+/* 上ロール(E1-1 入側・E1-2 出側)の押込み d[m]: 上ロール下面 = 下ロール上面(PL+0.015)− d。
+   材料力学(mech.js)が曲げの履歴から決める(自動)か、画面で手で入れる */
+function setLeveler(d1,d2){[d1,d2].forEach((d,i)=>{const id=i?'E1-2':'E1-1',o=R[id],y=PL+0.015-d+o.r;
+  o.y=y;LEV_E1[i].position.y=y;if(o.lbl)o.lbl.position.y=y+o.r;});}
 roll('E2-3',-9.00,PL-0.06,150,-1,{frame:false,chock:false});roll('D2',-8.80,PL,60,-1,{frame:false,chock:false});
 (function(){ // レベラー側板(床から立ち上げ)+ベース
   const zs=STRIP_W/2+0.28, hp=PL+0.42, cx=-9.45, L=1.55;
@@ -68,7 +72,7 @@ function buildLooperTable(lp,inset,nRolls){
   const L=R[lp.outR].x-R[lp.inR].x, Lh=(xb-xa)/2;         // ループ全長 / 各リーフ長(中央で突き合わせ)
   const clear=4*lp.dmax/L*inset+r+0.08;                   // ヒンジ側のロール無し区間
   const n=Math.max(1,Math.round(nRolls/2)), pitch=(Lh-clear)/n;
-  const leaves=[];
+  const leaves=[];lp.tableX=[];
   for(const h of [{x:xa,dir:1},{x:xb,dir:-1}]){
     // --- 固定部: ヒンジ軸受(板幅の外)+ ピット床から立てた軸受柱 ---
     for(const sz of [-1,1]){const z=sz*LT_BZ, gy=groundY(h.x), hh=HY-0.10-gy;
@@ -85,7 +89,9 @@ function buildLooperTable(lp,inset,nRolls){
       spin(addCylZ(r,STRIP_W+0.34,rollMats(),u,0,0,leaf,20),r,-1);       // テーブルロール(全幅)
       for(const sz of [-1,1])addBox(0.10,0.10,0.11,M.frame,u,0,sz*LT_FZ,leaf);}     // 軸受
     leaves.push({leaf,dir:h.dir});
+    for(let i=0;i<n;i++)lp.tableX.push(h.x+h.dir*(clear+(i+0.5)*pitch));      // 閉じたときのテーブルロールの位置(通板の支点)
   }
+  lp.tableX.sort((a,b)=>a-b);lp.tableR=r;
   //  k=0:閉(水平) → k=1:開(ピット内へ垂直に退避)
   return{setOpen(k){const ang=THREE.MathUtils.clamp(k,0,1)*Math.PI/2;
     for(const v of leaves)v.leaf.rotation.z=-v.dir*ang;}};
@@ -131,6 +137,12 @@ housing(10.50,PL+0.9); roll('X1',10.50,PL+d2r(200),200,1);roll('X2',10.50,PL-d2r
 roll('Y2',10.95,PL+0.27,500,-1);roll('Y1',11.60,PL-0.27,500,1);
 // テールキャッチャー(上面接触 → dir-1)
 roll('Z',12.40,PL+0.10,190,-1);
+
+/* ループの前後: 上流/下流の挟み点(ピンチ・刃・押えロール)と、そのあいだで帯を下から受けるロール。
+   ループの重みで帯がロールの上から持ち上がる長さは挟み点までで頭打ち(mech.js lift)。 */
+Object.assign(LOOP1,{clampInX:R.J2.x,clampOutX:R.L1.x,upRolls:['K1-1','K1-2'],dnRolls:['K2-2']});
+Object.assign(LOOP2,{clampInX:SLIT_X,clampOutX:R.T1.x,upRolls:['R1-1','R1-2','R1-3','R1-4','R1-5','S1-1','S1-2'],dnRolls:['S2-2','S2-3']});
+for(const lp of [LOOP1,LOOP2]){lp.clampIn=R[lp.inR].x-lp.clampInX;lp.clampOut=lp.clampOutX-R[lp.outR].x;}
 
 /* =========================================================
  * セパレーター(条数依存)

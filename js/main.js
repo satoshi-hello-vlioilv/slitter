@@ -55,7 +55,11 @@ function stepLine(dt){const tgt=(st.paused||st.state!=="RUN"||!st.thread)?0:st.t
   looperTable2.setOpen(st.loop2/0.35);
   // カッター台車の段取り(ライン停止 → 抜取り → 継手 → ①②③ / 逆順)。状態機械は knifechange.js
   KX.step(dt);}
+/* バリは細いので、カメラが条の近く(スリッター〜リコイラの帯から 6m 以内)にいるときだけ描く */
+const _cb=new THREE.Box3(new THREE.Vector3(SLIT_X-0.4,PL-3.6,-0.8),new THREE.Vector3(REC_X+1.2,PL+1.4,0.8));
 function updateGeometry(){
+  MECH.update(1/60);geoFrame++;headInfo.on=false;stressView.max=0;stressView.maxU=0;
+  lipsNear=_cb.distanceToPoint(camera.position)<6;
   uncGroup.coil.scale.set(st.ru,st.ru,1);RCL.update();       // リコイラのコイル: 内径=巻き始め径・外径=巻径
   scrapR.coil.scale.set(st.rsR,1,st.rsR);scrapL.coil.scale.set(st.rsL,1,st.rsL); // 屑コイルは軸=Y(立軸)
   thread.need=0;exitCut.need=0;                   // 通板・抜取りの終わり(最も長い帯の末端)を測り直す
@@ -70,7 +74,8 @@ function updateSpinners(dt){const vt=(thread.mode||exitCut.threading)?THREAD_V:0
 let uiT=0;
 function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   ui.roSpeed.textContent=Math.round(st.v*60);ui.roUnc.textContent=Math.round(st.ru*2000);ui.roRec.textContent=Math.round(st.rr*2000);
-  ui.roTen.textContent=(st.v>0.004?(8+st.v*9).toFixed(1):"0.0");ui.roLen.textContent=Math.round(st.len).toLocaleString();
+  // 巻取張力(全条)= 単位張力 × 条幅の合計 × 板厚。巻き付いている間は止まっていても掛かっている
+  ui.roTen.textContent=(MECH.tau("wind")*strandW.reduce((a,w)=>a+w,0)/1000).toFixed(2);ui.roLen.textContent=Math.round(st.len).toLocaleString();
   // 条間のループ深さ差(最長条 − 最短条) — 巻き進むほど開いていく
   const eMax=strandEps.length?Math.max.apply(null,strandEps):0;
   const dDif=loopDepth(LOOP2,st.loop2,eMax*st.lenCoil*lenScale())-loopDepth(LOOP2,st.loop2,0);
@@ -84,7 +89,7 @@ function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
   if(st.state==="RUN"&&KX.label)text+=" ─ 段取り: "+KX.label;              // 運転を続けたまま待機台車を組み替えている間
   ui.status.textContent=text;ui.led.className="led "+cls;
-  syncKnifeUI();rclUI.sync();}
+  syncKnifeUI();rclUI.sync();mechUI.sync(false,0.12);}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
   stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);

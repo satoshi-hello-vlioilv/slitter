@@ -188,3 +188,51 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
 .mm-sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;
   box-shadow:0 0 0 1px rgba(255,255,255,.25);}
 .mm-note{margin-top:8px;font-size:11px;color:var(--sub);}
+/* 材料・力学 */
+.sel{width:100%;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;background:#161e26;color:var(--txt);
+  font-size:12px;font-family:inherit;}
+.mech-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px;}
+.mech-grid div{background:#141b22;border:1px solid var(--panel-line);border-radius:5px;padding:3px 6px;}
+.mech-grid span{display:block;font-size:9.5px;color:var(--sub);}
+.mech-grid b{font-family:Consolas,"Cascadia Mono",monospace;color:var(--val);font-size:12px;font-weight:600;}
+.mech-grid b small{color:var(--sub);font-size:9px;font-weight:400;margin-left:2px;}
+.mech-chart{margin-top:8px;background:#0b1015;border:1px solid var(--panel-line);border-radius:6px;padding:2px;}
+.mech-chart:empty{display:none;}
+.mech-chart svg{display:block;width:100%;height:auto;}
+.mchart text{font-size:8.5px;fill:#8aa0b4;font-family:"Segoe UI","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
+.mchart text.v{fill:#62f0c4;font-family:Consolas,"Cascadia Mono",monospace;font-size:9px;}
+.mchart .ax{stroke:#3a4c5d;stroke-width:1;}
+.mchart .fillT{fill:rgba(79,198,255,.22);stroke:#4fc6ff;stroke-width:1.2;}
+.mchart .band{fill:rgba(240,180,41,.07);stroke:rgba(240,180,41,.35);stroke-dasharray:3 2;}
+.mchart .fillR{fill:rgba(98,240,196,.16);}
+.mchart .lineR{fill:none;stroke:#62f0c4;stroke-width:1.4;}
+.mchart .plate{fill:#8a98a6;stroke:none;}
+.mchart .burnish{stroke:#bfe8ff;stroke-width:2.6;}
+.mchart .fract{stroke:#5d6975;stroke-width:2.6;stroke-dasharray:2 1.5;}
+.mchart .roll{fill:none;stroke:#f2d933;stroke-width:2;}
+.mchart .burrL{fill:none;stroke:#ffa640;stroke-width:2;}
+.mchart text.roll-t{fill:#f2d933;} .mchart text.bur-t{fill:#bfe8ff;} .mchart text.burr-t{fill:#ffa640;}
+.mech-loops{margin-top:4px;}
+.mech-kv{margin-top:6px;font-size:11px;line-height:1.5;}
+.mech-kv .r{display:flex;justify-content:space-between;gap:8px;padding:1px 0;}
+.mech-kv .r span{color:var(--sub);white-space:nowrap;}
+.mech-kv .r b{font-family:Consolas,"Cascadia Mono",monospace;color:var(--val);font-weight:600;text-align:right;font-size:10.5px;}
+.mech-kv .r b.ok{color:var(--ok);} .mech-kv .r b.warn{color:var(--warn);} .mech-kv .r b.ng{color:var(--stop);}
+.mech-table{max-height:170px;overflow:auto;border:1px solid var(--panel-line);border-radius:6px;}
+.mech-table table{width:100%;border-collapse:collapse;font-size:10.5px;}
+.mech-table th{position:sticky;top:0;background:#141b22;color:var(--sub);font-weight:600;padding:4px 4px;text-align:right;white-space:nowrap;}
+.mech-table th small{font-size:8.5px;font-weight:400;}
+.mech-table td{padding:2px 4px;border-top:1px solid #1c252e;text-align:right;font-family:Consolas,"Cascadia Mono",monospace;color:var(--txt);}
+.mech-warn{margin-top:9px;font-size:11px;line-height:1.45;}
+.mech-warn:empty{display:none;}
+.mech-warn div{padding:5px 8px;border-radius:6px;margin-top:4px;border:1px solid;}
+.mech-warn .w{color:var(--warn);background:rgba(240,180,41,.08);border-color:rgba(240,180,41,.35);}
+.mech-warn .n{color:var(--stop);background:rgba(255,107,94,.08);border-color:rgba(255,107,94,.35);}
+.mech-warn .i{color:#bfe6ff;background:rgba(79,198,255,.08);border-color:rgba(79,198,255,.35);}
+/* 応力コンターの凡例 */
+#stressLegend{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:10;background:rgba(13,17,22,.84);
+  border:1px solid var(--panel-line);border-radius:8px;padding:7px 12px 6px;width:min(380px,calc(100vw - 32px));backdrop-filter:blur(6px);}
+#stressLegend[hidden]{display:none;}
+.sl-t{font-size:11px;color:var(--txt);margin-bottom:5px;}
+.sl-bar{height:10px;border-radius:3px;}
+.sl-ax{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);font-family:Consolas,monospace;margin-top:3px;}

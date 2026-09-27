@@ -70,6 +70,9 @@ const M={
   screen:new THREE.MeshStandardMaterial({color:0x0a141c,emissive:0x1d4d66,emissiveIntensity:0.9,metalness:0.2,roughness:0.4}),
   lampLit:new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff4dc,emissiveIntensity:1.0}),
 };
+/* 切り口のバリ(誇張して描く細い面)と、応力コンター用の帯(頂点色・模様なし) */
+M.burr=new THREE.MeshStandardMaterial({color:0xffa640,emissive:0x3a1a00,emissiveIntensity:0.7,metalness:0.55,roughness:0.35,side:THREE.DoubleSide});
+M.stripStress=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,toneMapped:false});   // 色がそのまま読めるように(トーンマップしない)
 /* 足場(GL+1000 のステージ)— カッター台車の緑(cutter.js の PAINT と同じ sRGB 色を線形へ直して持つ = 同じ色に見える)。
    上面は滑り止めの縞鋼板: 1枚 1.08m 角(継ぎ目つき)・突起 12×12(約 90mm)。UV はメートルで貼る(repeat 1/1.08) */
 const stageTex=canvasTex(256,256,(g,w,h)=>{g.fillStyle="#3b6a4f";g.fillRect(0,0,w,h);

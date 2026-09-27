@@ -19,7 +19,7 @@ function spin(obj,r,dir,axis){spinners.push({obj,r,dir,axis:axis||'z'});return o
 
 /* 回転体(ロール)レジストリ — BOM準拠 */
 const R={};                       // id -> {x,y,r}
-function regRoll(id,x,y,r){R[id]={x,y,r}; if(id) makeIdLabel(id,x,y+r,0);}   // 札の取付点=ロール上面
+function regRoll(id,x,y,r){R[id]={x,y,r}; if(id) R[id].lbl=makeIdLabel(id,x,y+r,0);}   // 札の取付点=ロール上面
 
 /* 軸受チョック(ピローブロック) — 本体ブロック+軸受ハウジング+軸端+取付ボルト */
 function chock(x,y,r,z,parent){
@@ -97,76 +97,108 @@ function tangentBetween(c1,side1,c2,side2){
     if(ok1&&ok2)return{t1:{x:t1.x,y:t1.y,a:Math.atan2(t1.y-c1.y,t1.x-c1.x)},t2:{x:t2.x,y:t2.y,a:Math.atan2(t2.y-c2.y,t2.x-c2.x)}};}
   return null;}
 
-/* 円弧サンプル(a0→a1、短い方の回り) */
-function arcPoints(cx,cy,r,a0,a1,n){let d=a1-a0;
-  while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
-  const pts=[];for(let k=0;k<n;k++){const a=a0+d*k/(n-1);pts.push(V3(cx+r*Math.cos(a),cy+r*Math.sin(a),0));}
-  return pts;}
-
 /* =========================================================
  * リボンストリップ(動的)
+ * ---------------------------------------------------------
+ * 帯は中心線(点列)と各点の幅方向ベクトル w(省略時 +Z = 水平に寝た帯)で決まる面。
+ * 断面は「平らな面の列」(幅方向の位置。板波・応力の色を幅方向に変えるときは列を増やす)と、
+ * 切断した端の「バリ」(端から法線方向に立つ細い面 — 別の材質 = グループ 1 で描く)でできる。
+ * 法線: 平らな面は n = w × t(w=+Z・平面経路なら従来と同じ。板波があるときは面の傾きから出し直す)、
+ * バリの面は外向き ±w。色(応力コンター)は頂点色で、使わない間は白のまま触らない。
  * =======================================================*/
 class Ribbon{
-  constructor(width,count,material){this.w=width;this.n=count;
+  constructor(width,count,material,opt){opt=opt||{};
+    this.w=width;this.n=count;
+    const K=Math.max(2,opt.cols|0||2);this.K=K;
+    this.cu=new Float32Array(K);for(let j=0;j<K;j++)this.cu[j]=-width/2+width*j/(K-1);   // 列の幅方向位置 [m]
+    this.lips=opt.lips|0;                                 // 1: 左端(−w 側)/ 2: 右端(+w 側)/ 3: 両端
+    this.nl=(this.lips&1?1:0)+(this.lips&2?1:0);
+    const V=count*(K+2*this.nl);this.nf=count*K;
     const g=new THREE.BufferGeometry();
-    this.pos=new Float32Array(count*6);this.nor=new Float32Array(count*6);this.uv=new Float32Array(count*4);
-    const idx=[];for(let i=0;i<count-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
+    this.pos=new Float32Array(V*3);this.nor=new Float32Array(V*3);this.uv=new Float32Array(V*2);this.col=new Float32Array(V*3).fill(1);
+    const idx=[];
+    for(let i=0;i<count-1;i++)for(let j=0;j<K-1;j++){const a=i*K+j,b=a+K;idx.push(a,a+1,b,a+1,b+1,b);}
+    const f=idx.length;
+    for(let l=0;l<this.nl;l++)for(let i=0;i<count-1;i++){const a=this.nf+(i*this.nl+l)*2,b=a+this.nl*2;idx.push(a,a+1,b,a+1,b+1,b);}
     g.setIndex(idx);
     g.setAttribute("position",new THREE.BufferAttribute(this.pos,3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("normal",new THREE.BufferAttribute(this.nor,3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("uv",new THREE.BufferAttribute(this.uv,2).setUsage(THREE.DynamicDrawUsage));
-    this.geo=g;this.mesh=new THREE.Mesh(g,material);this.mesh.castShadow=true;this.mesh.frustumCulled=false;scene.add(this.mesh);}
-  /* pts:中心線 / wv:各点の幅方向単位ベクトル(省略時は+Z=水平に寝た帯)。
-     幅方向を点ごとに与えられるので、90°ひねり(ねじり)を含む帯も表現できる。
-     法線は n = w × t で求める(w=+Z・平面経路なら従来と完全に同一)。 */
-  update(pts,wv){const h=this.w/2;let s=0;const n=Math.min(pts.length,this.n);let pnx=0,pny=1,pnz=0;
-    for(let i=0;i<n;i++){const p=pts[i];const pp=pts[Math.max(i-1,0)],pn=pts[Math.min(i+1,n-1)];
-      const w=wv?wv[i]:Z_AXIS;
-      let tx=pn.x-pp.x,ty=pn.y-pp.y,tz=pn.z-pp.z;const tl=Math.hypot(tx,ty,tz);
+    g.setAttribute("color",new THREE.BufferAttribute(this.col,3).setUsage(THREE.DynamicDrawUsage));
+    g.addGroup(0,f,0);if(this.nl)g.addGroup(f,idx.length-f,1);
+    this.lipCount=idx.length-f;this.showLips=!!this.nl;
+    this.geo=g;this.mat0=material;this.lipMat=opt.lipMat||material;
+    this.mesh=new THREE.Mesh(g,this.nl?[material,this.lipMat]:material);this.mesh.castShadow=true;this.mesh.frustumCulled=false;scene.add(this.mesh);}
+  /* 材質の差し替え(応力コンターの頂点色の材質など)。バリはバリの材質のまま */
+  setMaterial(m){this.mesh.material=this.nl?[m,this.lipMat]:m;}
+  setLips(on){on=!!on&&!!this.nl;if(on===this.showLips)return;this.showLips=on;
+    if(this.nl)this.geo.groups[1].count=on?this.lipCount:0;}
+  /* pts: 中心線 / wv: 各点の幅方向単位ベクトル(省略時 +Z)/ o: {lipL, lipR: バリの高さ(法線方向・符号付き m)、
+     wave(i,j,u,s) → 法線方向のずれ(板波)、color(i,j,u,col,o3) → 頂点色を書く} */
+  update(pts,wv,o){o=o||Ribbon.NO;const h=this.w/2,K=this.K,cu=this.cu,iw=1/this.w;let s=0;const n=Math.min(pts.length,this.n);let pnx=0,pny=1,pnz=0;
+    const P=this.pos,N=this.nor,U=this.uv,C=this.col,wave=o.wave,colf=o.color,lips=this.showLips,nl=this.nl;
+    let wx=0,wy=0,wz=1,qx=pts[0].x,qy=pts[0].y,qz=pts[0].z;
+    for(let i=0;i<n;i++){const p=pts[i],pp=pts[i>0?i-1:0],pn=pts[i<n-1?i+1:n-1];
+      if(wv){const w=wv[i];wx=w.x;wy=w.y;wz=w.z;}
+      let tx=pn.x-pp.x,ty=pn.y-pp.y,tz=pn.z-pp.z;const tl=Math.sqrt(tx*tx+ty*ty+tz*tz);
       let nx=pnx,ny=pny,nz=pnz;
       if(tl>1e-6){tx/=tl;ty/=tl;tz/=tl;
-        const cx=w.y*tz-w.z*ty,cy=w.z*tx-w.x*tz,cz=w.x*ty-w.y*tx,cl=Math.hypot(cx,cy,cz);
+        const cx=wy*tz-wz*ty,cy=wz*tx-wx*tz,cz=wx*ty-wy*tx,cl=Math.sqrt(cx*cx+cy*cy+cz*cz);
         if(cl>1e-6){nx=cx/cl;ny=cy/cl;nz=cz/cl;pnx=nx;pny=ny;pnz=nz;}}
-      if(i>0)s+=p.distanceTo(pts[i-1]);const o=i*6;
-      this.pos[o]=p.x-w.x*h;this.pos[o+1]=p.y-w.y*h;this.pos[o+2]=p.z-w.z*h;
-      this.pos[o+3]=p.x+w.x*h;this.pos[o+4]=p.y+w.y*h;this.pos[o+5]=p.z+w.z*h;
-      this.nor[o]=nx;this.nor[o+1]=ny;this.nor[o+2]=nz;this.nor[o+3]=nx;this.nor[o+4]=ny;this.nor[o+5]=nz;
-      const u=s/UV_SCALE,q=i*4;this.uv[q]=u;this.uv[q+1]=0;this.uv[q+2]=u;this.uv[q+3]=1;}
-    this.geo.attributes.position.needsUpdate=true;this.geo.attributes.normal.needsUpdate=true;this.geo.attributes.uv.needsUpdate=true;}
+      const dx=p.x-qx,dy=p.y-qy,dz=p.z-qz;s+=Math.sqrt(dx*dx+dy*dy+dz*dz);qx=p.x;qy=p.y;qz=p.z;const us=s/UV_SCALE;
+      for(let j=0;j<K;j++){const u=cu[j],v=wave?wave(i,j,u,s):0,o3=(i*K+j)*3,o2=(i*K+j)*2;
+        P[o3]=p.x+wx*u+nx*v;P[o3+1]=p.y+wy*u+ny*v;P[o3+2]=p.z+wz*u+nz*v;
+        N[o3]=nx;N[o3+1]=ny;N[o3+2]=nz;U[o2]=us;U[o2+1]=(u+h)*iw;
+        if(colf)colf(i,j,u,C,o3);}
+      if(lips){let l=0;
+        for(let side=1;side<=2;side++){if(!(this.lips&side))continue;
+          const sg=side===1?-1:1,e=side===1?0:K-1,hl=side===1?(o.lipL||0):(o.lipR||0),vb=this.nf+(i*nl+l)*2,eo=(i*K+e)*3;
+          for(let q=0;q<2;q++){const o3=(vb+q)*3,d=q?hl:0;
+            P[o3]=P[eo]+nx*d;P[o3+1]=P[eo+1]+ny*d;P[o3+2]=P[eo+2]+nz*d;
+            N[o3]=wx*sg;N[o3+1]=wy*sg;N[o3+2]=wz*sg;
+            U[(vb+q)*2]=us;U[(vb+q)*2+1]=side===1?0:1;}
+          l++;}}}
+    if(wave)this._waveNormals(n);
+    const at=this.geo.attributes;at.position.needsUpdate=true;at.normal.needsUpdate=true;at.uv.needsUpdate=true;
+    if(colf)at.color.needsUpdate=true;}
+  /* 板波があるときの平らな面の法線: 面の2方向の差分の外積 (∂P/∂u × ∂P/∂s) */
+  _waveNormals(n){const K=this.K,P=this.pos,N=this.nor;
+    for(let i=0;i<n;i++)for(let j=0;j<K;j++){
+      const ia=(Math.max(i-1,0)*K+j)*3,ib=(Math.min(i+1,n-1)*K+j)*3,ja=(i*K+Math.max(j-1,0))*3,jb=(i*K+Math.min(j+1,K-1))*3,o3=(i*K+j)*3;
+      const sx=P[ib]-P[ia],sy=P[ib+1]-P[ia+1],sz=P[ib+2]-P[ia+2],ux=P[jb]-P[ja],uy=P[jb+1]-P[ja+1],uz=P[jb+2]-P[ja+2];
+      let cx=uy*sz-uz*sy,cy=uz*sx-ux*sz,cz=ux*sy-uy*sx;const cl=Math.hypot(cx,cy,cz);
+      if(cl>1e-12){cx/=cl;cy/=cl;cz/=cl;if(cx*N[o3]+cy*N[o3+1]+cz*N[o3+2]<0){cx=-cx;cy=-cy;cz=-cz;}N[o3]=cx;N[o3+1]=cy;N[o3+2]=cz;}}}
+  /* 頂点色を白へ戻す(応力コンターを消したとき) */
+  clearColor(){this.col.fill(1);this.geo.attributes.color.needsUpdate=true;}
   dispose(){scene.remove(this.mesh);this.geo.dispose();}
 }
-function samplePolyline(pts,n,out){out=out||[];const lens=[];let total=0;
-  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]);lens.push(l);total+=l;}
-  let seg=0,segStart=0;
-  for(let i=0;i<n;i++){const d=total*i/(n-1);
-    while(seg<lens.length-1&&d>segStart+lens[seg]){segStart+=lens[seg];seg++;}
-    const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
-    out.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));}
-  return out;}
+Ribbon.NO={};
 
-/* 折れ線の弧長区間 [s0,s1] を切り出す(端は補間)。通板・抜取り中の帯の先端/後端に使う。
- * wv(幅方向)を渡すと同じ区間を outW へ切り出す。戻り値は切り出した長さ。 */
-function clipPolyline(pts,s0,s1,outP,wv,outW){outP.length=0;if(outW)outW.length=0;
-  if(s1<=s0||pts.length<2)return 0;let acc=0;
-  const push=(i,t)=>{outP.push(new THREE.Vector3().lerpVectors(pts[i],pts[i+1],t));
-    if(outW)outW.push(new THREE.Vector3().lerpVectors(wv[i],wv[i+1],t).normalize());};
-  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]),a=acc,b=acc+l;acc=b;
-    if(b<s0||l<1e-9)continue;if(a>s1)break;
-    if(!outP.length)push(i,Math.max(0,(s0-a)/l));
-    push(i,Math.min(1,(s1-a)/l));}
-  return outP.length>1?Math.min(s1,acc)-Math.max(0,s0):0;}
-function polyLength(pts){let s=0;for(let i=0;i<pts.length-1;i++)s+=pts[i].distanceTo(pts[i+1]);return s;}
-
-/* 中心線と幅方向を同時にリサンプル(ねじり区間を持つ帯用)。
- * 幅方向は線形補間+正規化 — 隣接点の角度差は数度なので球面補間と実質一致する。 */
-function samplePathFrames(pts,wv,n,outP,outW){const lens=[];let total=0;
-  for(let i=0;i<pts.length-1;i++){const l=pts[i].distanceTo(pts[i+1]);lens.push(l);total+=l;}
-  let seg=0,segStart=0;
-  for(let i=0;i<n;i++){const d=total*i/(n-1);
-    while(seg<lens.length-1&&d>segStart+lens[seg]){segStart+=lens[seg];seg++;}
-    const t=lens[seg]>0?Math.min((d-segStart)/lens[seg],1):0;
-    outP.push(new THREE.Vector3().lerpVectors(pts[seg],pts[seg+1],t));
-    outW.push(new THREE.Vector3().lerpVectors(wv[seg],wv[seg+1],t).normalize());}}
+/* =========================================================
+ * 経路の等間隔リサンプル(属性つき)
+ * ---------------------------------------------------------
+ * path: {p:[Vector3], L:[累積長], k:[曲率], tau:[張力], nw:[板波なし], w:[幅方向] or null}
+ * [a, b](弧長)を n 点に切り出し、out へ書く(Vector3 は使い回す)。曲率は間隔の中の最大(絶対値)を
+ * 拾う — 小径ロールの巻付き弧(φ100 で弧長数 cm)が等間隔の点のあいだに落ちても曲げ応力を失わない。
+ * =======================================================*/
+function makeSampleBuf(n,frames){const o={n,p:[],w:frames?[]:null,k:new Float32Array(n),tau:new Float32Array(n),
+  nw:new Float32Array(n),s:new Float32Array(n)};
+  for(let i=0;i<n;i++){o.p.push(new THREE.Vector3());if(frames)o.w.push(new THREE.Vector3());}return o;}
+function resamplePath(P,a,b,n,out){const L=P.L,m=P.p.length,k=P.k;
+  if(m<2){for(let j=0;j<n;j++)out.p[j].copy(P.p[0]||Z_AXIS);return;}
+  a=Math.max(0,a);b=Math.min(L[m-1],b);if(b<a)b=a;
+  const ds=n>1?(b-a)/(n-1):0;let seg=0,q=0;
+  for(let j=0;j<n;j++){const s=a+ds*j;
+    while(seg<m-2&&L[seg+1]<s)seg++;
+    const l=L[seg+1]-L[seg],t=l>1e-9?Math.min(1,Math.max(0,(s-L[seg])/l)):0;
+    out.p[j].lerpVectors(P.p[seg],P.p[seg+1],t);
+    if(out.w)out.w[j].lerpVectors(P.w[seg],P.w[seg+1],t).normalize();
+    out.tau[j]=P.tau[seg];out.nw[j]=P.nw[seg]||P.nw[seg+1];out.s[j]=s;
+    // 曲率: [s−ds/2, s+ds/2] の中の経路点の最大(なければ補間)
+    let km=k[seg]+(k[seg+1]-k[seg])*t;const lo=s-ds/2,hi=s+ds/2;
+    while(q<m-1&&L[q]<lo)q++;
+    for(let r=q;r<m&&L[r]<=hi;r++)if(Math.abs(k[r])>Math.abs(km))km=k[r];
+    out.k[j]=km;}}
 
 /* =========================================================
  * ラベル(画面の札)
