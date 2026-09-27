@@ -2,7 +2,7 @@
 /* =========================================================
  * アプリバージョン
  * =======================================================*/
-const APP_VERSION = "1.18.0";
+const APP_VERSION = "1.18.1";
 document.title = "アルミ多条割スリッターライン 3Dシミュレーター v" + APP_VERSION;
 {
   const el = document.getElementById("appVersion");

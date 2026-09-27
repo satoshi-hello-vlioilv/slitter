@@ -205,10 +205,13 @@ const MD=(function(){
       cylZ(20,150,MM.chrome,0,0,0,ykR,14);ykR.position.set(midLen/2+65,0,0);sp.add(ykR);
       spin(sp,r,-DIR[t],"x");}})();                                                         // 局所 X が機械の −X なので逆向き
 
-  /* ============ 5) ジャッキ・ギヤードモータ(JA075 i=1/7.67 + 0.4kW) ============ */
-  (function buildJack(){const p=G.jack;
+  /* ============ 5) ジャッキ・ギヤードモータ(JA075 i=1/7.67 + 0.4kW) ============
+     移植元はねじ棒が伸びた形で、受け板(FL+725〜795)が下ロールの胴に食い込む(下端: 主 FL+600・ミニ FL+750)。
+     ここではジャッキを下げた(ねじ棒を縮めた)位置で描き、受け板の上面を主ロール下側の下端より 120 下にする。
+     本体(歯車箱)・連結軸・ギヤードモータは移植元の位置のまま。 */
+  (function buildJack(){const p=G.jack,top=RY.mainLo-P.mainD/2-120,y0=330,y1=top-45;   // 受け板の上面 / ねじ棒の下端(本体の中)・上端(受け板の中)
     for(const [x,z] of [[-560,330],[560,330],[-560,-330],[560,-330]]){
-      box(360,200,360,MM.gear,x,250,z,p);cylY(55,420,MM.chrome,x,540,z,p,20);box(260,70,260,MM.steelD,x,760,z,p);}
+      box(360,200,360,MM.gear,x,250,z,p);cylY(55,y1-y0,MM.chrome,x,(y0+y1)/2,z,p,20);box(260,70,260,MM.steelD,x,top-35,z,p);}
     cylX(40,1120,MM.steel,0,250,330,p,16);cylX(40,1120,MM.steel,0,250,-330,p,16);cylZ(40,660,MM.steel,-560,250,0,p,16);
     const gm=new T.Group();cylZ(180,380,MM.motor,0,0,0,gm,28);box(300,300,240,MM.gear,0,0,-300,gm);
     gm.position.set(-560,250,-640);p.add(gm);})();
