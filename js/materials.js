@@ -72,6 +72,24 @@ const M={
   screen:new THREE.MeshStandardMaterial({color:0x0a141c,emissive:0x1d4d66,emissiveIntensity:0.9,metalness:0.2,roughness:0.4}),
   lampLit:new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff4dc,emissiveIntensity:1.0}),
 };
+/* 足場(GL+1000 のステージ)— カッター台車の緑(cutter.js の PAINT と同じ sRGB 色を線形へ直して持つ = 同じ色に見える)。
+   上面は滑り止めの縞鋼板: 1枚 1.08m 角(継ぎ目つき)・突起 12×12(約 90mm)。UV はメートルで貼る(repeat 1/1.08) */
+const stageTex=canvasTex(256,256,(g,w,h)=>{g.fillStyle="#3b6a4f";g.fillRect(0,0,w,h);
+  const n=12,s=w/n;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const cx=(i+0.5)*s,cy=(j+0.5)*s,a=((i+j)%2?1:-1)*Math.PI/4;
+    g.save();g.translate(cx,cy);g.rotate(a);g.fillStyle="rgba(16,34,25,0.50)";g.fillRect(-s*0.34,-s*0.07+1.2,s*0.68,s*0.14);
+    g.fillStyle="rgba(88,136,108,0.50)";g.fillRect(-s*0.34,-s*0.07,s*0.68,s*0.12);g.restore();}   // 突起(控えめに: 全体は台車の緑のまま)
+  g.fillStyle="rgba(14,28,21,0.9)";g.fillRect(0,0,w,2);g.fillRect(0,0,2,h);});                 // パネルの継ぎ目
+stageTex.repeat.set(1/1.08,1/1.08);
+const srgbLin=c=>new THREE.Color(c).convertSRGBToLinear();
+M.stageDeck=new THREE.MeshStandardMaterial({map:stageTex,metalness:0.18,roughness:0.62});      // 縞鋼板(上面・階段の踏板)
+M.stage=new THREE.MeshStandardMaterial({color:srgbLin("#3b6a4f"),metalness:0.18,roughness:0.58}); // 骨組み(脚・梁・縁の溝形鋼)
+// ピット・走行路の囲い: 緑のエキスパンドメタル(菱形の網目・抜きは透明)。1枚 0.24m 角に網目 3×4(UV はタイル数で貼る)
+const stageMeshTex=canvasTex(128,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.strokeStyle="#3b6a4f";g.lineWidth=7;g.lineJoin="round";
+  const cw=w/3,ch=h/4;
+  for(let j=0;j<=4;j++)for(let i=-1;i<=3;i++){const x=i*cw+(j%2?cw/2:0),y=j*ch;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+cw/2,y+ch/2);g.lineTo(x+cw,y);g.moveTo(x,y);g.lineTo(x+cw/2,y-ch/2);g.lineTo(x+cw,y);g.stroke();}});
+M.stageMesh=new THREE.MeshStandardMaterial({map:stageMeshTex,alphaTest:0.5,side:THREE.DoubleSide,metalness:0.18,roughness:0.62});
 
 /* アルミ材の見え方 — 仕上げパターン(プリセット)+ 色/金属感/粗さの詳細調整。
  * 帯板・コイル外周・コイル端面は同じ材なので、板を基準に相対関係を保って追従させる
