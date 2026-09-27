@@ -16,7 +16,7 @@
     <i class="fa-solid fa-industry"></i>
     <div class="ptitle-main">
       <div>アルミ多条割スリッターライン<small>MULTI-STRAND SLITTING LINE</small></div>
-      <span class="ver-badge" id="appVersion">v1.14.1</span>
+      <span class="ver-badge" id="appVersion">v1.15.0</span>
     </div>
   </div>
   <div class="status-card">
@@ -58,7 +58,7 @@
   </details>
 
   <details class="grp" open>
-    <summary><i class="fa-solid fa-layer-group"></i>刃組(カッター台車)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <summary><i class="fa-solid fa-layer-group"></i><span>刃組(ラインの台車: <b id="bsCar">A台車</b>)</span><i class="fa-solid fa-chevron-right chev"></i></summary>
     <div class="body">
       <div class="ro ro-kv"><i class="fa-solid fa-circle-notch"></i><span>丸刃</span><b id="bsKnife">—</b></div>
       <div class="ro ro-kv"><i class="fa-solid fa-arrows-left-right"></i><span>クリアランス / ラップ</span><b id="bsClr">—</b></div>
@@ -80,17 +80,22 @@
   </details>
 
   <details class="grp" open>
-    <summary><i class="fa-solid fa-screwdriver-wrench"></i>段取り(刃替え)<i class="fa-solid fa-chevron-right chev"></i></summary>
+    <summary><i class="fa-solid fa-screwdriver-wrench"></i>段取り(台車の入れ替え)<i class="fa-solid fa-chevron-right chev"></i></summary>
     <div class="body">
-      <button class="btn btn-sm" id="btnKnife"><i class="fa-solid fa-truck-ramp-box"></i><span>カッター台車をラインから出す</span></button>
+      <button class="btn btn-sm" id="btnKnife"><i class="fa-solid fa-right-left"></i><span>台車を入れ替える</span></button>
       <div class="step3">
-        <button data-step="pull">①引き出す</button><button data-step="open">②軸端部を外す</button><button data-step="spin">③台車を回す</button>
+        <button data-step="pull">①引き出す</button><button data-step="open">②軸端部外し</button><button data-step="spin">③回す</button>
       </div>
-      <div class="ro ro-kv" style="margin-top:7px;"><i class="fa-solid fa-location-dot"></i>
-        <span>台車(<span id="roCarName">A台車</span>)</span><b id="roKnife">ライン内(運転位置)</b></div>
+      <div class="ro ro-kv" style="margin-top:7px;"><i class="fa-solid fa-location-dot"></i><span id="carName0">A台車</span><b id="carWhere0">—</b></div>
+      <div class="ro ro-kv"><i class="fa-solid fa-location-dot"></i><span id="carName1">B台車</span><b id="carWhere1">—</b></div>
       <div class="ro ro-kv"><i class="fa-solid fa-route"></i><span>通板</span><b id="roThread">通板済</b></div>
       <div class="kc-msg" id="kcMsg" hidden></div>
-      <div class="note">ラインから出す: 停止 → 帯板を抜取り(入側シャーで切断) → 巻上りコイル払出し → 駆動継手を外す → ①レールで回転テーブルへ → ②軸端部を着地土台へ送り出し → ③台車を180°回して刃組の姿へ。セットは逆順で、最後に通板して運転を再開します。刃組(スペーサー・ゴムリング・フィンガー)は刃組ガイダンスと同じ計算で条数・板厚から組みます</div>
+      <div class="sub-h" style="margin-top:10px;">待機台車の組み替え(<span id="sbName">B台車</span>)</div>
+      <div class="slider-row"><span>条数 / 条幅</span><b><span id="sbVal">4</span> 条 / <span id="sbW">275</span><small>mm</small></b></div>
+      <input type="range" id="rngStandby" min="2" max="50" step="1" value="4">
+      <div id="sbJudge" class="bs-judge"></div>
+      <div class="note" id="sbNote"></div>
+      <div class="note">回転テーブルに受け口が2つ(点対称)。レールの線から外れた受け口が段取り位置で、運転中でも待機台車を組み替えられます。入れ替え: 停止 → 帯板の抜取り → コイル払出し → 継手を外す → ①ラインの台車をテーブルへ → ③テーブル180° → ①待機台車をラインへ → 継手 → 通板 → 運転再開</div>
     </div>
   </details>
 

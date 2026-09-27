@@ -13,9 +13,11 @@
  * blade-core.js の solve() の答え(res)から実寸で並べる — 刃組ガイダンスの図と同じ割付。
  * 板押さえのフィンガーは図面 N2-10689-1 の形(全長560・厚み20・両端研削20×6)の板として、
  * 上下軸と板のあいだ(板の両側)へ置き、入側の押さえアングルで受ける。
+ * 台車は2台(台車マスタの A台車・B台車)。回転テーブルの2つの受け口に載り、ラインの台車と
+ * 待機台車を入れ替えて使う(手順は knifechange.js)。刃組は台車ごとに組む。
  * =======================================================*/
 const KC=(function(){
-  const T=THREE, MACH=KC_MACH, BS=()=>WL.bladeSet;
+  const T=THREE, MACH=KC_MACH, BS=()=>WL.bladeSet, M_CHECKER=M.checker;
   // 機体の塗装(実機の緑・カバーは黄)。WaveLog は r149 の色管理(sRGB→線形)で描くので、
   // ここでも色は線形へ直して持つ(同じ色に見えるように)。
   const PAINT={body:"#3b6a4f",dark:"#2d543e",light:"#4a7d60",cover:"#d8a520"};
@@ -26,13 +28,13 @@ const KC=(function(){
   // マスタ(WaveLog の context と同じ形)→ 計算が読む形
   const MS=BS().normalize(BLADESET_MASTER), IX=BS().buildIndex(MS);
 
-  /* ---- 状態 ---- */
-  const D3={
-    show:{knife:true,ring:true,liner:true},             // 見せる部材(刃 / 板押さえ / スペーサー)
-    hide:"ghost",                                        // 消した部材: gone=出さない / ghost=薄く / wire=線だけ
-    pack:null, fseat:null, rigGeo:null, fingerAngles:0, res:null, ctx:null,
-    travel:0, open:0, rot:0, cpl:1,                      // 走行(0=ライン 1=回転テーブル)/ 軸端部 / 回転 / 駆動継手
-  };
+  /* ---- 状態 ----
+     VIS: 部材の見せ方(2台で共通)/ SH: 回転テーブルの角(rot 0 ↔ 1 = 180°)と駆動継手(cpl 1=噛み合い)。
+     台車ごとの状態は makeCar() の D(走行・軸端部・受け口・刃組の計算結果)。 */
+  const VIS={show:{knife:true,ring:true,liner:true},   // 見せる部材(刃 / 板押さえ / スペーサー)
+    hide:"ghost"};                                        // 消した部材: gone=出さない / ghost=薄く / wire=線だけ
+  const SH={rot:0,cpl:1};
+  let D3=null;                                            // 組み立て中の台車の D(use() で切り替える)
 
   /* ---- 材質 ---- */
   const lin=(c)=>new T.Color(c).convertSRGBToLinear();
@@ -86,22 +88,37 @@ const KC=(function(){
     if(c.isInstancedMesh&&c.dispose)c.dispose();}}
 
   /* ---- 入れ物 ----
-     root: WaveLog の世界 → ライン / world: レール・ピット縁・着地土台(動かない)
-     pivot: 回転テーブルの中心(台車と甲板が回る) / g: 台車(走行ぶんは位置で持つ・軸の上の物は写し返す)
-     rig: 機械まわり(写し返しを打ち消す) / fix: 外した軸端部(走行には付いていくが回らない)
-     armU/armL: 上下アーバーの回転部(運転中は刃の周速で回る) / drive: 駆動側の固定設備 */
+     root: WaveLog の世界 → ライン / world: 床のレール・車止め(動かない)/ drive: 駆動側の固定設備
+     pivot: 回転テーブルの中心。回る枠(甲板・レールの腕・着地土台 = deck)と、テーブルに載った台車が回る。
+     台車ごと(makeCar): box = 置き場所(テーブルの受け口 or レール上)/ g = 台車(軸の上の物は写し返す)
+       rig = 機械まわり(写し返しを打ち消す)/ fix → stand = 軸端部(送り出すと受け口の着地土台に降りる)
+       armU/armL = 上下アーバーの回転部(ラインで駆動が噛んでいる間だけ刃の周速で回る) */
   const root=new T.Group();root.scale.set(-0.001,0.001,0.001);root.rotation.y=Math.PI/2;
   root.position.set(SLIT_X,PL,0);scene.add(root);
-  const world=new T.Group(),pivot=new T.Group(),deck=new T.Group(),g=new T.Group(),rig=new T.Group();
-  const fix=new T.Group(),stand=new T.Group(),drive=new T.Group(),armU=new T.Group(),armL=new T.Group();
-  root.add(world,pivot,fix,drive);pivot.add(deck,g);g.add(rig,armU,armL);fix.add(stand);
-  // テーブル中心はレールの線から横(root z)に ttLat ずれる。台車は甲板の上でも線上(root z=0)に載る
-  pivot.position.set(MACH.ttX,0,MACH.ttLat);g.position.z=-MACH.ttLat;
-  g.scale.x=-1;rig.scale.x=-1;       // 軸の上の物だけ写し返す(計算のOS端 → 軸端部スタンドの側)
+  const world=new T.Group(),pivot=new T.Group(),deck=new T.Group(),drive=new T.Group();
+  root.add(world,pivot,drive);pivot.add(deck);
+  // テーブル中心はレールの線から横(root z)に ttLat ずれる = 2台の受け口の真ん中。受け口は中心から ±640
+  pivot.position.set(MACH.ttX,0,MACH.ttLat);
+  function makeCar(i){
+    const c={i,name:(MS.carriages[i]||{}).name||("台車"+"AB"[i]),N:4,frame:null,
+      D:{pack:null,fseat:null,rigGeo:null,fingerAngles:0,res:null,ctx:null,bcx:null,
+        travel:i?1:0,open:0,slot:i}};                   // 走行(0=ライン 1=テーブル)/ 軸端部(1=外し)/ テーブルの受け口
+    Object.defineProperty(c.D,"show",{get:()=>VIS.show});
+    Object.defineProperty(c.D,"hide",{get:()=>VIS.hide});
+    for(const k of ["box","g","rig","armU","armL","fix","stand"])c[k]=new T.Group();
+    c.box.add(c.g,c.fix);c.g.add(c.rig,c.armU,c.armL);c.fix.add(c.stand);
+    c.g.scale.x=-1;c.rig.scale.x=-1;   // 軸の上の物だけ写し返す(計算のOS端 → 軸端部スタンドの側)
+    // 上下アーバーは刃の周速=ライン速度で回る(上軸の下面・下軸の上面が帯板と同じ向きに進む)。
+    // 写し返しと root の鏡映を通すと、上軸は局所X軸まわりに負・下軸は正が送り方向になる。
+    const turn=()=>(c.D.travel===0&&SH.cpl>0.99)?KC_KNIFE_D/2000:Infinity;
+    spin(c.armU,turn,-1,"x");spin(c.armL,turn,1,"x");
+    return c;}
+  const CARS=[makeCar(0),makeCar(1)];
+  let ACTIVE=CARS[0];                                     // ラインの台車(入っている / 最後に入っていた)
+  let g,rig,armU,armL,fix,stand;                          // 組み立て中の台車の入れ物
+  function use(c){D3=c.D;g=c.g;rig=c.rig;armU=c.armU;armL=c.armL;fix=c.fix;stand=c.stand;}
+  use(CARS[0]);
   const arm=(y)=>(y>0?armU:armL);
-  // 上下アーバーは刃の周速=ライン速度で回る(上軸の下面・下軸の上面が帯板と同じ向きに進む)。
-  // 写し返しと root の鏡映を通すと、上軸は局所X軸まわりに負・下軸は正が送り方向になる。
-  spin(armU,()=>KC_KNIFE_D/2000,-1,"x");spin(armL,()=>KC_KNIFE_D/2000,1,"x");
 
   /* ======================================================
    * 区間の中身(OS側から実寸で並べる)— WaveLog zone()
@@ -355,66 +372,65 @@ const KC=(function(){
 
   /* ======================================================
    * 現場まわり(走行レール・回転テーブル・着地土台)— WaveLog site()
-   * 床は工場の床スラブ(回転テーブルのピットは factory.js が開口を抜いてある)。
+   * 回転テーブルは床の上に載る回る枠(ピットなし)。床の回転範囲の安全帯は factory.js。
    * ====================================================*/
   function site(m){
-    const M=MACH, W=world, floorY=m.bedTop-M.floorDrop, tR=KC_TT_R, lat=M.ttLat;
-    // 着地土台は配置図の区画(root: x=ライン中心からの距離・z=横)
-    const LD=KC_TT.land, sepX0=LD.z0*1000, sepX1=LD.z1*1000, sepZ=(LD.x0+LD.x1)*500, sepD=(LD.x1-LD.x0)*1000;
+    const M=MACH, W=world, floorY=m.bedTop-M.floorDrop, lat=M.ttLat;
     const steelD=matOf("steelD",{color:"#8f99a4",metalness:.7,roughness:.3});
     const rail=matOf("rail",{color:"#7b858f",metalness:.68,roughness:.35});
     const dark=matOf("dark",{color:"#39424e",metalness:.56,roughness:.38});
     const blue=matOf("blue",{color:PAINT.body,metalness:.18,roughness:.58});
     const blueD=matOf("blueD",{color:PAINT.dark,metalness:.18,roughness:.62});
     const blueL=matOf("blueL",{color:PAINT.light,metalness:.18,roughness:.54});
-    const pitM=matOf("pitWall",{color:"#4e545b",metalness:.05,roughness:.95});
-    const plateM=matOf("plate",{color:"#858e97",metalness:.55,roughness:.5,side:T.DoubleSide});
     const bx=(list,mat,o)=>{const b=batch(G.box,mat,list);if(b)(o||W).add(b);};
-    const railRun=(o,x0,x1,z)=>{const len=x1-x0,cx=(x0+x1)/2;if(len<=1)return;
-      bx([{x:cx,y:floorY+9,z,l:len,r:18,d:250}],steelD,o);
+    const railRun=(o,x0,x1,z,base)=>{const len=x1-x0,cx=(x0+x1)/2;if(len<=1)return;
+      if(base!==false)bx([{x:cx,y:floorY+9,z,l:len,r:18,d:250}],steelD,o);
       bx([{x:cx,y:m.railTop-21,z,l:len,r:14,d:96}],rail,o);
       bx([{x:cx,y:m.railTop-7,z,l:len,r:14,d:150}],rail,o);
-      const n=Math.max(2,Math.round(len/620)),tie=[];
-      for(let i=0;i<=n;i++)tie.push({x:x0+len*i/n,y:m.railTop-31,z,l:74,r:6,d:230});
-      bx(tie,dark,o);};
-    // 甲板の縁までの距離(横 d の線上)。レールは縁の 10 手前で切る(甲板のレールと向かい合わせ)
-    const edge=d=>Math.sqrt(Math.max(0,tR*tR-d*d));
-    // 床のレール: ライン位置の台車の駆動側の端から甲板の縁まで(ピット口の固定の縁板の上も通る)
+      const n=Math.max(2,Math.round(len/620)),tie=[];                                  // 締結板は両端とも区間の内側
+      if(base!==false){for(let i=0;i<=n;i++)tie.push({x:x0+37+(len-74)*i/n,y:m.railTop-31,z,l:74,r:6,d:230});bx(tie,dark,o);}};
+    /* ---- 回る枠(pivot の子 = 回転テーブルの上の物は全部いっしょに回る)----
+       図の正方形 = 甲板(2台の台車が ±640 の受け口に並んで載る)
+       図の TR・BL = 各受け口の駆動側(ライン側)のレールの腕 / 図の BR・TL = 各受け口の着地土台(軸端部を降ろす)
+       回る範囲の外周 SW(腕とレールの先)。床のレールはその外で切る。 */
+    const SW=2510, DY0=floorY+6, DY1=floorY+24, dy=(DY0+DY1)/2, th=DY1-DY0;   // 板の上面 = レールの足の下面
+    const hx=KC_TT.hz*1000, hz=KC_TT.hx*1000;                                      // 甲板: pivot x ↔ 図の z / pivot z ↔ 図の x
+    const P0=KC_TT.plates[0], ax0=P0.z0*1000-M.ttX, ax1=P0.z1*1000-M.ttX, az0=P0.x0*1000-lat, az1=P0.x1*1000-lat;
+    const LD=KC_TT.land, lx0=LD.z0*1000-M.ttX, lx1=LD.z1*1000-M.ttX, lz=(LD.x0+LD.x1)*500-lat, ld=(LD.x1-LD.x0)*1000;
+    const radial=(R,d)=>Math.sqrt(Math.max(0,R*R-d*d));
+    // 縞鋼板は box の面ごとに模様が1枚なので、板ごとに大きさに合わせて繰り返す(約 90mm に1つ)
+    const plate=(x,z,l,d)=>{const t=M_CHECKER.map.clone();t.needsUpdate=true;t.repeat.set(Math.max(1,l/1080),Math.max(1,d/1080));
+      const mt=M_CHECKER.clone();mt.map=t;const m=new T.Mesh(G.box,mt);m.position.set(x,dy,z);m.scale.set(l,th,d);
+      m.receiveShadow=true;m.castShadow=true;deck.add(m);};
+    plate(0,0,2*hx,2*hz);                                                               // 甲板
+    {const m=new T.Mesh(G.disc,steelD);m.position.set(0,DY1+3,0);m.scale.set(240,6,240);m.receiveShadow=true;deck.add(m);   // 旋回軸受のふた
+      const ring=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2;ring.push({x:Math.cos(a)*205,y:DY1+8,z:Math.sin(a)*205,l:18,r:6,d:18});}
+      bx(ring,dark,deck);}
+    for(const sg of [1,-1]){                                                            // 受け口0(sg=+1)と、点対称の受け口1
+      plate(sg*(ax0+ax1)/2,sg*(az0+az1)/2,ax1-ax0,az1-az0);                              // レールの腕(図の TR / BL)
+      plate(sg*(hx+lx1)/2,sg*lz,lx1-hx,ld);                                             // 着地土台の腕(図の BR / TL)
+      for(const s of [-1,1]){const z=sg*(-lat+s*M.railZ),d=Math.abs(z);
+        const xe=radial(SW-5,d+75);                                                     // 腕のレールは外周の手前まで
+        const nose=xe+ax0;                                                              // 腕の端から先へ出るレールの受け
+        if(nose>1)bx([{x:sg*(ax0-nose/2),y:dy,z,l:nose,r:th,d:170}],steelD,deck);
+        railRun(deck,sg>0?-xe:-(hx-10),sg>0?hx-10:xe,z,false);}
+      // 着地土台(送り出した軸端部が降りる。枠に付いていて一緒に回る)
+      const x0=sg>0?lx0:-lx1, x1=sg>0?lx1:-lx0, cx=(x0+x1)/2, len=x1-x0, zc=sg*lz, bedY=m.bedTop-M.baseH/2;
+      bx([{x:cx,y:bedY,z:zc,l:len,r:M.baseH,d:ld}],blue,deck);
+      bx([{x:cx,y:bedY-M.baseH/2-58,z:zc,l:len-60,r:116,d:ld-150}],blueD,deck);
+      bx([{x:cx,y:m.bedTop+6,z:zc,l:len-40,r:12,d:ld-40}],blueL,deck);
+      const leg=[],pad=[];
+      for(const sx of [x0+110,x1-110])for(const s of [-1,1]){const fz=zc+s*(ld/2-130);
+        leg.push({x:sx,y:(m.bedTop-116+DY1+30)/2,z:fz,l:160,r:(m.bedTop-116)-(DY1+30),d:150});
+        pad.push({x:sx,y:DY1+16,z:fz,l:210,r:32,d:200});}
+      bx(leg,dark,deck);bx(pad,steelD,deck);
+      bx([{x:sg>0?x1-26:x0+26,y:m.bedTop+28,z:zc,l:40,r:56,d:ld-120}],steelD,deck);}  // 土台の奥の止め
+    // 床のレール: ライン位置の台車の駆動側の端から、回る枠の外周の外まで(角が外周 SW+10 に触れない所で切る)
     const rx0=m.x0-150;
-    for(const s of [-1,1]){const z=s*M.railZ;railRun(W,rx0,M.ttX-edge(z-lat)-10,z);}
+    for(const s of [-1,1]){const z=s*M.railZ,d=Math.abs(z-lat);railRun(W,rx0,M.ttX-radial(SW+10,Math.max(0,d-125)),z);}
     bx([{x:rx0-40,y:floorY+60,z:0,l:80,r:120,d:2*M.railZ+260}],matOf("stop",{color:"#e8b324",metalness:.2,roughness:.6}));   // 車止め
-    // ピット口(図の正方形・固定)。甲板の外の四隅は縁板で塞ぐ(床と同じ高さ)
-    {const hx=KC_TT.hz*1000,hz=KC_TT.hx*1000,sh=new T.Shape();       // root x ↔ 図の z / root z ↔ 図の x
-      sh.moveTo(M.ttX-hx,-(lat-hz));sh.lineTo(M.ttX+hx,-(lat-hz));sh.lineTo(M.ttX+hx,-(lat+hz));sh.lineTo(M.ttX-hx,-(lat+hz));sh.closePath();
-      const h=new T.Path();h.absarc(M.ttX,-lat,tR+12,0,Math.PI*2,true);sh.holes.push(h);
-      const gg=new T.ShapeGeometry(sh,72);gg.rotateX(-Math.PI/2);
-      const pl=new T.Mesh(gg,plateM);pl.position.y=floorY+1;pl.receiveShadow=true;W.add(pl);
-      const fr=[];                                                     // 口の縁の山形鋼
-      for(const s of [-1,1]){fr.push({x:M.ttX+s*hx,y:floorY-3,z:lat,l:40,r:10,d:2*hz+40});fr.push({x:M.ttX,y:floorY-3,z:lat+s*hz,l:2*hx,r:10,d:40});}
-      bx(fr,steelD);}
-    // 回転テーブル: ピットの壁と底(甲板の下)+ 甲板(台車と一緒に回る)
-    const wall=new T.Mesh(new T.CylinderGeometry(1,1,1,96,1,true),                           // 内側から見る壁
-      matOf("pitWallIn",{color:"#4e545b",metalness:.05,roughness:.95,side:T.BackSide}));
-    wall.position.set(M.ttX,floorY-80,lat);wall.scale.set(tR+12,160,tR+12);W.add(wall);
-    const floorDisc=new T.Mesh(G.disc,pitM);floorDisc.position.set(M.ttX,floorY-165,lat);floorDisc.scale.set(tR+12,10,tR+12);
-    floorDisc.receiveShadow=true;W.add(floorDisc);
-    const dk=new T.Mesh(G.disc,steelD);dk.position.set(0,floorY-63,0);dk.scale.set(tR,130,tR);dk.receiveShadow=true;deck.add(dk);
-    const rim=new T.Mesh(G.ringGeo,steelD);rim.position.set(0,floorY+3,0);rim.scale.set(tR-6,tR-6,tR-6);deck.add(rim);
-    for(const s of [-1,1]){const z=-lat+s*M.railZ,h2=edge(z)-10;railRun(deck,-h2,h2,z);}   // 甲板のレール(台車の線上)
-    bx([{x:0,y:floorY+4,z:0,l:180,r:6,d:180}],dark,deck);
-    if(D3.rigGeo)D3.rigGeo.deckTop=floorY-63+65;
-    // 着地土台。テーブルの外に据え付けてあり、送り出した軸端部がここに降りる
-    const cx=(sepX0+sepX1)/2,len=sepX1-sepX0,bedY=m.bedTop-M.baseH/2;
-    bx([{x:cx,y:bedY,z:sepZ,l:len,r:M.baseH,d:sepD}],blue);
-    bx([{x:cx,y:bedY-M.baseH/2-58,z:sepZ,l:len-60,r:116,d:sepD-150}],blueD);
-    bx([{x:cx,y:m.bedTop+6,z:sepZ,l:len-40,r:12,d:sepD-40}],blueL);
-    const leg=[],pad=[];
-    for(const sx of [sepX0+110,sepX1-110])for(const s of [-1,1]){const fz=sepZ+s*(sepD/2-130);
-      leg.push({x:sx,y:(m.bedTop-116+floorY+30)/2,z:fz,l:160,r:(m.bedTop-116)-(floorY+30),d:150});
-      pad.push({x:sx,y:floorY+16,z:fz,l:210,r:32,d:200});}
-    bx(leg,dark);bx(pad,steelD);
-    bx([{x:sepX0+26,y:m.bedTop+28,z:sepZ,l:40,r:56,d:sepD-120}],steelD);
-    return{tR,sepX0,sepX1,floorY};}
+    siteInfo={floorY,deckTop:DY1,sweepR:SW};
+    return siteInfo;}
 
   /* ======================================================
    * 駆動側(DS・−Z)の固定設備 — 台車のギヤボックス端の継手へスピンドルで噛む。
@@ -453,52 +469,67 @@ const KC=(function(){
     for(const y of [yU,yL])bx([{x:sx,y,z:0,l:120,r:170,d:260}],dark);}
 
   /* ======================================================
-   * 組み立て(条数・板厚・表示を変えたら組み直す)
+   * 組み立て(条数・板厚・表示を変えたら組み直す)— 台車ごと
    * ====================================================*/
-  let siteBuilt=false, frameInfo=null;
-  function rebuild(ctx){
-    D3.ctx=ctx;D3.res=ctx.res;
+  let siteBuilt=false, siteInfo=null;
+  function rebuildCar(c,ctx){use(c);
+    c.D.ctx=ctx;c.D.res=ctx.res;c.N=ctx.st.lots.reduce((a,l)=>a+l.n,0);c.w=ctx.w;
     for(const o of [rig,stand,armU,armL])clear(o);
-    for(const c of g.children.slice())if(c!==rig&&c!==armU&&c!==armL){g.remove(c);if(c.dispose)c.dispose();}
+    for(const k of g.children.slice())if(k!==rig&&k!==armU&&k!==armL){g.remove(k);if(k.dispose)k.dispose();}
     const res=ctx.res, A=res.A, L=A.arborLen, cd=Math.max(1,ctx.st.knife-ctx.st.ov);
     armU.position.set(0,cd/2,0);armL.position.set(0,-cd/2,0);
     const m=machine(A,res.segs,res.zp,L,cd,ctx.st.tk);
-    frameInfo=m;
+    c.frame=m;c.D.bcx=m.bcx;
     if(!siteBuilt){site(m);driveUnit(m,cd/2,-cd/2);siteBuilt=true;}
-    D3.bcx=m.bcx;
+    use(ACTIVE);
     pose();}
 
-  /* 札: 設備名(台車の中央)と OS・DS(有効長の両端)。取付点はタイロッドの上面で、
-     台車を回せば一緒に回る。呼び方は刃組基準値の「OSの呼び方」「DSの呼び方」。 */
-  const tags={name:makeLabel("スリッター(カッター台車)",0,0,0,{rank:1}),         // OS/DS は小さく端に付くので先に置く
-    os:makeSubLabel(BS().sideWord(MS,"OS"),0,0,0,{rank:0.5}),ds:makeSubLabel(BS().sideWord(MS,"DS"),0,0,0,{rank:0.5})};
+  /* 札: 台車の名前(台車の中央)と、ラインの台車の OS・DS(有効長の両端)。取付点はタイロッドの上面で、
+     テーブルを回せば一緒に回る。呼び方は刃組基準値の「OSの呼び方」「DSの呼び方」。 */
+  for(const c of CARS)c.tag=makeLabel(c.name,0,0,0,{rank:1});              // OS/DS は小さく端に付くので先に置く
+  const tags={os:makeSubLabel(BS().sideWord(MS,"OS"),0,0,0,{rank:0.5}),ds:makeSubLabel(BS().sideWord(MS,"DS"),0,0,0,{rank:0.5})};
+  const tagText=c=>c.D.travel<1-1e-6?"スリッター("+c.name+")":
+    Math.abs(SH.rot-c.D.slot)<1e-3?c.name+"(テーブル上)":c.name+"(待機)";          // レールの線の受け口 / 段取り位置・旋回中
   const _v=new T.Vector3();
-  function placeTags(){const c=D3.ctx;if(!c)return;root.updateMatrixWorld(true);
-    const L=c.res.A.arborLen, cd=c.st.knife-c.st.ov, topY=cd/2+MACH.tieY+MACH.tieR+5;
-    tags.name.position.copy(_v.set(0,topY,0).applyMatrix4(g.matrixWorld));
-    tags.os.position.copy(_v.set(-(L/2+120),topY,0).applyMatrix4(g.matrixWorld));   // g-局所の −X = 計算のOS端
-    tags.ds.position.copy(_v.set(L/2+120,topY,0).applyMatrix4(g.matrixWorld));}
+  function placeTags(){root.updateMatrixWorld(true);
+    const top=c=>{const x=c.D.ctx;return x.st.knife/2-x.st.ov/2+MACH.tieY+MACH.tieR+5;};
+    for(const c of CARS){if(!c.D.ctx)continue;
+      c.tag.position.copy(_v.set(0,top(c),0).applyMatrix4(c.g.matrixWorld));LBL.setText(c.tag,tagText(c));}
+    const a=ACTIVE;if(!a.D.ctx)return;
+    const L=a.D.ctx.res.A.arborLen, y=top(a);
+    tags.os.position.copy(_v.set(-(L/2+120),y,0).applyMatrix4(a.g.matrixWorld));   // g-局所の −X = 計算のOS端
+    tags.ds.position.copy(_v.set(L/2+120,y,0).applyMatrix4(a.g.matrixWorld));}
 
-  /* 姿勢を当てる(走行・軸端部・回転・駆動継手) */
+  /* 姿勢を当てる(走行・軸端部・テーブルの回転・駆動継手)
+     テーブルの上(走行=1): 台車は受け口に載って枠と一緒に回る(pivot の子)。受け口0 は向きそのまま・
+       受け口1 は点対称(180°)に置く = テーブルを 180° 回すと受け口1 がレールの線に並ぶ。
+     レールの上(走行<1): root の子。走れるのはレールの線に並んだ受け口の台車だけ(手順の判定が守る)。 */
   const ease=k=>(k<0.5?2*k*k:1-2*(1-k)*(1-k));
+  function poseCar(c){
+    const D=c.D, bcx=D.bcx==null?0:D.bcx, s=D.slot?-1:1;
+    if(D.travel>=1-1e-6){
+      if(c.box.parent!==pivot)pivot.add(c.box);
+      c.box.position.set(s*(MACH.ttC-bcx),0,-s*MACH.ttLat);   // テーブル中心より ttC 先で止まる
+      c.box.rotation.y=D.slot?Math.PI:0;
+    }else{
+      if(c.box.parent!==root)root.add(c.box);
+      c.box.position.set(MACH.ttX+T.MathUtils.lerp(-MACH.ttX,-bcx+MACH.ttC,ease(D.travel)),0,0);
+      c.box.rotation.y=0;}
+    c.stand.position.x=ease(D.open)*MACH.travel;}              // 軸端部を送り出す(受け口の着地土台へ)
   function pose(){
-    const bcx=D3.bcx==null?0:D3.bcx;
-    const carX=THREE.MathUtils.lerp(-MACH.ttX,-bcx+MACH.ttC,ease(D3.travel));   // テーブル中心より ttC 先で止まる
-    g.position.x=carX;fix.position.x=MACH.ttX+carX;              // 走行には軸端部も付いていく
-    stand.position.x=ease(D3.open)*MACH.travel;                   // 軸端部を送り出す(着地土台へ)
-    pivot.rotation.y=-Math.PI*ease(D3.rot);                       // 台車を半回転(台車はテーブル中心から横にずれて載るので、
-                                                                  // 外へ出た角が着地土台・外した軸端部の側を通らない向きに回す)
-    for(const s of sleeves)s.position.x=-(1-ease(D3.cpl))*220;  // 継手スリーブを引いて外す
+    pivot.rotation.y=-Math.PI*ease(SH.rot);                     // テーブルを半回転(枠・着地土台・載った台車が一緒に回る)
+    for(const c of CARS)poseCar(c);
+    for(const s of sleeves)s.position.x=-(1-ease(SH.cpl))*220;  // 継手スリーブを引いて外す
     placeTags();}
 
   /* 刃組の計算(ラインの条件 → WaveLog の st) */
   const ringHex=od=>BS().ringMeta(MS,IX,od).hex||"#8d97a6";
-  function solveFor(N,thick){
+  function solveFor(N,thick,car){
     const B=BS(), w=Math.floor(EFF_W*1000/N/0.05+1e-9)*0.05;     // 条幅は寸法刻みへ切り下げ(余りは耳へ)
     const mk=()=>{const s=B.defaultState();s.equipment=MS.equipment;s.W=STRIP_W*1000;s.thick=thick;
       s.lots=[{name:"LOT1",w:+w.toFixed(3),n:N}];s.order=[];B.syncOrder(s);B.applyStandards(s,MS);
       const c=B.clearanceFor(MS,s.thick);if(c)s.clr=c;
-      s.carriage=(MS.carriages[0]||{}).name||"";return s;};
+      s.carriage=(MS.carriages[car|0]||{}).name||"";return s;};
     // 刃厚は「一般」の刃を厚い順に試し、組める最初の刃を使う(狭い条は厚刃では組めない)
     const thicks=[...new Set(MS.blades.filter(b=>B.selectable(b,MS)&&b.status===MS.bladeGeneral&&b.currentDia)
       .map(b=>+b.thickness))].sort((a,b)=>b-a);
@@ -511,16 +542,22 @@ const KC=(function(){
     const blade=MS.blades.find(b=>+b.thickness===best.st.tk&&b.status===MS.bladeGeneral)||null;
     return{st:best.st,res:best.res,M:MS,ringHex,w:best.w,blade};}
 
-  /* 刃・保持層の見え方(ラインの帯板・耳屑の経路が読む。単位 m・パスライン基準) */
-  function geom(){const c=D3.ctx;if(!c)return null;
+  /* 刃・保持層の見え方(ラインの帯板・耳屑の経路が読む。単位 m・パスライン基準)— ラインの台車 */
+  function geom(){const c=ACTIVE.D.ctx;if(!c)return null;
     const A=c.res.A, n=A.sign.length-1, cd=c.st.knife-c.st.ov;
     return{yU:cd/2000, knifeR:c.st.knife/2000,
       // 耳屑側の最外刃が上刃か(OS端 = +Z / DS端 = −Z)
       osUpper:A.sign[0]<0, dsUpper:A.sign[n]>0};}
 
-  return{D3,MS,IX,root,g,rig,armU,armL,pivot,fix,stand,drive,deck,world,
-    solveFor,rebuild,pose,geom,ease,
-    get frame(){return frameInfo;},
-    setShow(k,on){D3.show[k]=on;if(D3.ctx)rebuild(D3.ctx);},
-    setHide(mode){D3.hide=mode;if(D3.ctx)rebuild(D3.ctx);}};
+  const rebuildAll=()=>{for(const c of CARS)if(c.D.ctx)rebuildCar(c,c.D.ctx);};
+  return{MS,IX,root,pivot,drive,deck,world,SH,CARS,
+    get D3(){return ACTIVE.D;}, get active(){return ACTIVE;},                    // ラインの台車(入っている/最後に入った)
+    get standby(){return CARS.find(c=>c!==ACTIVE);},
+    setActive(c){ACTIVE=c;use(c);pose();},
+    get g(){return ACTIVE.g;}, get rig(){return ACTIVE.rig;}, get armU(){return ACTIVE.armU;},
+    get armL(){return ACTIVE.armL;}, get fix(){return ACTIVE.fix;}, get stand(){return ACTIVE.stand;},
+    solveFor, rebuild(ctx){rebuildCar(ACTIVE,ctx);}, rebuildCar, pose, geom, ease,
+    get frame(){return ACTIVE.frame;}, get site(){return siteInfo;},
+    setShow(k,on){VIS.show[k]=on;rebuildAll();},
+    setHide(mode){VIS.hide=mode;rebuildAll();}};
 })();

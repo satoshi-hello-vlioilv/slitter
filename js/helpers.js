@@ -329,7 +329,9 @@ const LBL=(function(){
       it.ln.setAttribute("x1",it.ax.toFixed(1));it.ln.setAttribute("y1",it.ay.toFixed(1));
       it.ln.setAttribute("x2",lx.toFixed(1));it.ln.setAttribute("y2",t+it.h);it.ln.style.opacity=a;
       it.dot.setAttribute("cx",it.ax.toFixed(1));it.dot.setAttribute("cy",it.ay.toFixed(1));it.dot.style.opacity=a;}}
-  return{add,update,items};
+  /* 札の文字を変える(幅は次の update で測り直す) */
+  function setText(it,text){if(!it||it.text===text)return;it.text=text;it.el.textContent=text;it.w=0;it.out="";}
+  return{add,update,items,setText};
 })();
 /* 設備名(opt.rank: 小さいほど先に良い場所へ / opt.follow(pos): 取付点を毎フレーム動かす) */
 function makeLabel(text,x,y,z,opt){return LBL.add(text,V3(x,y,z),"main",labelGroup,opt);}

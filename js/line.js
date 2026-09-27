@@ -247,4 +247,4 @@ makeLabel("デフロール",10.95,PL+0.53,0,{rank:15});
 makeLabel("テールキャッチャー",12.40,PL+0.21,0,{rank:16});
 makeLabel("耳屑ガイドロール",SG2.x,SG2.y+0.06, ZTRIM,{rank:17});
 makeLabel("耳屑ガイドロール",SG2.x,SG2.y+0.06,-ZTRIM,{rank:17});
-makeLabel("回転テーブル(刃組段取り)",KC_TT.x-1.2,0.03,KC_TT_Z,{rank:18});  // 台車が載っても隠れない甲板の上流側の縁
+makeLabel("回転テーブル(台車入替え)",KC_TT.x-1.2,0.03,KC_TT_Z,{rank:18});  // 台車が載っても隠れない甲板の上流側の縁

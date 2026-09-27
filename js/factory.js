@@ -10,7 +10,7 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
 (function buildFactory(){
   const FD=9, PH0=-GL_Y;                  // 床の半奥行き(建屋)/ 床の高さ(GL から 1.0)
   // 床(GL+1000)は配置図の枠線の形で、GL まで押し出した1つの塊にする(縁の立ち上がり面も一緒にできる)。
-  // 開口: ルーパーピット・スクラップピット・コイルカー走行路・回転テーブルのピット。
+  // 開口: ルーパーピット・スクラップピット・コイルカー走行路(回転テーブルは床の上に載る — cutter.js)。
   // 形は平面(x,z)で描き、押し出してから寝かせる(形のy = −z)。
   const rect=(x0,z0,x1,z1)=>{const p=new THREE.Path();p.moveTo(x0,-z0);p.lineTo(x1,-z0);p.lineTo(x1,-z1);p.lineTo(x0,-z1);p.closePath();return p;};
   const outline=new THREE.Shape();
@@ -18,7 +18,6 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
   for(const p of [PIT1,PIT2])outline.holes.push(rect(p.x0,-PIT_HZ,p.x1,PIT_HZ));
   {const h=new THREE.Path();SCRAP_PIT.poly.forEach(([x,z],i)=>i?h.lineTo(x,-z):h.moveTo(x,-z));h.closePath();outline.holes.push(h);}
   for(const c of CAR_PITS)outline.holes.push(rect(c.x-CAR_PIT_HW,c.z0,c.x+CAR_PIT_HW,c.zEdge-0.002));
-  outline.holes.push(rect(KC_TT.x-KC_TT.hx,KC_TT.z-KC_TT.hz,KC_TT.x+KC_TT.hx,KC_TT.z+KC_TT.hz));   // 回転テーブルのピット口(図の正方形)
   const sg=new THREE.ExtrudeGeometry(outline,{depth:PH0,bevelEnabled:false,curveSegments:72});
   sg.rotateX(-Math.PI/2);sg.translate(0,-PH0,0);
   const ftex=concreteTex(1/2.2,1/2.2);                 // UV=床の座標[m] → 2.2mに1枚
@@ -63,6 +62,12 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
     addBox(w,0.1,2*PIT_HZ,M.pit,cx,PIT_FLOOR-0.05,0,scene,false).receiveShadow=true;
     for(const sgn of [-1,1])addBox(w+0.3,0.022,0.14,M.hazard,cx,0.012,sgn*(PIT_HZ+0.11));  // 開口縁の注意帯(床上)
   }
+  // 回転テーブルの回転範囲(安全帯の円)の中は、床に立ち上がる物を置かない(回る枠が上を通る)。
+  // 線分 (x0,z0)+t(ux,uz)・t∈[0,L] のうち、円の外の区間(半径 sweepR+0.04 = 注意帯の半幅 0.07 − 安全帯の半幅 0.03)
+  function outsideSweep(x0,z0,ux,uz,L){const R=KC_TT.sweepR+0.04,dx=x0-KC_TT.x,dz=z0-KC_TT.z;
+    const b=dx*ux+dz*uz,c=dx*dx+dz*dz-R*R,D=b*b-c;if(D<=0)return [[0,L]];
+    const t1=-b-Math.sqrt(D),t2=-b+Math.sqrt(D),out=[];
+    if(t1>0.05)out.push([0,Math.min(L,t1)]);if(t2<L-0.05)out.push([Math.max(0,t2),L]);return out;}
   // スクラップワインダーのピット(図の L 字)。出側テーブルの側枠はピットに渡した梁で受ける
   {const P=SCRAP_PIT,poly=P.poly,D=-P.floor+0.05,n=poly.length;
     const inside=(x,z)=>{let c=false;for(let i=0,j=n-1;i<n;j=i++){const [xi,zi]=poly[i],[xj,zj]=poly[j];
@@ -72,15 +77,14 @@ function floorAt(x,z){const P=FLOOR_POLY;let c=false;
       const w=addBox(Math.abs(ux)>0.5?L+0.12:0.06,D,Math.abs(ux)>0.5?0.06:L+0.12,M.pit,mx+nx*0.03,-D/2,mz+nz*0.03);
       const hx=mx+nx*0.11,hz=mz+nz*0.11;
       if(floorAt(hx-ux*L/2,hz-uz*L/2)&&floorAt(hx+ux*L/2,hz+uz*L/2))
-        addBox(Math.abs(ux)>0.5?L:0.14,0.022,Math.abs(ux)>0.5?0.14:L,M.hazard,hx,0.012,hz);}                // 開口縁の注意帯
+        for(const [a,b] of outsideSweep(hx-ux*L/2,hz-uz*L/2,ux,uz,L)){const l=b-a,c=(a+b)/2-L/2;      // 開口縁の注意帯
+          addBox(Math.abs(ux)>0.5?l:0.14,0.022,Math.abs(ux)>0.5?0.14:l,M.hazard,hx+ux*c,0.012,hz+uz*c);}}
     addBox(P.x1-P.x0,0.1,3.676-P.z0,M.pit,(P.x0+P.x1)/2,P.floor-0.05,(P.z0+3.676)/2,scene,false).receiveShadow=true;
     addBox(5.33-P.x0,0.1,P.z1-3.676,M.pit,(P.x0+5.33)/2,P.floor-0.05,(3.676+P.z1)/2,scene,false).receiveShadow=true;
     for(const s of [-1,1])addBox(P.x1-P.x0+0.1,0.16,0.16,M.frame,(P.x0+P.x1)/2,-0.08,s*(STRIP_W/2+0.27));}  // 梁(テーブル側枠の下)
-  // 回転テーブルまわりの床の区画(図の点対称の3区画・縞鋼板・床と同じ高さ)と回転範囲の安全帯
-  for(const r of KC_TT.plates)addBox(r.x1-r.x0,0.008,r.z1-r.z0,M.checker,(r.x0+r.x1)/2,0.004,(r.z0+r.z1)/2,scene,false).receiveShadow=true;
+  // 回転テーブルの回転範囲の安全帯(図の外側の円)。枠(正方形の甲板・4つの張出し)は cutter.js で一緒に回る
   {const R=KC_TT.sweepR,N=260,pos=[],idx=[],w=0.06;
-    const open=(x,z)=>(Math.abs(x-KC_TT.x)<KC_TT.hx&&Math.abs(z-KC_TT.z)<KC_TT.hz)||
-      SCRAP_PIT.poly&&x>SCRAP_PIT.x0-0.07&&x<5.40&&z>SCRAP_PIT.z0-0.07&&z<SCRAP_PIT.z1+0.07&&(x<SCRAP_PIT.x1+0.07||z>3.60);
+    const open=(x,z)=>SCRAP_PIT.poly&&x>SCRAP_PIT.x0-0.07&&x<5.40&&z>SCRAP_PIT.z0-0.07&&z<SCRAP_PIT.z1+0.07&&(x<SCRAP_PIT.x1+0.07||z>3.60);
     for(let i=0;i<N;i++){const a0=2*Math.PI*i/N,a1=2*Math.PI*(i+1)/N,am=(a0+a1)/2;
       const mx=KC_TT.x+R*Math.cos(am),mz=KC_TT.z+R*Math.sin(am);
       if(open(mx,mz)||!floorAt(mx,mz))continue;                                                              // 開口の上・床の外は描かない
