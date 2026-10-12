@@ -88,8 +88,8 @@ function updateHUD(dt){uiT+=dt;if(uiT<0.12)return;uiT=0;
   else if(st.paused&&st.v<=0.004){text="ライン停止";cls="stop";}else if(st.v<tgt-0.01){text="加速中";cls="warn";}
   else if(st.v>tgt+0.01){text="減速中";cls="warn";}else if(st.v>0.004){text="定常運転中";cls="ok";}else{text="ライン停止";cls="stop";}
   if(st.state==="RUN"&&KX.label)text+=" ─ 段取り: "+KX.label;              // 運転を続けたまま待機台車を組み替えている間
-  ui.status.textContent=text;ui.led.className="led "+cls;
-  syncKnifeUI();rclUI.sync();mechUI.sync(false,0.12);}
+  if(ui.status.textContent!==text){ui.status.textContent=text;ui.status.parentElement.parentElement.title=text;}ui.led.className="led "+cls;
+  syncKnifeUI();rclUI.sync();mechUI.sync(false,0.12);LAYOUT.steps();}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),0.05);
   stepLine(dt);updateSpinners(dt);updateGeometry();updateHUD(dt);controls.update(dt);renderer.render(scene,camera);

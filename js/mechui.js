@@ -99,7 +99,8 @@ const mechUI=(function(){
   /* ======================================================
    * 読み出し
    * ====================================================*/
-  const row=(k,v,cls)=>`<div class="r"><span>${k}</span><b class="${cls||""}">${v}</b></div>`;
+  // 行の状態(ok/warn/ng)は左の点で、　で始まる行は詳細(「詳細」で開く)
+  const row=(k,v,cls)=>`<div class="r${cls?" s-"+cls:""}${/^　/.test(k)?" det":""}"><span>${k}</span><b class="${cls||""}">${v}</b></div>`;
   const dirWord=k=>k>1e-4?"上反り":k<-1e-4?"下反り":"平ら";
   const Rtxt=k=>Math.abs(k)<1e-3?"—(弾性・残らない)":`R ${Math.abs(k)>0.5?fmt(1000/Math.abs(k),0)+" mm":fmt(1/Math.abs(k),1)+" m"}・${dirWord(k)}`;
   let tc=null,tcKey="";
@@ -139,8 +140,8 @@ const mechUI=(function(){
       return row(n+"ループ",`深さ ${fmt(l.d,2)}m・入口 ${fmt(l.phiIn*57.296,0)}°/出口 ${fmt(l.phiOut*57.296,0)}°`)+
         row("　水平力(自重)",`${fmt(l.H*W,1)} N${l.H<0?"(圧縮)":""}・支点反力 ${fmt((l.Vin+l.Vout)/2*W,0)} N`)+
         row("　台からの持ち上がり",`${fmt(lh*1000,0)} mm(ロールから ${fmt(f.len,2)} m)`);};
-    setHTML("mechLoops",'<div class="mech-kv">'+lrow("No.1",loop1Shape,STRIP_W)+lrow("No.2",loop2Info.find(x=>x&&!x.flat),wsum/Math.max(1,strandW.length))+
-      row("巻取張力(全条)",`${fmt(MS.sWind*S.t*1000*wsum,2)} kN(${fmt(MS.sWind,1)} N/mm² × ${fmt(wsum*1000,0)}mm × ${fmt(S.t*1000,2)}mm)`)+'</div>');
+    setHTML("mechLoops",lrow("No.1",loop1Shape,STRIP_W)+lrow("No.2",loop2Info.find(x=>x&&!x.flat),wsum/Math.max(1,strandW.length))+
+      row("巻取張力(全条)",`${fmt(MS.sWind*S.t*1000*wsum,2)} kN(${fmt(MS.sWind,1)} N/mm² × ${fmt(wsum*1000,0)}mm × ${fmt(S.t*1000,2)}mm)`));
     // 反り
     if(document.activeElement!==rD1)rD1.value=Math.round(MS.d1*1000);if(document.activeElement!==rD2)rD2.value=Math.round(MS.d2*1000);
     $("levD1V").textContent=Math.round(MS.d1*1000);$("levD2V").textContent=Math.round(MS.d2*1000);chkAuto.checked=MS.levAuto;

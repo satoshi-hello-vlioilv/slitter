@@ -54,12 +54,23 @@ class OrbitCam{
     this.r=27; this.theta=0.62; this.phi=1.02;
     this.minR=0.7; this.maxR=130; this.minPhi=0.08; this.maxPhi=1.54;
     this._btn=-1; this._px=0; this._py=0; this.tween=null;
-    dom.addEventListener("pointerdown",e=>{this._btn=e.button;this._px=e.clientX;this._py=e.clientY;dom.setPointerCapture(e.pointerId);});
+    // タッチ: 1本指で回転 / 2本指でピンチ(ズーム)と移動
+    this._pts=new Map(); this._pinch=null; dom.style.touchAction="none";
+    const two=()=>{const [a,b]=[...this._pts.values()];return{d:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};};
+    dom.addEventListener("pointerdown",e=>{this._pts.set(e.pointerId,{x:e.clientX,y:e.clientY});dom.setPointerCapture(e.pointerId);
+      if(this._pts.size===2){this._btn=-1;this._pinch=two();return;}
+      this._btn=e.button;this._px=e.clientX;this._py=e.clientY;});
     dom.addEventListener("pointermove",e=>{
+      if(this._pts.has(e.pointerId))this._pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(this._pinch&&this._pts.size===2){const p=two();
+        if(p.d>0&&this._pinch.d>0)this.r=THREE.MathUtils.clamp(this.r*this._pinch.d/p.d,this.minR,this.maxR);
+        this._pan(p.x-this._pinch.x,p.y-this._pinch.y);this._pinch=p;this.tween=null;return;}
       if(this._btn<0)return; const dx=e.clientX-this._px,dy=e.clientY-this._py; this._px=e.clientX;this._py=e.clientY;
       if(this._btn===0){this.theta-=dx*0.005;this.phi=THREE.MathUtils.clamp(this.phi-dy*0.005,this.minPhi,this.maxPhi);}
       else this._pan(dx,dy); this.tween=null;});
-    dom.addEventListener("pointerup",()=>{this._btn=-1;});
+    const up=e=>{this._pts.delete(e.pointerId);if(this._pts.size<2)this._pinch=null;
+      if(this._pts.size===1){const [p]=[...this._pts.values()];this._btn=0;this._px=p.x;this._py=p.y;}else this._btn=-1;};
+    dom.addEventListener("pointerup",up);dom.addEventListener("pointercancel",up);
     dom.addEventListener("wheel",e=>{e.preventDefault();
       const f=this.r<4?1.06:1.1;   // 近接時は細かくズーム
       this.r=THREE.MathUtils.clamp(this.r*(e.deltaY>0?f:1/f),this.minR,this.maxR);this.tween=null;},{passive:false});

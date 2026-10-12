@@ -212,7 +212,7 @@ function resamplePath(P,a,b,n,out){const L=P.L,m=P.p.length,k=P.k;
  * 「取付点のすぐそばに素直に置けるときだけ」出す(全景で札が塔のように積み上がらない)。
  * 新しく出す札は少し(0.15〜0.3 秒)続けて置けてから出す。前の置き場所の近くは少し安く見る(カメラを回したときの点滅・跳ね止め)。
  * 減点: 引出し線が他の札の裏を通る / 札が他の取付点・引出し線を隠す / 引出し線どうしが交わる。
- * パネル・操作ヘルプの下には置かない(取付点が隠れている札は出さない)。
+ * パネル・運転かたまり・視点バーの下には置かない(取付点が隠れている札は出さない)。
  * =======================================================*/
 const labelGroup={visible:true}, idLabelGroup={visible:false};   // 表示切替(設備名 / ロールID)
 const LBL=(function(){
@@ -229,7 +229,7 @@ const LBL=(function(){
   const GEN_MAX=14;                                          // 候補づくりに使う近くの札の数
   const items=[], placed=[], leads=[], _p=new THREE.Vector3();
   let W=0,H=0,obst=[],obstDirty=true;
-  const OBST_IDS=["panel","help"];
+  const OBST_IDS=["panel","hud","camBar"];
   if(typeof ResizeObserver!=="undefined"){const ro=new ResizeObserver(()=>{obstDirty=true;});
     for(const id of OBST_IDS){const e=document.getElementById(id);if(e)ro.observe(e);}}
   window.addEventListener("resize",()=>{obstDirty=true;});

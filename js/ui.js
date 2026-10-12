@@ -67,6 +67,8 @@ function paintBladeSet(ctx,pack){
   $("bsSpacer").textContent=`${cnt(g.spacerU)} / ${cnt(g.spacerL)}枚(${fmt(pk.sumU||0,2)} / ${fmt(pk.sumL||0,2)})`;
   const fs=res.fit.floatSeat;
   $("bsFloat").textContent=`上 ${fmt(fs.up,3)} / 下 ${fmt(fs.lo,3)} mm(${fs.side}端)`;
+  document.querySelectorAll("#ruleHold em").forEach(e=>{e.classList.toggle("on",(e.dataset.v==="finger")===!!res.finger);   // 板押さえの切替ルール
+    e.textContent=(e.dataset.v==="finger"?"t < ":"t ≥ ")+M.P.fingerMax+(e.dataset.v==="finger"?" フィンガー":" ゴムリング");});
   const [cls,txt]=bladeJudge(ctx), el=$("bsJudge");
   el.className="bs-judge "+cls;el.textContent=txt;}
 rebuildStrandDependent(4);
@@ -74,7 +76,8 @@ KC.rebuildCar(KC.standby,KC.solveFor(4,st.thick,KC.standby.i));             // �
 KX.onLine=()=>applyLine();                                                    // ラインへ入れた台車の刃組をラインへ
 
 ui.btnRun.addEventListener("click",()=>{st.paused=!st.paused;
-  ui.btnRun.innerHTML=st.paused?'<i class="fa-solid fa-play"></i><span>ライン起動</span>':'<i class="fa-solid fa-stop"></i><span>ライン停止</span>';
+  ui.btnRun.innerHTML=st.paused?'<i class="fa-solid fa-play"></i><span>起動</span>':'<i class="fa-solid fa-stop"></i><span>停止</span>';
+  ui.btnRun.title=(st.paused?"ライン起動":"ライン停止")+"(Space)";
   ui.btnRun.classList.toggle("running",st.paused);});
 const rng=document.getElementById("rngSpeed");
 rng.addEventListener("input",()=>{document.getElementById("speedVal").textContent=rng.value;st.target=rng.value/60;});
